@@ -1758,7 +1758,7 @@ function playStream() {
   loader.style.display = 'flex';
   frame.src = url;
 
-  frame.onload = () => { setTimeout(() => { loader.style.display = 'none'; }, 400); };
+  frame.onload = () => { loader.style.display = 'none'; }; setTimeout(() => { loader.style.display = 'none'; }, 1500);
   document.querySelectorAll('.srv-btn').forEach(b => b.classList.toggle('active', b.dataset.server === S.activeServer));
 }
 
@@ -1777,11 +1777,10 @@ function buildEpisodes() {
   sel.value = S.activeSeason;
 
   const renderChips = (eps) => {
-    document.getElementById('episodesScroll').innerHTML = eps.map((ep, i) => `
-      <button class="ep-chip${S.activeEpisode === i + 1 ? ' active' : ''}" onclick="selectEp(${i + 1})">
-        Ep ${ep.episode || i + 1}
-      </button>
-    `).join('');
+    document.getElementById('episodesScroll').innerHTML = eps.map((ep, i) => {
+      const epNum = ep.episode || (i + 1);
+      return `<button class="ep-chip${S.activeEpisode === epNum ? ' active' : ''}" onclick="selectEp(${epNum})">Ep ${epNum}</button>`;
+    }).join('');
     document.getElementById('curEpBadge').textContent = `S${S.activeSeason}:E${S.activeEpisode}`;
   };
 
@@ -1795,25 +1794,24 @@ function buildEpisodes() {
   };
 
   document.getElementById('prevEpBtn').onclick = () => { if (S.activeEpisode > 1) selectEp(S.activeEpisode - 1); };
-  document.getElementById('nextEpBtn').onclick = () => {
-    const eps = bySeason[S.activeSeason] || [];
-    if (S.activeEpisode < eps.length) selectEp(S.activeEpisode + 1);
-  };
+  document.getElementById('nextEpBtn').onclick = () => { selectEp(S.activeEpisode + 1); };
 }
 
 function renderFallbackEpisodes(eps) {
   const sel = document.getElementById('seasonSelect');
   sel.innerHTML = '<option value="1">Season 1</option>';
-  document.getElementById('episodesScroll').innerHTML = eps.map((ep, i) => `
-    <button class="ep-chip${S.activeEpisode === i + 1 ? ' active' : ''}" onclick="selectEp(${i + 1})">
-      Ep ${i + 1}
-    </button>
-  `).join('');
+  document.getElementById('episodesScroll').innerHTML = eps.map((ep, i) => {
+    const epNum = i + 1;
+    return `<button class="ep-chip${S.activeEpisode === epNum ? ' active' : ''}" onclick="selectEp(${epNum})">Ep ${epNum}</button>`;
+  }).join('');
 }
 
-function selectEp(ep) {
-  S.activeEpisode = ep;
-  document.querySelectorAll('.ep-chip').forEach((c, idx) => c.classList.toggle('active', idx + 1 === ep));
+function selectEp(epNum) {
+  S.activeEpisode = epNum;
+  document.querySelectorAll('.ep-chip').forEach(c => {
+    const chipEp = parseInt(c.textContent.replace('Ep', '').trim());
+    c.classList.toggle('active', chipEp === epNum);
+  });
   document.getElementById('curEpBadge').textContent = `S${S.activeSeason}:E${S.activeEpisode}`;
   playStream();
 }
