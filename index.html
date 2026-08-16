@@ -1467,7 +1467,6 @@ function esc(s) {
 
 /* ---- VIEW SWITCHER ---- */
 function switchView(name) {
-  if (S.view === name && name !== 'home') return;
   S.prevView = S.view;
   S.view = name;
 
@@ -1478,12 +1477,16 @@ function switchView(name) {
     const liveVid = document.getElementById('liveVideoPlayer');
     if (liveVid) { liveVid.pause(); liveVid.src = ''; }
     if (S.hlsInstance) { S.hlsInstance.destroy(); S.hlsInstance = null; }
-    const cf = document.getElementById('cinemaFrame');
-    if (cf) cf.src = '';
+    // Only clear frame if actually leaving player view
+    if (S.prevView === 'player' || S.prevView === 'livePlayer') {
+      const cf = document.getElementById('cinemaFrame');
+      if (cf) cf.src = '';
+    }
   }
 
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  const el = document.getElementById(name === 'player' ? 'viewPlayer' : name === 'livePlayer' ? 'viewLivePlayer' : `view${name.charAt(0).toUpperCase() + name.slice(1)}`);
+  const viewId = name === 'player' ? 'viewPlayer' : name === 'livePlayer' ? 'viewLivePlayer' : `view${name.charAt(0).toUpperCase() + name.slice(1)}`;
+  const el = document.getElementById(viewId);
   if (el) el.classList.add('active');
 
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
@@ -1728,38 +1731,56 @@ async function loadPlayerMeta(item) {
 function buildPlayerUI() {
   const item = S.activeItem;
   if (!item) return;
+
+  // Topbar & info
   document.getElementById('playerTopTitle').textContent = item.title;
   document.getElementById('playerTitleBig').textContent = item.title;
-  document.getElementById('playerPoster').src = item.poster;
-  document.getElementById('playerDesc').textContent = item.synopsis;
+  document.getElementById('playerPoster').src = item.poster || '';
+  document.getElementById('playerDesc').textContent = item.synopsis || '';
   document.getElementById('episodesSection').style.display = item.type === 'series' ? 'block' : 'none';
 
-  const inWl = S.watchlist && S.watchlist[item.id];
-  const inLike = S.likes && S.likes[item.id];
+  // Watchlist button
   const wlBtn = document.getElementById('playerWlBtn');
-  const lkBtn = document.getElementById('playerLikeBtn');
-  wlBtn.classList.toggle('active', inWl);
+  const inWl = !!(S.watchlist && S.watchlist[item.id]);
+  wlBtn.className = 'player-act-btn' + (inWl ? ' active' : '');
   wlBtn.innerHTML = inWl ? '<i class="fas fa-bookmark"></i> Saved' : '<i class="far fa-bookmark"></i> Watchlist';
-  lkBtn.classList.toggle('active', inLike);
-  lkBtn.innerHTML = inLike ? '<i class="fas fa-heart"></i> Liked' : '<i class="far fa-heart"></i> Like';
+  wlBtn.onclick = null;
+  wlBtn.addEventListener('click', function() { toggleWatchlist(item, wlBtn); }, { once: false });
 
-  wlBtn.onclick = () => toggleWatchlist(item, wlBtn);
-  lkBtn.onclick = () => toggleLike(item, lkBtn);
+  // Like button
+  const lkBtn = document.getElementById('playerLikeBtn');
+  const inLike = !!(S.likes && S.likes[item.id]);
+  lkBtn.className = 'player-act-btn' + (inLike ? ' active' : '');
+  lkBtn.innerHTML = inLike ? '<i class="fas fa-heart"></i> Liked' : '<i class="far fa-heart"></i> Like';
+  lkBtn.onclick = null;
+  lkBtn.addEventListener('click', function() { toggleLike(item, lkBtn); }, { once: false });
 }
 
 function playStream() {
   const item = S.activeItem;
   if (!item) return;
   const srv = SERVERS[S.activeServer];
+  if (!srv) return;
   const url = srv.buildUrl(item.id, item.type, S.activeSeason, S.activeEpisode);
 
   const frame = document.getElementById('cinemaFrame');
   const loader = document.getElementById('playerLoader');
-  loader.style.display = 'flex';
-  frame.src = url;
 
-  frame.onload = () => { loader.style.display = 'none'; }; setTimeout(() => { loader.style.display = 'none'; }, 1500);
-  document.querySelectorAll('.srv-btn').forEach(b => b.classList.toggle('active', b.dataset.server === S.activeServer));
+  loader.style.display = 'flex';
+  loader.innerHTML = '<div class="spinner"></div><span>Connecting to Stream...</span>';
+  frame.src = 'about:blank';
+
+  setTimeout(() => {
+    frame.src = url;
+    frame.onload = () => { loader.style.display = 'none'; };
+    // Fallback hide after 3s in case onload doesn't fire (cross-origin)
+    setTimeout(() => { loader.style.display = 'none'; }, 3000);
+  }, 80);
+
+  // Highlight active server button
+  document.querySelectorAll('.srv-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.server === S.activeServer);
+  });
 }
 
 function buildEpisodes() {
@@ -2051,31 +2072,74 @@ auth.onAuthStateChanged(user => {
 
 /* ---- INITIALIZATION ---- */
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('[data-view]').forEach(el => {
-    el.addEventListener('click', () => switchView(el.dataset.view));
-  });
-  document.getElementById('logoBtn').onclick = () => switchView('home');
 
-  document.getElementById('playerBackBtn').onclick = () => switchView(S.prevView || 'home');
+  // ---- ALL [data-view] navigation buttons ----
+  document.querySelectorAll('[data-view]').forEach(el => {
+    el.addEventListener('click', () => {
+      const v = el.dataset.view;
+      // If it also has a data-filter (like See All buttons), apply filter first
+      if (el.dataset.filter) {
+        if (v === 'movies') S.moviesFilter = el.dataset.filter;
+        if (v === 'series') S.seriesFilter = el.dataset.filter;
+        S.moviesSkip = 0; S.seriesSkip = 0;
+      }
+      switchView(v);
+    });
+  });
+
+  document.getElementById('logoBtn').onclick = () => switchView('home');
+  document.getElementById('playerBackBtn').onclick = () => {
+    const prev = S.prevView || 'home';
+    switchView(prev);
+  };
   document.getElementById('livePlayerBack').onclick = () => switchView('live');
 
-  // Server buttons
+  // ---- Server Switch Buttons ----
   document.getElementById('serversRow').addEventListener('click', e => {
     const btn = e.target.closest('.srv-btn');
     if (!btn) return;
     S.activeServer = btn.dataset.server;
     playStream();
-    toast(`${SERVERS[S.activeServer]?.name} Selected`, 'info');
+    toast(`✅ ${SERVERS[S.activeServer]?.name} Selected`, 'info');
   });
 
-  // Direct Form
-  document.getElementById('directPlayBtn').onclick = () => directPlay(document.getElementById('directInput').value);
-  document.getElementById('directInput').addEventListener('keypress', e => { if (e.key === 'Enter') directPlay(document.getElementById('directInput').value); });
+  // ---- Movies Filter Pills ----
+  document.getElementById('moviesFilterRow').addEventListener('click', e => {
+    const pill = e.target.closest('.filter-pill');
+    if (!pill) return;
+    S.moviesFilter = pill.dataset.filter;
+    S.moviesSkip = 0;
+    document.querySelectorAll('#moviesFilterRow .filter-pill').forEach(p => p.classList.toggle('active', p === pill));
+    loadMoviesGrid();
+  });
+
+  // ---- Series Filter Pills ----
+  document.getElementById('seriesFilterRow').addEventListener('click', e => {
+    const pill = e.target.closest('.filter-pill');
+    if (!pill) return;
+    S.seriesFilter = pill.dataset.filter;
+    S.seriesSkip = 0;
+    document.querySelectorAll('#seriesFilterRow .filter-pill').forEach(p => p.classList.toggle('active', p === pill));
+    loadSeriesGrid();
+  });
+
+  // ---- Load More Buttons ----
+  document.getElementById('moviesLoadMoreBtn').addEventListener('click', () => loadMoviesGrid(true));
+  document.getElementById('seriesLoadMoreBtn').addEventListener('click', () => loadSeriesGrid(true));
+
+  // ---- Direct Play Form ----
+  document.getElementById('directPlayBtn').addEventListener('click', () => directPlay(document.getElementById('directInput').value));
+  document.getElementById('directInput').addEventListener('keypress', e => {
+    if (e.key === 'Enter') directPlay(document.getElementById('directInput').value);
+  });
   document.querySelectorAll('.chip').forEach(c => {
-    c.onclick = () => { document.getElementById('directInput').value = c.dataset.imdb; directPlay(c.dataset.imdb); };
+    c.addEventListener('click', () => {
+      document.getElementById('directInput').value = c.dataset.imdb;
+      directPlay(c.dataset.imdb);
+    });
   });
 
-  // Home Search
+  // ---- Home Search ----
   const homeIn = document.getElementById('homeSearchInput');
   const homeClr = document.getElementById('homeSearchClear');
   const homeDd = document.getElementById('homeSearchDropdown');
@@ -2083,12 +2147,16 @@ document.addEventListener('DOMContentLoaded', () => {
     homeClr.style.display = homeIn.value ? 'block' : 'none';
     handleLiveSearch(homeIn.value, homeDd);
   });
-  homeClr.onclick = () => { homeIn.value = ''; homeClr.style.display = 'none'; homeDd.classList.remove('show'); };
+  homeClr.addEventListener('click', () => {
+    homeIn.value = '';
+    homeClr.style.display = 'none';
+    homeDd.classList.remove('show');
+  });
   document.addEventListener('click', e => {
     if (!e.target.closest('.search-box-container')) homeDd.classList.remove('show');
   });
 
-  // Live TV Country Tabs
+  // ---- Live TV Country Tabs ----
   document.getElementById('countryTabs').addEventListener('click', e => {
     const tab = e.target.closest('.country-tab');
     if (!tab) return;
@@ -2097,7 +2165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadLiveTV();
   });
 
-  // Account Sub-tabs
+  // ---- Account Sub-tabs ----
   document.getElementById('accSubTabs').addEventListener('click', e => {
     const stab = e.target.closest('.acc-stab');
     if (!stab) return;
@@ -2106,36 +2174,70 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAccountView();
   });
 
-  // Auth Handlers
-  document.getElementById('lockTabLogin').onclick = () => {
+  // ---- Desktop Account Button ----
+  const desktopAccBtn = document.querySelector('.nav-desktop-acc-btn');
+  if (desktopAccBtn) desktopAccBtn.addEventListener('click', () => switchView('account'));
+
+  // ---- Auth Handlers ----
+  document.getElementById('lockTabLogin').addEventListener('click', () => {
     document.getElementById('lockLoginForm').style.display = 'block';
     document.getElementById('lockSignupForm').style.display = 'none';
     document.getElementById('lockTabLogin').classList.add('active');
     document.getElementById('lockTabSignup').classList.remove('active');
-  };
-  document.getElementById('lockTabSignup').onclick = () => {
+  });
+  document.getElementById('lockTabSignup').addEventListener('click', () => {
     document.getElementById('lockLoginForm').style.display = 'none';
     document.getElementById('lockSignupForm').style.display = 'block';
     document.getElementById('lockTabSignup').classList.add('active');
     document.getElementById('lockTabLogin').classList.remove('active');
-  };
+  });
 
-  document.getElementById('lockLoginBtn').onclick = async () => {
+  document.getElementById('lockLoginBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('lockLoginBtn');
+    btn.disabled = true; btn.textContent = 'Signing in...';
     try {
-      await auth.signInWithEmailAndPassword(document.getElementById('lockEmail').value, document.getElementById('lockPassword').value);
-      toast('Welcome back to MINEXUS TV!', 'success');
-    } catch (e) { toast(e.message, 'error'); }
-  };
-  document.getElementById('lockSignupBtn').onclick = async () => {
+      await auth.signInWithEmailAndPassword(
+        document.getElementById('lockEmail').value,
+        document.getElementById('lockPassword').value
+      );
+      toast('✅ Welcome back to MINEXUS TV!', 'success');
+    } catch (e) {
+      toast('❌ ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-right-to-bracket"></i> Sign In to MINEXUS';
+    }
+  });
+
+  document.getElementById('lockSignupBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('lockSignupBtn');
+    btn.disabled = true; btn.textContent = 'Creating...';
     try {
-      const c = await auth.createUserWithEmailAndPassword(document.getElementById('lockSignEmail').value, document.getElementById('lockSignPass').value);
-      if (document.getElementById('lockSignName').value) await c.user.updateProfile({ displayName: document.getElementById('lockSignName').value });
-      toast('Account Created!', 'success');
-    } catch (e) { toast(e.message, 'error'); }
-  };
-  document.getElementById('lockGoogleBtn').onclick = () => auth.signInWithPopup(googleProvider).catch(() => {});
-  document.getElementById('lockGoogleSignBtn').onclick = () => auth.signInWithPopup(googleProvider).catch(() => {});
-  document.getElementById('accountLogoutBtn').onclick = () => auth.signOut();
+      const cred = await auth.createUserWithEmailAndPassword(
+        document.getElementById('lockSignEmail').value,
+        document.getElementById('lockSignPass').value
+      );
+      const nameVal = document.getElementById('lockSignName').value;
+      if (nameVal) await cred.user.updateProfile({ displayName: nameVal });
+      toast('✅ Account Created! Welcome to MINEXUS TV!', 'success');
+    } catch (e) {
+      toast('❌ ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+    }
+  });
+
+  document.getElementById('lockGoogleBtn').addEventListener('click', () =>
+    auth.signInWithPopup(googleProvider).catch(e => toast('❌ ' + e.message, 'error'))
+  );
+  document.getElementById('lockGoogleSignBtn').addEventListener('click', () =>
+    auth.signInWithPopup(googleProvider).catch(e => toast('❌ ' + e.message, 'error'))
+  );
+  document.getElementById('accountLogoutBtn').addEventListener('click', () => {
+    auth.signOut();
+    toast('Logged out. Bye! 👋', 'info');
+  });
 
   initHero();
   loadRows();
