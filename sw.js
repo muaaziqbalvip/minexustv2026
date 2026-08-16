@@ -15,8 +15,9 @@ const BYPASS_PATTERNS = [
   'firebase', 'firebaseio', 'googleapis',
   'multiembed', 'autoembed', 'vidlink', 'vidsrc', 'smashystream', '2embed', 'kriss424',
   'cinemeta', 'strem.io',
-  'iptv-org', '.m3u', '.m3u8', '.ts',
-  'themoviedb', 'metahub.space'
+  'themoviedb', 'image.tmdb',
+  'iptv-org', 'jsdelivr', 'raw.githubusercontent', '.m3u', '.m3u8', '.ts',
+  'metahub.space'
 ];
 
 function shouldBypass(url) {

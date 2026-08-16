@@ -23,6 +23,12 @@
 <meta property="og:description" content="Stream all Pakistani, Bollywood & Hollywood movies, TV shows, and Live TV.">
 <meta property="og:image" content="https://images.metahub.space/logo/medium/tt1375666/img">
 
+<!-- Twitter Card Meta (also updated per-movie for share previews) -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MINEXUS TV — 4K Cinema & Live TV">
+<meta name="twitter:description" content="Stream all Pakistani, Bollywood & Hollywood movies, TV shows, and Live TV.">
+<meta name="twitter:image" content="https://images.metahub.space/logo/medium/tt1375666/img">
+
 <!-- Schema.org JSON-LD for Google Search Engine -->
 <script type="application/ld+json">
 {
@@ -76,6 +82,7 @@
   --card-radius:12px;
   --nav-h:56px;
   --bottom-h:64px;
+  --footer-h:26px;
   --font:'Inter',sans-serif;
   --font2:'Space Grotesk',sans-serif;
 }
@@ -86,11 +93,12 @@ body{
   color:var(--text);
   min-height:100vh;
   overflow-x:hidden;
-  padding-bottom:var(--bottom-h);
+  padding-bottom:calc(var(--bottom-h) + var(--footer-h));
   user-select:none;-webkit-user-select:none;
 }
 body.no-scroll{overflow:hidden!important}
 body.in-player .bottom-bar{display:none!important}
+body.in-player .site-footer{display:none!important}
 body.in-player{padding-bottom:0!important}
 
 img{display:block;max-width:100%}
@@ -245,7 +253,7 @@ input,select{font-family:inherit}
 }
 
 /* ===== MAIN VIEWS ===== */
-.view{display:none;min-height:calc(100vh - var(--nav-h) - var(--bottom-h));padding-top:var(--nav-h)}
+.view{display:none;min-height:calc(100vh - var(--nav-h) - var(--bottom-h) - var(--footer-h));padding-top:var(--nav-h)}
 .view.active{display:block}
 
 /* ===== HERO SPOTLIGHT BANNER ===== */
@@ -770,13 +778,31 @@ input,select{font-family:inherit}
 }
 @media(min-width:769px){
   .bottom-bar{display:none!important}
-  body{padding-bottom:0}
-  .toast-wrap{bottom:20px}
+  body{padding-bottom:var(--footer-h)}
+  .toast-wrap{bottom:calc(var(--footer-h) + 16px)}
   .nav-desktop-acc-btn{display:flex!important}
 }
+
+/* ===== FIXED MINI FOOTER (credit bar) ===== */
+.site-footer{
+  position:fixed;left:0;right:0;bottom:0;z-index:260;
+  height:var(--footer-h);
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  background:rgba(4,5,8,0.98);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-top:1px solid var(--border);
+  font-size:9.5px;color:var(--text3);letter-spacing:.2px;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+@media(max-width:768px){
+  .site-footer{bottom:var(--bottom-h)}
+}
+.site-footer strong{color:var(--text2);font-weight:700}
+.site-footer .footer-heart{color:var(--accent);font-size:8px}
+
 </style>
 </head>
-<body oncontextmenu="return false;">
+<body>
 
 <!-- ===== MANDATORY AUTH LOCK SCREEN ===== -->
 <div class="auth-lock-overlay" id="authLockOverlay" style="display:flex;">
@@ -1146,7 +1172,6 @@ input,select{font-family:inherit}
     </div>
     <iframe id="cinemaFrame" src="" title="MINEXUS Cinema Player" allowfullscreen
       allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write; screen-wake-lock; display-capture"
-      sandbox="allow-scripts allow-same-origin allow-presentation allow-forms"
       referrerpolicy="no-referrer"></iframe>
   </div>
 
@@ -1187,6 +1212,7 @@ input,select{font-family:inherit}
         <div class="player-actions-row">
           <button class="player-act-btn" id="playerWlBtn"><i class="far fa-bookmark"></i> Watchlist</button>
           <button class="player-act-btn" id="playerLikeBtn"><i class="far fa-heart"></i> Like</button>
+          <button class="player-act-btn" id="playerShareBtn"><i class="fas fa-share-nodes"></i> Share</button>
         </div>
         <p class="player-desc" id="playerDesc"></p>
       </div>
@@ -1242,6 +1268,11 @@ input,select{font-family:inherit}
     <i class="fas fa-circle-user"></i><span>Account</span>
   </button>
 </nav>
+
+<!-- ===== FIXED MINI FOOTER ===== -->
+<footer class="site-footer">
+  <span>Developed by <strong>Muaaz Iqbal</strong> &amp; <strong>MI Org</strong> Partners <i class="fas fa-heart footer-heart"></i></span>
+</footer>
 
 <div class="toast-wrap" id="toastWrap"></div>
 
@@ -1365,21 +1396,35 @@ const DESI_SERIES_MAP = [
   { keywords: ['khuda aur mohabbat', 'khuda aur muhabbat'], id: 'tt13919694', title: 'Khuda Aur Mohabbat Season 3', type: 'series', year: '2021', poster: 'https://images.metahub.space/poster/medium/tt13919694/img', synopsis: 'Farhad falls desperately in love with Mahi, transforming his worldly passion into divine love.' }
 ];
 
-/* ---- CINEMETA API CLIENT ---- */
+/* ---- LIVE CATALOG API CLIENT (TMDB primary + Cinemeta fallback) ----
+   TMDB (The Movie Database) gives real-time trending/now-playing/on-air data
+   with a personal free API key. The key is managed live from the ADMIN PANEL
+   (App Version tab → "Live Movie/Series Data") and synced from Firebase, so
+   Muaaz never has to edit code — setting/clearing the key in admin instantly
+   flips every visitor between TMDB-live and Cinemeta-fallback mode. Until a
+   key is set, Cinemeta (no key required, IMDb-linked) is used as a fully-
+   working fallback so the app never breaks. Cache time is short (2 minutes)
+   so content always feels live and fresh instead of stuck. */
+let TMDB_API_KEY = ''; // synced live from Firebase app_config/tmdb_api_key — see below
+const TMDB_BASE = 'https://api.themoviedb.org/3';
+const TMDB_IMG = 'https://image.tmdb.org/t/p';
+function tmdbEnabled() { return !!TMDB_API_KEY; }
+
 const CBASE = 'https://v3-cinemeta.strem.io';
 const IMGB = 'https://images.metahub.space';
 const _cache = new Map();
+const LIVE_CACHE_MS = 120000; // 2 min — keeps data feeling live without hammering the API every click
 
-async function _fetch(url, retries = 2) {
+async function _fetch(url, retries = 2, cacheMs = LIVE_CACHE_MS) {
   const h = _cache.get(url);
-  if (h && Date.now() - h.t < 300000) return h.d;
+  if (h && Date.now() - h.t < cacheMs) return h.d;
 
   let lastErr;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 8000);
-      const r = await fetch(url, { signal: ctrl.signal });
+      const r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
       clearTimeout(timer);
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const d = await r.json();
@@ -1409,8 +1454,57 @@ function mapMeta(m, type) {
   };
 }
 
+/* TMDB responses need an IMDb ID (our whole app keys off tt-prefixed IMDb IDs
+   for the streaming servers), so movie/tv detail calls append external_ids. */
+function mapTmdb(m, type) {
+  const imdbId = m.imdb_id || (m.external_ids && m.external_ids.imdb_id) || null;
+  const title = m.title || m.name || 'Untitled';
+  const date = m.release_date || m.first_air_date || '';
+  return {
+    id: imdbId, // may be null until resolved — callers should skip nulls for playback lists
+    tmdbId: m.id,
+    title,
+    type,
+    year: date ? date.split('-')[0] : '2024',
+    rating: m.vote_average ? m.vote_average.toFixed(1) : '8.0',
+    genres: (m.genres || []).map(g => g.name),
+    runtime: type === 'series' ? 'TV Series' : (m.runtime ? `${m.runtime}m` : 'HD Movie'),
+    poster: m.poster_path ? `${TMDB_IMG}/w500${m.poster_path}` : '',
+    backdrop: m.backdrop_path ? `${TMDB_IMG}/original${m.backdrop_path}` : '',
+    synopsis: m.overview || 'Watch now in full HD on MINEXUS TV.',
+    videos: []
+  };
+}
+
+async function tmdbResolveImdbIds(list, type) {
+  // TMDB discover/trending results don't include imdb_id directly — resolve
+  // it via external_ids in parallel, drop anything that fails (rare).
+  const results = await Promise.all(list.map(async m => {
+    try {
+      const ext = await _fetch(`${TMDB_BASE}/${type}/${m.id}/external_ids?api_key=${TMDB_API_KEY}`, 1, LIVE_CACHE_MS);
+      return ext && ext.imdb_id ? { ...m, imdb_id: ext.imdb_id } : null;
+    } catch (e) { return null; }
+  }));
+  return results.filter(Boolean);
+}
+
 const API = {
   async catalog(type, catalogId, genre, skip) {
+    if (tmdbEnabled()) {
+      try {
+        const tmdbType = type === 'series' ? 'tv' : 'movie';
+        const page = Math.floor((skip || 0) / 20) + 1;
+        let endpoint;
+        if (genre) {
+          endpoint = `${TMDB_BASE}/discover/${tmdbType}?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&page=${page}&with_genres=${encodeURIComponent(genre)}`;
+        } else {
+          endpoint = `${TMDB_BASE}/trending/${tmdbType}/day?api_key=${TMDB_API_KEY}&page=${page}`;
+        }
+        const d = await _fetch(endpoint);
+        const withIds = await tmdbResolveImdbIds((d.results || []).slice(0, 20), tmdbType);
+        return withIds.map(m => mapTmdb(m, type));
+      } catch (e) { /* fall through to Cinemeta */ }
+    }
     catalogId = catalogId || 'top';
     const p = [];
     if (genre) p.push(`genre=${encodeURIComponent(genre)}`);
@@ -1420,19 +1514,37 @@ const API = {
     return (d.metas || []).map(m => mapMeta(m, type));
   },
   async getMeta(type, id) {
-    // Check dictionary first
+    // Check dictionary first (only used as a synopsis backstop if live APIs fail)
     const dict = DESI_SERIES_MAP.find(d => d.id === id);
-    if (dict) {
+    if (tmdbEnabled()) {
       try {
-        const d = await _fetch(`${CBASE}/meta/${type}/${id}.json`);
-        if (d && d.meta) return mapMeta(d.meta, type);
-      } catch (e) {
-        return dict;
-      }
+        const tmdbType = type === 'series' ? 'tv' : 'movie';
+        const find = await _fetch(`${TMDB_BASE}/find/${id}?api_key=${TMDB_API_KEY}&external_source=imdb_id`);
+        const hit = (find[tmdbType + '_results'] || [])[0];
+        if (hit) {
+          const detail = await _fetch(`${TMDB_BASE}/${tmdbType}/${hit.id}?api_key=${TMDB_API_KEY}`);
+          const mapped = mapTmdb({ ...detail, imdb_id: id }, type);
+          if (type === 'series') {
+            const numSeasons = detail.number_of_seasons || 1;
+            mapped.videos = [];
+            for (let s = 1; s <= numSeasons; s++) {
+              const epCount = (detail.seasons || []).find(sn => sn.season_number === s)?.episode_count || 10;
+              for (let e = 1; e <= epCount; e++) mapped.videos.push({ season: s, episode: e });
+            }
+          }
+          return mapped;
+        }
+      } catch (e) { /* fall through */ }
     }
-    const d = await _fetch(`${CBASE}/meta/${type}/${id}.json`);
-    if (!d || !d.meta) throw new Error('Not found');
-    return mapMeta(d.meta, type);
+    try {
+      const d = await _fetch(`${CBASE}/meta/${type}/${id}.json`);
+      if (d && d.meta) return mapMeta(d.meta, type);
+    } catch (e) {
+      if (dict) return dict;
+      throw new Error('Not found');
+    }
+    if (dict) return dict;
+    throw new Error('Not found');
   },
   async detect(id) {
     try { return await this.getMeta('movie', id); } catch(e) { return this.getMeta('series', id); }
@@ -1441,22 +1553,40 @@ const API = {
     if (!q.trim()) return { movies: [], series: [] };
     const cleanQ = q.trim().toLowerCase();
 
-    // 1. Direct Desi Dictionary Search First
-    const desiMatches = DESI_SERIES_MAP.filter(item => 
+    // Local dictionary match is instant, always shown at top regardless of source
+    const desiMatches = DESI_SERIES_MAP.filter(item =>
       item.keywords.some(k => cleanQ.includes(k) || k.includes(cleanQ)) ||
       item.title.toLowerCase().includes(cleanQ)
     );
 
-    const enc = encodeURIComponent(q.trim());
-    const [mr, sr] = await Promise.all([
-      _fetch(`${CBASE}/catalog/movie/top/search=${enc}.json`).catch(() => ({ metas: [] })),
-      _fetch(`${CBASE}/catalog/series/top/search=${enc}.json`).catch(() => ({ metas: [] }))
-    ]);
+    let movies = [], series = [];
+    if (tmdbEnabled()) {
+      try {
+        const enc = encodeURIComponent(q.trim());
+        const [mr, sr] = await Promise.all([
+          _fetch(`${TMDB_BASE}/search/movie?api_key=${TMDB_API_KEY}&query=${enc}`, 1, 30000),
+          _fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${enc}`, 1, 30000)
+        ]);
+        const [mIds, sIds] = await Promise.all([
+          tmdbResolveImdbIds((mr.results || []).slice(0, 10), 'movie'),
+          tmdbResolveImdbIds((sr.results || []).slice(0, 10), 'tv')
+        ]);
+        movies = mIds.map(m => mapTmdb(m, 'movie'));
+        series = sIds.map(m => mapTmdb(m, 'series'));
+      } catch (e) { /* fall through to Cinemeta below */ }
+    }
 
-    let movies = (mr.metas || []).map(m => mapMeta(m, 'movie'));
-    let series = (sr.metas || []).map(m => mapMeta(m, 'series'));
+    if (!movies.length && !series.length) {
+      const enc = encodeURIComponent(q.trim());
+      const [mr, sr] = await Promise.all([
+        _fetch(`${CBASE}/catalog/movie/top/search=${enc}.json`, 1, 30000).catch(() => ({ metas: [] })),
+        _fetch(`${CBASE}/catalog/series/top/search=${enc}.json`, 1, 30000).catch(() => ({ metas: [] }))
+      ]);
+      movies = (mr.metas || []).map(m => mapMeta(m, 'movie'));
+      series = (sr.metas || []).map(m => mapMeta(m, 'series'));
+    }
 
-    // Inject Desi matches at the top of results
+    // Inject Desi dictionary matches at the top of results
     desiMatches.forEach(d => {
       if (d.type === 'series') {
         if (!series.some(s => s.id === d.id)) series.unshift(d);
@@ -1541,6 +1671,7 @@ function switchView(name) {
     if (S.prevView === 'player' || S.prevView === 'livePlayer') {
       const cf = document.getElementById('cinemaFrame');
       if (cf) cf.src = '';
+      resetShareMeta();
     }
   }
 
@@ -1580,10 +1711,14 @@ function buildCard(item, size = 'standard') {
 }
 
 /* ---- HERO CAROUSEL ---- */
+function withValidIds(list) {
+  return (list || []).filter(i => i && i.id);
+}
+
 async function initHero(retry = true) {
   try {
     const [mv, sv] = await Promise.all([API.catalog('movie', 'top'), API.catalog('series', 'top')]);
-    S.heroItems = [...mv.slice(0, 6), ...sv.slice(0, 4), ...DESI_SERIES_MAP.slice(0, 3)].sort(() => Math.random() - .5);
+    S.heroItems = [...withValidIds(mv).slice(0, 6), ...withValidIds(sv).slice(0, 4), ...DESI_SERIES_MAP.slice(0, 3)].sort(() => Math.random() - .5);
     renderHero();
     const dots = document.getElementById('heroDots');
     dots.innerHTML = S.heroItems.map((_, i) => `<span class="hero-dot${i === 0 ? ' active' : ''}" onclick="setHero(${i})"></span>`).join('');
@@ -1633,7 +1768,7 @@ async function loadRows(retry = true) {
     ]);
     const render = (id, list, sz) => {
       const el = document.getElementById(id);
-      if (el) el.innerHTML = list.slice(0, 16).map(i => buildCard(i, sz)).join('');
+      if (el) el.innerHTML = withValidIds(list).slice(0, 16).map(i => buildCard(i, sz)).join('');
     };
     render('trendingRow', trend, 'featured');
     // Prepend popular desi titles
@@ -1864,6 +1999,35 @@ function openLivePlayer(ch) {
   `;
 }
 
+/* ---- ANTI-POPUP / ANTI-AD-REDIRECT GUARD ----
+   Embed servers (MultiEmbed, 2Embed, Smashy, etc.) sometimes fire popup or
+   new-tab ads. Sandboxing the iframe stops this but also breaks the video
+   player itself for most of these embeds — so instead we guard at the PARENT
+   page level: override window.open globally while any player view is active,
+   silently swallowing calls instead of letting them open a new tab, and keep
+   the browser focused on our own tab. The iframe itself stays fully
+   functional (scripts, same-origin, forms all still allowed), only the
+   "escape to a new tab/window" behavior is blocked. */
+const _nativeWindowOpen = window.open.bind(window);
+window.open = function(...args) {
+  if (document.body.classList.contains('in-player')) {
+    // Swallow popup/ad attempts while watching — return a dummy closed window
+    // so the calling script doesn't throw.
+    return { closed: true, close(){}, focus(){}, blur(){} };
+  }
+  return _nativeWindowOpen(...args);
+};
+
+// Some embeds try to steal focus / navigate the top window directly.
+// We can't stop cross-origin top-navigation from inside the iframe (browser
+// security), but we CAN immediately reclaim focus so any pop-under stays
+// hidden behind our tab instead of stealing attention.
+window.addEventListener('blur', () => {
+  if (document.body.classList.contains('in-player')) {
+    setTimeout(() => { try { window.focus(); } catch(e){} }, 50);
+  }
+});
+
 /* ---- MULTI-SERVER CINEMA PLAYER (MULTISEMBED DEFAULT) ---- */
 function openPlayer(item) {
   S.activeItem = item;
@@ -1873,6 +2037,7 @@ function openPlayer(item) {
   buildPlayerUI();
   playStream();
   loadPlayerMeta(item);
+  updateShareableUrl(item);
 
   if (S.user) {
     db.ref(`users/${S.user.uid}/history/${item.id}`).set({
@@ -1886,6 +2051,89 @@ function openPlayer(item) {
 
     db.ref(`users/${S.user.uid}/stats/watchCount`).transaction(c => (c || 0) + 1);
     db.ref(`users/${S.user.uid}/stats/points`).transaction(p => (p || 0) + 15);
+  }
+}
+
+/* ---- SHAREABLE WATCH LINKS ----
+   Every title gets a real URL like /?watch=tt1234567&type=movie that:
+   1) Updates the browser address bar (so "Copy Link" from the browser
+      itself also works, and back/forward/refresh keeps you on the title).
+   2) Updates page <title> and Open Graph / Twitter meta tags so pasting the
+      link into WhatsApp, Telegram, Facebook, X, etc. shows the movie's own
+      poster as the preview image with its title/synopsis — not a generic
+      MINEXUS TV card for every link.
+   3) Is what buildShareUrl()/copyShareLink() use for the in-app Share button. */
+function updateShareableUrl(item) {
+  if (!item || !item.id) return;
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.searchParams.set('watch', item.id);
+  url.searchParams.set('type', item.type || 'movie');
+  window.history.replaceState({ watch: item.id }, '', url.toString());
+  updateShareMeta(item);
+}
+
+function updateShareMeta(item) {
+  const title = `${item.title} (${item.year || ''}) — Watch on MINEXUS TV`;
+  const desc = (item.synopsis || 'Stream in full HD on MINEXUS TV.').slice(0, 200);
+  const image = item.backdrop || item.poster || '';
+  document.title = title;
+
+  const setMeta = (selector, attr, value) => {
+    let el = document.querySelector(selector);
+    if (!el) {
+      el = document.createElement('meta');
+      const [, key, val] = selector.match(/\[(\w+)=["']([^"']+)["']\]/) || [];
+      if (key) el.setAttribute(key, val);
+      document.head.appendChild(el);
+    }
+    el.setAttribute(attr, value);
+  };
+
+  setMeta('meta[property="og:title"]', 'content', title);
+  setMeta('meta[property="og:description"]', 'content', desc);
+  if (image) setMeta('meta[property="og:image"]', 'content', image);
+  setMeta('meta[property="og:type"]', 'content', 'video.other');
+  setMeta('meta[property="og:url"]', 'content', window.location.href);
+  setMeta('meta[name="twitter:card"]', 'content', 'summary_large_image');
+  setMeta('meta[name="twitter:title"]', 'content', title);
+  setMeta('meta[name="twitter:description"]', 'content', desc);
+  if (image) setMeta('meta[name="twitter:image"]', 'content', image);
+  setMeta('meta[name="description"]', 'content', desc);
+}
+
+function resetShareMeta() {
+  document.title = 'MINEXUS TV — 4K Cinema & Live TV';
+  const url = new URL(window.location.href);
+  url.search = '';
+  window.history.replaceState({}, '', url.toString());
+}
+
+function buildShareUrl(item) {
+  const url = new URL(window.location.origin + window.location.pathname);
+  url.searchParams.set('watch', item.id);
+  url.searchParams.set('type', item.type || 'movie');
+  return url.toString();
+}
+
+async function copyShareLink(item) {
+  const url = buildShareUrl(item);
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: item.title, text: `Watch ${item.title} on MINEXUS TV`, url });
+      return;
+    }
+    await navigator.clipboard.writeText(url);
+    toast('🔗 Link copied! Share it anywhere', 'success');
+  } catch (e) {
+    // navigator.share throws if user cancels the native sheet — not an error
+    if (e && e.name === 'AbortError') return;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast('🔗 Link copied! Share it anywhere', 'success');
+    } catch (e2) {
+      toast('Could not copy link', 'error');
+    }
   }
 }
 
@@ -1925,6 +2173,11 @@ function buildPlayerUI() {
   lkBtn.innerHTML = inLike ? '<i class="fas fa-heart"></i> Liked' : '<i class="far fa-heart"></i> Like';
   lkBtn.onclick = null;
   lkBtn.addEventListener('click', function() { toggleLike(item, lkBtn); }, { once: false });
+
+  // Share button — copies a direct link (or opens native share sheet on mobile)
+  const shBtn = document.getElementById('playerShareBtn');
+  shBtn.onclick = null;
+  shBtn.addEventListener('click', function() { copyShareLink(item); }, { once: false });
 }
 
 function playStream() {
@@ -2033,13 +2286,16 @@ function handleLiveSearch(q, dropdownEl) {
   searchTimer = setTimeout(async () => {
     try {
       const { movies, series } = await API.search(q);
-      const list = [...series.slice(0, 4), ...movies.slice(0, 4)];
-      if (!list.length) { dropdownEl.innerHTML = `<div style="padding:10px;text-align:center;font-size:11px;color:var(--text3)">No titles found</div>`; return; }
+      const list = withValidIds([...series.slice(0, 6), ...movies.slice(0, 6)]);
+      if (!list.length) {
+        dropdownEl.innerHTML = `<div style="padding:14px;text-align:center;font-size:11px;color:var(--text3)">No titles found for "${esc(q)}"</div>`;
+        return;
+      }
       dropdownEl.innerHTML = list.map(i => {
         const key = registerItem(i);
         return `
         <div class="sdrop-item" data-key="${key}" data-close-dropdown="1">
-          <img class="sdrop-poster" src="${esc(i.poster)}" alt="">
+          <img class="sdrop-poster" src="${esc(i.poster)}" alt="" onerror="this.style.display='none'">
           <div class="sdrop-info">
             <div class="sdrop-title">${esc(i.title)}</div>
             <div class="sdrop-meta">${esc(i.year)} • ${i.type === 'series' ? 'TV' : 'Movie'}</div>
@@ -2051,7 +2307,9 @@ function handleLiveSearch(q, dropdownEl) {
       if (S.user && q.length > 2) {
         db.ref(`users/${S.user.uid}/searches`).push({ query: q, time: firebase.database.ServerValue.TIMESTAMP });
       }
-    } catch (e) {}
+    } catch (e) {
+      dropdownEl.innerHTML = `<div style="padding:14px;text-align:center;font-size:11px;color:var(--text3)">Search failed — check your connection</div>`;
+    }
   }, 250);
 }
 
@@ -2214,6 +2472,18 @@ db.ref('app_config').on('value', snap => {
     document.getElementById('forceUpdateOverlay').style.display = 'flex';
   } else {
     document.getElementById('forceUpdateOverlay').style.display = 'none';
+  }
+
+  // Live-sync TMDB API key from admin panel — no code edits/redeploys needed.
+  // If it changes mid-session, clear the API cache and reload current data
+  // so the switch between TMDB-live and Cinemeta-fallback takes effect now.
+  const newKey = (cfg && cfg.tmdb_api_key) || '';
+  if (newKey !== TMDB_API_KEY) {
+    TMDB_API_KEY = newKey;
+    _cache.clear();
+    if (S.view === 'home') { initHero(); loadRows(); }
+    if (S.view === 'movies') loadMoviesGrid();
+    if (S.view === 'series') loadSeriesGrid();
   }
 });
 
@@ -2444,6 +2714,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initHero();
   loadRows();
+
+  // ---- DEEP LINK: open shared "?watch=ttXXXXXXX&type=movie" links directly ----
+  const params = new URLSearchParams(window.location.search);
+  const watchId = params.get('watch');
+  if (watchId) {
+    const watchType = params.get('type') === 'series' ? 'series' : 'movie';
+    toast('🔗 Opening shared link...', 'info');
+    API.detect(watchId).then(m => openPlayer(m)).catch(() => {
+      openPlayer({
+        id: watchId, title: `IMDb Stream (${watchId})`, type: watchType, year: '2024',
+        rating: '8.5', genres: ['Cinema'], runtime: '4K',
+        poster: `${IMGB}/poster/medium/${watchId}/img`, backdrop: `${IMGB}/background/medium/${watchId}/img`,
+        synopsis: `Stream for ${watchId}`
+      });
+    });
+  }
+
+  // ---- Browser Back/Forward: leaving a shared link via back button should
+  // close the player instead of leaving a dead page ----
+  window.addEventListener('popstate', () => {
+    const p = new URLSearchParams(window.location.search);
+    if (!p.get('watch') && (S.view === 'player' || S.view === 'livePlayer')) {
+      switchView('home');
+    }
+  });
 });
 </script>
 </body>
