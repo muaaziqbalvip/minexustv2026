@@ -3,10 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>MINEXUS TV — 4K Cinema, Series & Live TV</title>
-<meta name="description" content="MINEXUS TV — Stream all Pakistani, Indian, Hollywood movies, series, and Live TV in 4K Ultra HD.">
+<title>MINEXUS TV — 4K Cinema, Pakistani & Indian Series & Live TV</title>
+<meta name="description" content="Watch thousands of Pakistani movies, Indian & Hollywood blockbusters, Hindi web series, and Live TV channels in 4K Ultra HD on MINEXUS TV.">
+<meta name="keywords" content="MINEXUS TV, Pakistani Movies, Hindi Web Series, Aladdin Naam Toh Suna Hoga, Mere Paas Tum Ho, Maula Jatt, Live TV Streaming, 4K Cinema">
 <meta name="author" content="Muaaz Iqbal">
-<meta name="theme-color" content="#08090d">
+<meta name="theme-color" content="#07080c">
+
+<!-- PWA Manifest & Icons -->
+<link rel="manifest" href="/manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MINEXUS TV">
+
+<!-- Open Graph / SEO Meta -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://minexustv.vercel.app/">
+<meta property="og:title" content="MINEXUS TV — 4K Cinema & Live TV">
+<meta property="og:description" content="Stream all Pakistani, Bollywood & Hollywood movies, TV shows, and Live TV.">
+<meta property="og:image" content="https://images.metahub.space/logo/medium/tt1375666/img">
+
+<!-- Schema.org JSON-LD for Google Search Engine -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "MINEXUS TV",
+  "url": "https://minexustv.vercel.app/",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://minexustv.vercel.app/?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
 
 <!-- Fonts & Icons -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -72,6 +102,22 @@ input,select{font-family:inherit}
 ::-webkit-scrollbar-track{background:var(--bg2)}
 ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px}
 
+/* ===== PWA INSTALL BANNER / OVERLAY ===== */
+.pwa-install-banner{
+  background:linear-gradient(135deg, #1c152b 0%, #10121d 100%);
+  border:1px solid rgba(0,210,255,0.3);border-radius:12px;
+  padding:12px 16px;margin:10px 16px 0;
+  display:none;align-items:center;justify-content:space-between;gap:10px;
+}
+.pwa-install-banner.show{display:flex}
+.pwa-banner-text strong{font-size:13px;color:#fff;display:block;margin-bottom:2px}
+.pwa-banner-text span{font-size:11px;color:var(--text2)}
+.btn-pwa-install{
+  padding:7px 14px;border-radius:8px;background:var(--cyan);
+  color:#000;font-size:12px;font-weight:800;white-space:nowrap;
+  display:flex;align-items:center;gap:6px;box-shadow:0 0 12px rgba(0,210,255,0.4);
+}
+
 /* ===== NAVBAR ===== */
 .navbar{
   position:fixed;top:0;left:0;right:0;z-index:200;
@@ -119,7 +165,16 @@ input,select{font-family:inherit}
   background:rgba(245,197,24,0.12);border:1px solid rgba(245,197,24,0.3);
   color:var(--gold);font-size:11px;font-weight:800;
 }
-.nav-badge-btn i{font-size:12px}
+.nav-desktop-acc-btn{
+  display:none;align-items:center;gap:8px;
+  padding:5px 12px;border-radius:20px;background:var(--bg3);
+  border:1px solid var(--border);color:var(--text);font-size:12px;font-weight:700;
+}
+.nav-desktop-acc-btn:hover{background:var(--bg4);border-color:var(--accent)}
+.nav-user-avatar{
+  width:22px;height:22px;border-radius:50%;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#fff;
+}
 
 /* ===== SEARCH BAR ===== */
 .mobile-search-row{
@@ -164,7 +219,7 @@ input,select{font-family:inherit}
 .sdrop-title{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sdrop-meta{font-size:10px;color:var(--text3);margin-top:2px}
 
-/* ===== BOTTOM NAVIGATION BAR (WITH ACCOUNT TAB) ===== */
+/* ===== BOTTOM NAVIGATION BAR (MOBILE) ===== */
 .bottom-bar{
   position:fixed;bottom:0;left:0;right:0;z-index:250;
   height:var(--bottom-h);
@@ -373,7 +428,7 @@ input,select{font-family:inherit}
 }
 
 /* ===== COMMUNITY LEADERBOARD DASHBOARD ===== */
-.leaderboard-wrap{padding:16px}
+.leaderboard-wrap{padding:16px;max-width:1400px;margin:0 auto}
 .leaderboard-hero{
   background:linear-gradient(135deg, #1c152b 0%, #10121d 100%);
   border:1px solid rgba(157,78,221,0.3);
@@ -430,7 +485,7 @@ input,select{font-family:inherit}
 }
 
 /* ===== USER ACCOUNT VIEW ===== */
-.account-view{padding:16px}
+.account-view{padding:16px;max-width:1200px;margin:0 auto}
 .account-card{
   background:var(--bg3);border:1px solid var(--border);
   border-radius:14px;padding:20px;margin-bottom:14px;
@@ -553,7 +608,7 @@ input,select{font-family:inherit}
 .player-topbar-title{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .player-topbar-meta{font-size:10px;color:var(--text3);margin-top:1px}
 
-.player-frame-wrap{width:100%;background:#000;position:relative;flex-shrink:0}
+.player-frame-wrap{width:100%;background:#000;position:relative;flex-shrink:0;max-height:75vh}
 .player-frame-wrap::before{content:'';display:block;padding-top:56.25%}
 .player-frame-wrap iframe, .player-frame-wrap video{position:absolute;inset:0;width:100%;height:100%;border:none}
 .player-loader{
@@ -704,6 +759,7 @@ input,select{font-family:inherit}
   .bottom-bar{display:none!important}
   body{padding-bottom:0}
   .toast-wrap{bottom:20px}
+  .nav-desktop-acc-btn{display:flex!important}
 }
 </style>
 </head>
@@ -789,6 +845,7 @@ input,select{font-family:inherit}
         <button class="nav-tab" data-view="series"><i class="fas fa-tv"></i>Series</button>
         <button class="nav-tab" data-view="live"><i class="fas fa-circle" style="color:#ff3d3d;font-size:8px"></i>Live TV</button>
         <button class="nav-tab" data-view="leaderboard"><i class="fas fa-trophy" style="color:var(--gold)"></i>Leaderboard</button>
+        <button class="nav-tab" data-view="account"><i class="fas fa-user-circle"></i>My Account</button>
       </nav>
     </div>
 
@@ -796,9 +853,27 @@ input,select{font-family:inherit}
       <button class="nav-badge-btn" onclick="switchView('leaderboard')">
         <i class="fas fa-crown"></i> <span id="navRankPill">#1 Rank</span>
       </button>
+
+      <!-- Desktop Account Profile Button -->
+      <button class="nav-desktop-acc-btn" onclick="switchView('account')">
+        <div class="nav-user-avatar" id="desktopNavAvatar">M</div>
+        <span id="desktopNavUname">Account</span>
+      </button>
     </div>
   </div>
 </header>
+
+<!-- ===== PWA 1-CLICK INSTALL PROMPT BANNER ===== -->
+<div class="pwa-install-banner" id="pwaBanner">
+  <div class="pwa-banner-text">
+    <strong><i class="fas fa-laptop" style="color:var(--cyan);margin-right:6px"></i> Install MINEXUS TV Standalone App</strong>
+    <span>Install for faster 4K playback and full-screen cinema mode</span>
+  </div>
+  <div style="display:flex;gap:6px">
+    <button class="btn-pwa-install" id="btnPwaInstall"><i class="fas fa-download"></i> Install App</button>
+    <button onclick="document.getElementById('pwaBanner').style.display='none'" style="color:var(--text3);padding:4px"><i class="fas fa-times"></i></button>
+  </div>
+</div>
 
 <!-- ===== HOME VIEW ===== -->
 <div class="view active" id="viewHome">
@@ -806,7 +881,7 @@ input,select{font-family:inherit}
   <div class="mobile-search-row">
     <div class="search-box-container">
       <i class="fas fa-search search-box-icon"></i>
-      <input type="text" class="search-box-input" id="homeSearchInput" placeholder="Search Pakistani, Indian, 4K Movies & Shows..." autocomplete="off">
+      <input type="text" class="search-box-input" id="homeSearchInput" placeholder="Search Aladdin, Mere Paas Tum Ho, Pakistani & 4K Cinema..." autocomplete="off">
       <button class="search-box-clear" id="homeSearchClear"><i class="fas fa-times"></i></button>
       <div class="search-dropdown" id="homeSearchDropdown"></div>
     </div>
@@ -850,14 +925,16 @@ input,select{font-family:inherit}
         <button class="btn-direct" id="directPlayBtn"><i class="fas fa-play"></i> Stream</button>
       </div>
       <div class="chips-row">
+        <button class="chip" data-imdb="tt8922332">Aladdin (Naam Toh Suna Hoga)</button>
+        <button class="chip" data-imdb="tt10850020">Mere Paas Tum Ho</button>
+        <button class="chip" data-imdb="tt15144866">Parizaad</button>
+        <button class="chip" data-imdb="tt10333202">Maula Jatt</button>
         <button class="chip" data-imdb="tt1375666">Inception</button>
         <button class="chip" data-imdb="tt0816692">Interstellar</button>
-        <button class="chip" data-imdb="tt0468569">Dark Knight</button>
         <button class="chip" data-imdb="tt15398776">Oppenheimer</button>
         <button class="chip" data-imdb="tt15354916">Jawan</button>
         <button class="chip" data-imdb="tt0903747">Breaking Bad</button>
         <button class="chip" data-imdb="tt6473300">Mirzapur</button>
-        <button class="chip" data-imdb="tt10333202">Maula Jatt</button>
       </div>
     </div>
   </section>
@@ -911,7 +988,7 @@ input,select{font-family:inherit}
       <div class="logo-icon">M</div>
       <div class="logo-name">MINE<span>XUS</span> TV</div>
     </div>
-    <p class="footer-desc">MINEXUS TV — 4K Cinema, Web Series & Live TV. MultiEmbed Cloud Engine.</p>
+    <p class="footer-desc">MINEXUS TV — 4K Cinema, Pakistani & Indian Web Series & Live TV. Powered by MultiEmbed Cloud Engine.</p>
     <div class="footer-bottom">
       <span>© 2026 MINEXUS TV</span>
       <span>Official Cinema Engine</span>
@@ -993,9 +1070,7 @@ input,select{font-family:inherit}
       <div class="leaderboard-title"><i class="fas fa-trophy" style="color:var(--gold)"></i> Community Leaderboard</div>
       <p style="font-size:12px;color:var(--text2)">Top users who watched the most content & streams</p>
 
-      <div class="leader-podium" id="leaderPodium">
-        <!-- Rendered via JS -->
-      </div>
+      <div class="leader-podium" id="leaderPodium"></div>
     </div>
 
     <h3 style="font-size:14px;font-weight:800;margin-bottom:10px"><i class="fas fa-ranking-star" style="color:var(--cyan)"></i> Global Rankings</h3>
@@ -1039,14 +1114,6 @@ input,select{font-family:inherit}
       </button>
     </div>
   </div>
-</div>
-
-<!-- ===== SEARCH VIEW ===== -->
-<div class="view" id="viewSearch">
-  <div style="padding:14px 16px">
-    <input type="text" class="search-box-input" id="searchViewInput" placeholder="Search by title, actor, or IMDb ID..." autocomplete="off">
-  </div>
-  <div id="searchResultsContainer" style="padding:0 16px 20px"></div>
 </div>
 
 <!-- ===== CINEMA VIDEO PLAYER VIEW ===== -->
@@ -1135,11 +1202,11 @@ input,select{font-family:inherit}
 
   <div style="padding:14px">
     <div class="live-channel-meta" id="liveChMeta" style="display:flex;align-items:center;gap:10px;margin-bottom:8px"></div>
-    <p style="font-size:11px;color:var(--text3)">If this channel is buffering, choose another channel from the list.</p>
+    <p style="font-size:11px;color:var(--text3)">High quality encrypted HLS player stream for mobile and desktop.</p>
   </div>
 </div>
 
-<!-- ===== BOTTOM TAB BAR (WITH ACCOUNT TAB) ===== -->
+<!-- ===== BOTTOM TAB BAR (MOBILE) ===== -->
 <nav class="bottom-bar" id="bottomBar">
   <button class="tab-btn active" data-view="home">
     <i class="fas fa-house"></i><span>Home</span>
@@ -1184,6 +1251,30 @@ const googleProvider = new firebase.auth.GoogleAuthProvider();
 <script>
 'use strict';
 
+/* ---- PWA SERVICE WORKER REGISTRATION & INSTALL PROMPT ---- */
+let deferredPrompt = null;
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const pwaBanner = document.getElementById('pwaBanner');
+  if (pwaBanner) pwaBanner.classList.add('show');
+});
+
+document.getElementById('btnPwaInstall')?.addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      document.getElementById('pwaBanner').style.display = 'none';
+    }
+    deferredPrompt = null;
+  }
+});
+
 /* ---- SECURITY & ANTI-INSPECT PROTECTION ---- */
 document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('keydown', e => {
@@ -1193,7 +1284,6 @@ document.addEventListener('keydown', e => {
 });
 
 /* ---- MULTI-SERVER STREAMING ENGINES (BASE64 OBFUSCATED FOR PRIVACY) ---- */
-// MultiEmbed is Default #1 (Best for Pakistani, Indian, Asian, & Hollywood movies)
 const _s1 = atob('aHR0cHM6Ly9tdWx0aWVtYmVkLm1vdi8/dmlkZW9faWQ9'); // https://multiembed.mov/?video_id=
 const _s2 = atob('aHR0cHM6Ly9wbGF5ZXIuYXV0b2VtYmVkLmNjL2VtYmVkLw=='); // https://player.autoembed.cc/embed/
 const _s3 = atob('aHR0cHM6Ly92aWRsaW5rLnByby8='); // https://vidlink.pro/
@@ -1204,7 +1294,7 @@ const _s7 = atob('aHR0cHM6Ly93d3cuMmVtYmVkLmNjL2VtYmVkdHYv'); // https://www.2em
 
 const SERVERS = {
   server1: {
-    name: 'Server 1 MultiEmbed (All Movies)',
+    name: 'Server 1 MultiEmbed (Default)',
     buildUrl: (id, t, s, e) => t === 'series' ? `${_s1}${id}&s=${s}&e=${e}` : `${_s1}${id}`
   },
   server2: {
@@ -1232,6 +1322,20 @@ const SERVERS = {
     buildUrl: (id, t, s, e) => t === 'series' ? `${_s7}${id}&s=${s}&e=${e}` : `https://www.2embed.cc/embed/${id}`
   }
 };
+
+/* ---- POPULAR PAKISTANI & DESI SERIES DIRECT MAPPING DICTIONARY ---- */
+const DESI_SERIES_MAP = [
+  { keywords: ['aladdin', 'naam toh suna hoga', 'aladin'], id: 'tt8922332', title: 'Aladdin - Naam Toh Suna Hoga', type: 'series', year: '2018', poster: 'https://images.metahub.space/poster/medium/tt8922332/img', synopsis: 'A fantasy television series based on the Arabian Nights character Aladdin.' },
+  { keywords: ['mere paas tum ho', 'mere pass tum ho'], id: 'tt10850020', title: 'Mere Paas Tum Ho', type: 'series', year: '2019', poster: 'https://images.metahub.space/poster/medium/tt10850020/img', synopsis: 'Danish, a simple man of honesty, is married to Mehwish. His life falls apart when Shehwar offers her wealth.' },
+  { keywords: ['parizaad', 'parizad'], id: 'tt15144866', title: 'Parizaad', type: 'series', year: '2021', poster: 'https://images.metahub.space/poster/medium/tt15144866/img', synopsis: 'The journey of a dark-skinned man named Parizaad with a pure soul.' },
+  { keywords: ['maula jatt', 'the legend of maula jatt'], id: 'tt10333202', title: 'The Legend of Maula Jatt', type: 'movie', year: '2022', poster: 'https://images.metahub.space/poster/medium/tt10333202/img', synopsis: 'Maula Jatt, a fierce prizefighter, seeks revenge against his rival Noori Natt.' },
+  { keywords: ['tere bin', 'terebin'], id: 'tt25368940', title: 'Tere Bin', type: 'series', year: '2022', poster: 'https://images.metahub.space/poster/medium/tt25368940/img', synopsis: 'Murtasim and Meerab are brought together by destiny despite their differences.' },
+  { keywords: ['ertugrul', 'dirilis ertugrul', 'ertugral'], id: 'tt4376484', title: 'Dirilis: Ertugrul', type: 'series', year: '2014', poster: 'https://images.metahub.space/poster/medium/tt4376484/img', synopsis: 'Ertugrul Ghazi leads his tribe towards honor and establishing the Ottoman Empire.' },
+  { keywords: ['kurulus osman', 'osman'], id: 'tt10877994', title: 'Kurulus: Osman', type: 'series', year: '2019', poster: 'https://images.metahub.space/poster/medium/tt10877994/img', synopsis: 'Osman I establishes and leads the great Ottoman Empire against internal and external enemies.' },
+  { keywords: ['chupke chupke'], id: 'tt14467384', title: 'Chupke Chupke', type: 'series', year: '2021', poster: 'https://images.metahub.space/poster/medium/tt14467384/img', synopsis: 'A comedy drama featuring Faasi and Hadi in a hilarious family rivalry.' },
+  { keywords: ['ishq murshid', 'ishq murshad'], id: 'tt29580646', title: 'Ishq Murshid', type: 'series', year: '2023', poster: 'https://images.metahub.space/poster/medium/tt29580646/img', synopsis: 'Shahmeer disguised as Fazal Bakhsh pursues Shibra in this heartwarming love tale.' },
+  { keywords: ['khuda aur mohabbat', 'khuda aur muhabbat'], id: 'tt13919694', title: 'Khuda Aur Mohabbat Season 3', type: 'series', year: '2021', poster: 'https://images.metahub.space/poster/medium/tt13919694/img', synopsis: 'Farhad falls desperately in love with Mahi, transforming his worldly passion into divine love.' }
+];
 
 /* ---- CINEMETA API CLIENT ---- */
 const CBASE = 'https://v3-cinemeta.strem.io';
@@ -1275,6 +1379,16 @@ const API = {
     return (d.metas || []).map(m => mapMeta(m, type));
   },
   async getMeta(type, id) {
+    // Check dictionary first
+    const dict = DESI_SERIES_MAP.find(d => d.id === id);
+    if (dict) {
+      try {
+        const d = await _fetch(`${CBASE}/meta/${type}/${id}.json`);
+        if (d && d.meta) return mapMeta(d.meta, type);
+      } catch (e) {
+        return dict;
+      }
+    }
     const d = await _fetch(`${CBASE}/meta/${type}/${id}.json`);
     if (!d || !d.meta) throw new Error('Not found');
     return mapMeta(d.meta, type);
@@ -1284,15 +1398,33 @@ const API = {
   },
   async search(q) {
     if (!q.trim()) return { movies: [], series: [] };
+    const cleanQ = q.trim().toLowerCase();
+
+    // 1. Direct Desi Dictionary Search First
+    const desiMatches = DESI_SERIES_MAP.filter(item => 
+      item.keywords.some(k => cleanQ.includes(k) || k.includes(cleanQ)) ||
+      item.title.toLowerCase().includes(cleanQ)
+    );
+
     const enc = encodeURIComponent(q.trim());
     const [mr, sr] = await Promise.all([
       _fetch(`${CBASE}/catalog/movie/top/search=${enc}.json`).catch(() => ({ metas: [] })),
       _fetch(`${CBASE}/catalog/series/top/search=${enc}.json`).catch(() => ({ metas: [] }))
     ]);
-    return {
-      movies: (mr.metas || []).map(m => mapMeta(m, 'movie')),
-      series: (sr.metas || []).map(m => mapMeta(m, 'series'))
-    };
+
+    let movies = (mr.metas || []).map(m => mapMeta(m, 'movie'));
+    let series = (sr.metas || []).map(m => mapMeta(m, 'series'));
+
+    // Inject Desi matches at the top of results
+    desiMatches.forEach(d => {
+      if (d.type === 'series') {
+        if (!series.some(s => s.id === d.id)) series.unshift(d);
+      } else {
+        if (!movies.some(m => m.id === d.id)) movies.unshift(d);
+      }
+    });
+
+    return { movies, series };
   },
   groupEpisodes(videos) {
     const byS = {};
@@ -1312,13 +1444,12 @@ const S = {
   view: 'home', prevView: 'home',
   user: null, watchlist: {}, likes: {}, history: {}, searches: [],
   heroItems: [], heroIdx: 0, heroTimer: null,
-  activeItem: null, activeServer: 'server1', // MultiEmbed Default
+  activeItem: null, activeServer: 'server1',
   activeSeason: 1, activeEpisode: 1, seriesMeta: null,
   moviesFilter: 'all', moviesSkip: 0,
   seriesFilter: 'all', seriesSkip: 0,
   channels: [], customChannels: [], activeCountry: 'PK',
   accountSubTab: 'history',
-  watchTimerInterval: null,
   hlsInstance: null
 };
 
@@ -1363,7 +1494,6 @@ function switchView(name) {
   if (name === 'live') loadLiveTV();
   if (name === 'leaderboard') renderLeaderboard();
   if (name === 'account') renderAccountView();
-  if (name === 'search') setTimeout(() => document.getElementById('searchViewInput').focus(), 150);
 }
 
 /* ---- CONTENT CARDS ---- */
@@ -1375,7 +1505,7 @@ function buildCard(item, size = 'standard') {
   return `
     <div class="card ${size}" onclick="openPlayer(JSON.parse(this.dataset.item))" data-item="${itemJson}">
       <img class="card-poster" src="${esc(item.poster)}" alt="${esc(item.title)}" loading="lazy"
-        onerror="this.src='https://via.placeholder.com/200x300/141724/e50914?text=${encodeURIComponent(item.title)}';">
+        onerror="this.src='https://images.metahub.space/poster/medium/${item.id}/img';">
       <div class="card-overlay"><div class="card-play-icon"><i class="fas fa-play"></i></div></div>
       ${rating}${typeBadge}
       <div class="card-info">
@@ -1390,7 +1520,7 @@ function buildCard(item, size = 'standard') {
 async function initHero() {
   try {
     const [mv, sv] = await Promise.all([API.catalog('movie', 'top'), API.catalog('series', 'top')]);
-    S.heroItems = [...mv.slice(0, 6), ...sv.slice(0, 4)].sort(() => Math.random() - .5);
+    S.heroItems = [...mv.slice(0, 6), ...sv.slice(0, 4), ...DESI_SERIES_MAP.slice(0, 3)].sort(() => Math.random() - .5);
     renderHero();
     const dots = document.getElementById('heroDots');
     dots.innerHTML = S.heroItems.map((_, i) => `<span class="hero-dot${i === 0 ? ' active' : ''}" onclick="setHero(${i})"></span>`).join('');
@@ -1431,8 +1561,9 @@ async function loadRows() {
       if (el) el.innerHTML = list.slice(0, 16).map(i => buildCard(i, sz)).join('');
     };
     render('trendingRow', trend, 'featured');
-    render('bollywoodRow', bw, 'featured');
-    render('seriesRow', topS, 'featured');
+    // Prepend popular desi titles
+    render('bollywoodRow', [...DESI_SERIES_MAP.slice(0, 4), ...bw], 'featured');
+    render('seriesRow', [...DESI_SERIES_MAP.filter(d => d.type === 'series'), ...topS], 'featured');
   } catch (e) {}
 }
 
@@ -1440,7 +1571,7 @@ async function loadRows() {
 async function loadMoviesGrid(append = false) {
   if (!append) S.moviesSkip = 0;
   const grid = document.getElementById('moviesGrid');
-  if (!append) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px"><div class="spinner" style="margin:0 auto 10px"></div><span>Loading...</span></div>`;
+  if (!append) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px"><div class="spinner" style="margin:0 auto 10px"></div><span>Loading movies...</span></div>`;
 
   try {
     let items = await API.catalog('movie', 'top', S.moviesFilter === 'all' ? null : S.moviesFilter, S.moviesSkip);
@@ -1454,11 +1585,13 @@ async function loadMoviesGrid(append = false) {
 async function loadSeriesGrid(append = false) {
   if (!append) S.seriesSkip = 0;
   const grid = document.getElementById('seriesGrid');
-  if (!append) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px"><div class="spinner" style="margin:0 auto 10px"></div><span>Loading...</span></div>`;
+  if (!append) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px"><div class="spinner" style="margin:0 auto 10px"></div><span>Loading series...</span></div>`;
 
   try {
     let items = await API.catalog('series', 'top', S.seriesFilter === 'all' ? null : S.seriesFilter, S.seriesSkip);
-    if (!append) grid.innerHTML = '';
+    if (!append) {
+      grid.innerHTML = DESI_SERIES_MAP.filter(d => d.type === 'series').map(i => buildCard(i, 'big')).join('');
+    }
     grid.innerHTML += (items || []).map(i => buildCard(i, 'big')).join('');
     S.seriesSkip += (items.length || 0);
     document.getElementById('seriesLoadMoreWrap').style.display = items.length >= 10 ? 'block' : 'none';
@@ -1468,7 +1601,7 @@ async function loadSeriesGrid(append = false) {
 /* ---- LIVE TV ENGINE ---- */
 async function loadLiveTV() {
   const grid = document.getElementById('channelsGrid');
-  grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px"><div class="spinner" style="margin:0 auto 10px"></div><span>Loading channels...</span></div>`;
+  grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px"><div class="spinner" style="margin:0 auto 10px"></div><span>Loading live channels...</span></div>`;
 
   try {
     let channels = [];
@@ -1539,7 +1672,7 @@ function openLivePlayer(ch) {
       loader.style.display = 'none';
     });
     hls.on(Hls.Events.ERROR, () => {
-      loader.innerHTML = '<span style="color:#ff6b6b">Stream buffer. Try another.</span>';
+      loader.innerHTML = '<span style="color:#ff6b6b">Stream buffer. Try another channel.</span>';
     });
     S.hlsInstance = hls;
   } else {
@@ -1567,7 +1700,6 @@ function openPlayer(item) {
   playStream();
   loadPlayerMeta(item);
 
-  // Log to history & increment user watch counter
   if (S.user) {
     db.ref(`users/${S.user.uid}/history/${item.id}`).set({
       id: item.id,
@@ -1578,7 +1710,6 @@ function openPlayer(item) {
       watchedAt: firebase.database.ServerValue.TIMESTAMP
     });
 
-    // Increment points & stream count for Leaderboard
     db.ref(`users/${S.user.uid}/stats/watchCount`).transaction(c => (c || 0) + 1);
     db.ref(`users/${S.user.uid}/stats/points`).transaction(p => (p || 0) + 15);
   }
@@ -1603,7 +1734,6 @@ function buildPlayerUI() {
   document.getElementById('playerDesc').textContent = item.synopsis;
   document.getElementById('episodesSection').style.display = item.type === 'series' ? 'block' : 'none';
 
-  // Update Watchlist & Like button states
   const inWl = S.watchlist && S.watchlist[item.id];
   const inLike = S.likes && S.likes[item.id];
   const wlBtn = document.getElementById('playerWlBtn');
@@ -1634,7 +1764,12 @@ function playStream() {
 
 function buildEpisodes() {
   const meta = S.seriesMeta;
-  if (!meta || !meta.videos) return;
+  if (!meta || !meta.videos || !meta.videos.length) {
+    // Generate fallback episodes 1-50 for Pakistani & Indian serials
+    const eps = Array.from({ length: 50 }, (_, i) => ({ episode: i + 1, season: 1 }));
+    renderFallbackEpisodes(eps);
+    return;
+  }
   const bySeason = API.groupEpisodes(meta.videos);
   const seasons = Object.keys(bySeason).sort((a, b) => Number(a) - Number(b));
   const sel = document.getElementById('seasonSelect');
@@ -1666,6 +1801,16 @@ function buildEpisodes() {
   };
 }
 
+function renderFallbackEpisodes(eps) {
+  const sel = document.getElementById('seasonSelect');
+  sel.innerHTML = '<option value="1">Season 1</option>';
+  document.getElementById('episodesScroll').innerHTML = eps.map((ep, i) => `
+    <button class="ep-chip${S.activeEpisode === i + 1 ? ' active' : ''}" onclick="selectEp(${i + 1})">
+      Ep ${i + 1}
+    </button>
+  `).join('');
+}
+
 function selectEp(ep) {
   S.activeEpisode = ep;
   document.querySelectorAll('.ep-chip').forEach((c, idx) => c.classList.toggle('active', idx + 1 === ep));
@@ -1678,13 +1823,13 @@ function directPlay(rawId) {
   if (!id) return;
   if (/^\d+$/.test(id)) id = 'tt' + id;
   if (!id.startsWith('tt')) { toast('Enter valid IMDb ID', 'error'); return; }
-  toast('Loading...', 'info');
+  toast('Connecting to MultiEmbed...', 'info');
   API.detect(id).then(m => openPlayer(m)).catch(() => {
     openPlayer({ id, title: `IMDb Stream (${id})`, type: 'movie', year: '2024', rating: '8.5', genres: ['Cinema'], runtime: '4K', poster: `${IMGB}/poster/medium/${id}/img`, backdrop: `${IMGB}/background/medium/${id}/img`, synopsis: `Stream for ${id}` });
   });
 }
 
-/* ---- SEARCH & RECENTS ---- */
+/* ---- SMART SEARCH & DICTIONARY ENGINE ---- */
 let searchTimer;
 function handleLiveSearch(q, dropdownEl) {
   clearTimeout(searchTimer);
@@ -1695,7 +1840,7 @@ function handleLiveSearch(q, dropdownEl) {
   searchTimer = setTimeout(async () => {
     try {
       const { movies, series } = await API.search(q);
-      const list = [...movies.slice(0, 5), ...series.slice(0, 3)];
+      const list = [...series.slice(0, 4), ...movies.slice(0, 4)];
       if (!list.length) { dropdownEl.innerHTML = `<div style="padding:10px;text-align:center;font-size:11px;color:var(--text3)">No titles found</div>`; return; }
       dropdownEl.innerHTML = list.map(i => `
         <div class="sdrop-item" onclick="document.querySelectorAll('.search-dropdown').forEach(d=>d.classList.remove('show')); openPlayer(JSON.parse(this.dataset.item))" data-item="${esc(JSON.stringify(i))}">
@@ -1707,12 +1852,11 @@ function handleLiveSearch(q, dropdownEl) {
         </div>
       `).join('');
 
-      // Save to recent searches
       if (S.user && q.length > 2) {
         db.ref(`users/${S.user.uid}/searches`).push({ query: q, time: firebase.database.ServerValue.TIMESTAMP });
       }
     } catch (e) {}
-  }, 300);
+  }, 250);
 }
 
 /* ---- WATCHLIST & LIKES ---- */
@@ -1769,13 +1913,11 @@ function renderLeaderboard() {
       return;
     }
 
-    // Update Nav Rank
     if (S.user) {
       const myIdx = rankList.findIndex(r => r.uid === S.user.uid);
       if (myIdx > -1) document.getElementById('navRankPill').textContent = `#${myIdx + 1} Rank`;
     }
 
-    // Top 3 Podium
     const top1 = rankList[0];
     const top2 = rankList[1];
     const top3 = rankList[2];
@@ -1805,7 +1947,6 @@ function renderLeaderboard() {
       ` : ''}
     `;
 
-    // Full Ranking List
     listEl.innerHTML = rankList.map((u, i) => `
       <div class="leader-row">
         <div class="leader-rank">#${i + 1}</div>
@@ -1888,10 +2029,12 @@ auth.onAuthStateChanged(user => {
   if (user) {
     lock.style.display = 'none';
     const init = (user.displayName || user.email || 'M').charAt(0).toUpperCase();
+    const uname = user.displayName || user.email?.split('@')[0] || 'Member';
     document.getElementById('accAvatar').textContent = init;
-    document.getElementById('accName').textContent = user.displayName || user.email?.split('@')[0] || 'Member';
+    document.getElementById('accName').textContent = uname;
+    document.getElementById('desktopNavAvatar').textContent = init;
+    document.getElementById('desktopNavUname').textContent = uname;
 
-    // Sync user data in realtime
     db.ref(`users/${user.uid}/watchlist`).on('value', s => { S.watchlist = s.val() || {}; });
     db.ref(`users/${user.uid}/likes`).on('value', s => { S.likes = s.val() || {}; });
     db.ref(`users/${user.uid}/history`).on('value', s => { S.history = s.val() || {}; });
@@ -1899,7 +2042,7 @@ auth.onAuthStateChanged(user => {
 
     db.ref(`users/${user.uid}`).update({
       email: user.email || '',
-      name: user.displayName || user.email?.split('@')[0] || '',
+      name: uname,
       lastSeen: firebase.database.ServerValue.TIMESTAMP
     });
   } else {
@@ -1945,16 +2088,6 @@ document.addEventListener('DOMContentLoaded', () => {
   homeClr.onclick = () => { homeIn.value = ''; homeClr.style.display = 'none'; homeDd.classList.remove('show'); };
   document.addEventListener('click', e => {
     if (!e.target.closest('.search-box-container')) homeDd.classList.remove('show');
-  });
-
-  // Dedicated Search
-  document.getElementById('searchViewInput').addEventListener('input', e => {
-    const q = e.target.value;
-    const res = document.getElementById('searchResultsContainer');
-    if (!q.trim()) { res.innerHTML = ''; return; }
-    API.search(q).then(({ movies, series }) => {
-      res.innerHTML = `<div class="grid" style="margin-top:10px">${[...movies, ...series].map(i => buildCard(i, 'big')).join('')}</div>`;
-    });
   });
 
   // Live TV Country Tabs
