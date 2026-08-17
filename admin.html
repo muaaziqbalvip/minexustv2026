@@ -375,6 +375,28 @@ tr:hover td{background:var(--bg-card-hover)}
           </div>
         </form>
       </div>
+
+      <!-- DEFAULT STREAMING SERVER -->
+      <div class="card" style="margin-top:20px">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-server" style="color:var(--gold)"></i> Default Streaming Server</h2>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.6">
+          MINEXUS TV includes 30+ embed servers. Pick whichever one is currently fastest/most reliable and every
+          visitor's player will open on it by default. Viewers can still manually switch servers per title, and
+          the player auto-suggests "Try Next Server" if the default one is slow.
+        </p>
+        <form id="defaultServerForm" class="form-grid">
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Default Server</label>
+            <select class="form-control" id="defaultServerSelect"></select>
+          </div>
+          <div style="grid-column:1/-1">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Set Default Server</button>
+            <span id="defaultServerStatus" style="font-size:11px;color:var(--text-muted);margin-left:10px"></span>
+          </div>
+        </form>
+      </div>
     </div>
 
     <!-- 5. NOTIFICATIONS -->
@@ -624,6 +646,23 @@ function addBonusPoints(uid) {
   toast('Added 50 Bonus Points to User!');
 }
 
+// Mirror of index.html's SERVERS list (names only — admin doesn't need the
+// buildUrl functions, just the picker) so the dropdown always matches what
+// visitors actually see.
+const SERVER_NAMES = {
+  server1: 'VidSrc.cc', server2: 'VidSrc.to', server3: 'VidSrc.me', server4: 'VidSrc.net',
+  server5: 'VidSrc.nl', server6: 'VidSrc.dev', server7: 'MultiEmbed', server8: 'AutoEmbed',
+  server9: 'VidLink Pro', server10: 'Embed.su', server11: '2Embed.cc', server12: '2Embed.stream',
+  server13: 'SmashyStream', server14: 'SmashyStream API', server15: 'GoMo', server16: 'SuperEmbed',
+  server17: 'CineScrape', server18: 'WHVX', server19: 'TheyAllSayFlix', server20: 'MoviesAPI.club',
+  server21: 'MoviesAPI.to', server22: 'VidSrc.rip', server23: 'VidSrc.pro', server24: 'VidSrc.icu',
+  server25: 'VidSrc2.ru', server26: 'VidSrc.tw', server27: 'VidSrc.sbs', server28: 'VidSrc.fyi',
+  server29: 'VidSrc.hair', server30: 'Vid-Src.top', server31: 'AutoEmbed.cc', server32: 'Watch.AutoEmbed',
+  server33: 'Rive Stream', server34: 'CinemaOS', server35: 'Nunflix'
+};
+document.getElementById('defaultServerSelect').innerHTML = Object.entries(SERVER_NAMES)
+  .map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+
 // Version
 db.ref('app_config').on('value', snap => {
   const cfg = snap.val() || {};
@@ -633,6 +672,8 @@ db.ref('app_config').on('value', snap => {
   document.getElementById('appForceUpdate').value = cfg.force_update ? 'true' : 'false';
   document.getElementById('tmdbApiKey').value = cfg.tmdb_api_key || '';
   document.getElementById('tmdbStatus').textContent = cfg.tmdb_api_key ? '✅ Live TMDB data active' : '⚠️ Not set — using Cinemeta fallback';
+  document.getElementById('defaultServerSelect').value = cfg.default_server || 'server1';
+  document.getElementById('defaultServerStatus').textContent = `Currently: ${SERVER_NAMES[cfg.default_server] || SERVER_NAMES.server1}`;
 });
 
 document.getElementById('versionForm').onsubmit = async (e) => {
@@ -652,6 +693,13 @@ document.getElementById('tmdbForm').onsubmit = async (e) => {
   const key = document.getElementById('tmdbApiKey').value.trim();
   await db.ref('app_config').update({ tmdb_api_key: key });
   toast(key ? 'TMDB API Key Saved — Live data is now active!' : 'TMDB API Key Cleared — using Cinemeta fallback');
+};
+
+document.getElementById('defaultServerForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const server = document.getElementById('defaultServerSelect').value;
+  await db.ref('app_config').update({ default_server: server });
+  toast(`Default Server set to ${SERVER_NAMES[server]}!`);
 };
 
 // Notifications

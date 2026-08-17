@@ -685,8 +685,35 @@ input,select{font-family:inherit}
 .player-act-btn{
   padding:6px 12px;border-radius:6px;background:var(--bg3);border:1px solid var(--border);
   font-size:11px;font-weight:700;display:flex;align-items:center;gap:6px;color:var(--text2);
+  transition:transform .15s cubic-bezier(.34,1.56,.64,1), background .2s, border-color .2s, color .2s;
+  position:relative;overflow:visible;
 }
-.player-act-btn.active{color:var(--accent);border-color:var(--accent)}
+.player-act-btn:active{transform:scale(.92)}
+.player-act-btn.active{color:var(--accent);border-color:var(--accent);background:rgba(255,71,87,.08)}
+.player-act-btn.just-saved{animation:btnPop .45s cubic-bezier(.34,1.56,.64,1)}
+.player-act-btn.just-saved i{animation:iconBounce .45s cubic-bezier(.34,1.56,.64,1)}
+@keyframes btnPop{
+  0%{transform:scale(1)}
+  35%{transform:scale(1.18)}
+  60%{transform:scale(.95)}
+  100%{transform:scale(1)}
+}
+@keyframes iconBounce{
+  0%{transform:scale(1) rotate(0)}
+  40%{transform:scale(1.4) rotate(-8deg)}
+  70%{transform:scale(1.1) rotate(4deg)}
+  100%{transform:scale(1) rotate(0)}
+}
+/* Small particle burst shown behind the icon on save/like — pure CSS, no JS animation loop */
+.save-burst{
+  position:absolute;left:14px;top:50%;width:6px;height:6px;border-radius:50%;
+  background:var(--accent);pointer-events:none;transform:translate(-50%,-50%);
+  animation:burstFade .5s ease-out forwards;
+}
+@keyframes burstFade{
+  0%{box-shadow:0 0 0 0 var(--accent);opacity:1}
+  100%{box-shadow:0 0 0 16px transparent;opacity:0}
+}
 
 /* ===== AUTH LOCK SCREEN OVERLAY ===== */
 .auth-lock-overlay{
@@ -708,6 +735,46 @@ input,select{font-family:inherit}
 }
 .auth-lock-title{font-family:var(--font2);font-size:22px;font-weight:900;margin-bottom:4px}
 .auth-lock-sub{font-size:12px;color:var(--text2);margin-bottom:20px}
+
+/* ===== PWA-ONLY ENFORCEMENT OVERLAY =====
+   Shown whenever the site is opened directly in a mobile browser tab
+   (Chrome/Safari address bar) instead of as the installed standalone app.
+   Blocks all interaction until the person installs and reopens from their
+   home screen — this is intentional per product requirement, not a bug. */
+.pwa-lock-overlay{
+  position:fixed;inset:0;z-index:99999;
+  background:radial-gradient(circle at center, #141724 0%, #07080c 100%);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.pwa-lock-card{
+  width:100%;max-width:390px;background:#0e1017;
+  border:1px solid rgba(255,71,87,0.35);border-radius:20px;
+  padding:32px 26px;box-shadow:0 24px 60px rgba(0,0,0,.95);text-align:center;
+  animation:pwaCardIn .4s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes pwaCardIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+.pwa-lock-icon{
+  width:64px;height:64px;border-radius:16px;margin:0 auto 16px;
+  background:linear-gradient(135deg,var(--accent),#8b0000);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;color:#fff;box-shadow:0 0 26px var(--accent-glow);
+}
+.pwa-lock-title{font-family:var(--font2);font-size:20px;font-weight:900;margin-bottom:8px}
+.pwa-lock-sub{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:22px}
+.pwa-lock-steps{
+  text-align:left;background:var(--bg3);border-radius:12px;padding:14px 16px;
+  margin-bottom:20px;font-size:12px;color:var(--text2);line-height:1.9;
+}
+.pwa-lock-steps b{color:var(--text)}
+.pwa-lock-btn{
+  width:100%;padding:14px;border-radius:12px;
+  background:linear-gradient(135deg,var(--accent),#c9101c);
+  color:#fff;font-weight:800;font-size:14px;
+  box-shadow:0 8px 22px var(--accent-glow);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.pwa-lock-btn:active{transform:scale(.97)}
+.pwa-lock-note{font-size:10.5px;color:var(--text3);margin-top:14px}
 .auth-toggle-row{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px}
 .auth-tbtn{flex:1;padding:10px;font-size:12px;font-weight:700;color:var(--text3);border-bottom:2px solid transparent}
 .auth-tbtn.active{color:var(--accent);border-bottom-color:var(--accent)}
@@ -804,6 +871,50 @@ input,select{font-family:inherit}
 </head>
 <body>
 
+<script>
+/* ---- EARLY PWA-MODE DETECTION (runs synchronously, before paint) ----
+   Detects whether the page is running as the installed standalone app vs a
+   regular browser tab, and shows/hides the lock overlay immediately so
+   there's no flash of the real app before the lock kicks in. The rest of
+   the install-button wiring happens later in the main script block. */
+(function() {
+  function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: fullscreen)').matches ||
+      window.navigator.standalone === true || // iOS Safari "Add to Home Screen"
+      document.referrer.includes('android-app://');
+  }
+  window.__MINEXUS_PWA_OK__ = isStandalone();
+})();
+</script>
+
+<!-- ===== MANDATORY PWA-INSTALL LOCK SCREEN =====
+     Hidden by default; JS shows it immediately (before paint-blocking auth
+     screen) if the page detects it's running in a plain browser tab instead
+     of the installed standalone app. See detectPwaMode() near the bottom. -->
+<div class="pwa-lock-overlay" id="pwaLockOverlay" style="display:none;" data-pwa-lock>
+  <div class="pwa-lock-card">
+    <div class="pwa-lock-icon"><i class="fas fa-mobile-screen-button"></i></div>
+    <h2 class="pwa-lock-title">Install the App to Continue</h2>
+    <p class="pwa-lock-sub">For the fastest, ad-free 4K streaming experience, MINEXUS TV only plays inside the installed app — not in a regular browser tab.</p>
+    <div class="pwa-lock-steps" id="pwaLockSteps">
+      <div><b>1.</b> Tap <b>Install App</b> below</div>
+      <div><b>2.</b> Confirm "Add to Home Screen"</div>
+      <div><b>3.</b> Open MINEXUS TV from your home screen icon</div>
+    </div>
+    <button class="pwa-lock-btn" id="pwaLockInstallBtn"><i class="fas fa-download"></i> Install App Now</button>
+    <p class="pwa-lock-note" id="pwaLockNote">Already installed? Close this tab and open the app from your home screen.</p>
+  </div>
+</div>
+<script>
+  // Apply the detection result immediately (still before the big main
+  // script block runs) so there is zero flash of unlocked app content.
+  if (!window.__MINEXUS_PWA_OK__) {
+    document.getElementById('pwaLockOverlay').style.display = 'flex';
+    document.documentElement.style.overflow = 'hidden';
+  }
+</script>
+
 <!-- ===== MANDATORY AUTH LOCK SCREEN ===== -->
 <div class="auth-lock-overlay" id="authLockOverlay" style="display:flex;">
   <div class="auth-lock-card">
@@ -815,6 +926,7 @@ input,select{font-family:inherit}
       <button class="auth-tbtn active" id="lockTabLogin">Login</button>
       <button class="auth-tbtn" id="lockTabSignup">Register</button>
     </div>
+
 
     <div id="lockLoginForm">
       <div class="auth-field-row">
@@ -1175,18 +1287,10 @@ input,select{font-family:inherit}
       referrerpolicy="no-referrer"></iframe>
   </div>
 
-  <!-- All Servers Bar (MultiEmbed Default #1) -->
+  <!-- All Servers Bar (populated dynamically from SERVERS — see initServerButtons()) -->
   <div class="server-section">
-    <div class="server-label"><i class="fas fa-server"></i> Active Stream Server:</div>
-    <div class="servers-row" id="serversRow">
-      <button class="srv-btn active" data-server="server1"><i class="fas fa-star"></i> Server 1 MultiEmbed (Default)</button>
-      <button class="srv-btn" data-server="server2"><i class="fas fa-bolt"></i> Server 2 AutoEmbed</button>
-      <button class="srv-btn" data-server="server3"><i class="fas fa-cloud"></i> Server 3 VidLink</button>
-      <button class="srv-btn" data-server="server4"><i class="fas fa-shield-halved"></i> Server 4 Kriss424</button>
-      <button class="srv-btn" data-server="server5"><i class="fas fa-play"></i> Server 5 VidSrc</button>
-      <button class="srv-btn" data-server="server6"><i class="fas fa-film"></i> Server 6 Smashy</button>
-      <button class="srv-btn" data-server="server7"><i class="fas fa-globe"></i> Server 7 2Embed</button>
-    </div>
+    <div class="server-label"><i class="fas fa-server"></i> Active Stream Server: <span id="serverCount" style="color:var(--text3);font-weight:400"></span></div>
+    <div class="servers-row" id="serversRow"></div>
   </div>
 
   <!-- Series Episode Bar -->
@@ -1206,7 +1310,8 @@ input,select{font-family:inherit}
   <!-- Movie Details & Interactive Buttons -->
   <div class="player-meta">
     <div class="player-meta-grid">
-      <img class="player-poster" id="playerPoster" src="" alt="">
+      <img class="player-poster" id="playerPoster" src="" alt=""
+        onerror="posterFallback(this, this.dataset.altPoster)">
       <div class="player-details">
         <h2 class="player-title-big" id="playerTitleBig">—</h2>
         <div class="player-actions-row">
@@ -1342,45 +1447,123 @@ document.getElementById('btnPwaInstall')?.addEventListener('click', async () => 
   }
 });
 
-/* ---- MULTI-SERVER STREAMING ENGINES (BASE64 OBFUSCATED FOR PRIVACY) ---- */
-const _s1 = atob('aHR0cHM6Ly9tdWx0aWVtYmVkLm1vdi8/dmlkZW9faWQ9'); // https://multiembed.mov/?video_id=
-const _s2 = atob('aHR0cHM6Ly9wbGF5ZXIuYXV0b2VtYmVkLmNjL2VtYmVkLw=='); // https://player.autoembed.cc/embed/
-const _s3 = atob('aHR0cHM6Ly92aWRsaW5rLnByby8='); // https://vidlink.pro/
-const _s4 = atob('aHR0cHM6Ly9rcmlzczQyNGRpZC5jb20vcGxheS8='); // https://kriss424did.com/play/
-const _s5 = atob('aHR0cHM6Ly92aWRzcmMuaWN1L2VtYmVkLw=='); // https://vidsrc.icu/embed/
-const _s6 = atob('aHR0cHM6Ly9wbGF5ZXIuc21hc2h5c3RyZWFtLmNvbS8='); // https://player.smashystream.com/
-const _s7 = atob('aHR0cHM6Ly93d3cuMmVtYmVkLmNjL2VtYmVkdHYv'); // https://www.2embed.cc/embedtv/
+/* ---- PWA-ONLY LOCK: install button + platform-specific instructions ----
+   Android/Chrome/Edge support the native beforeinstallprompt flow (one tap,
+   handled above). iOS Safari and some other browsers have no such API — for
+   those we swap in manual "Share → Add to Home Screen" instructions instead
+   of a non-functional button, since programmatic install isn't possible there. */
+(function setupPwaLock() {
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  const isSafari = isIOS && /Safari/.test(ua) && !/CriOS|FxiOS/.test(ua);
+  const stepsEl = document.getElementById('pwaLockSteps');
+  const installBtn = document.getElementById('pwaLockInstallBtn');
+  const noteEl = document.getElementById('pwaLockNote');
 
-const SERVERS = {
-  server1: {
-    name: 'Server 1 MultiEmbed (Default)',
-    buildUrl: (id, t, s, e) => t === 'series' ? `${_s1}${id}&s=${s}&e=${e}` : `${_s1}${id}`
-  },
-  server2: {
-    name: 'Server 2 AutoEmbed',
-    buildUrl: (id, t, s, e) => t === 'series' ? `${_s2}tv/${id}/${s}/${e}` : `${_s2}movie/${id}`
-  },
-  server3: {
-    name: 'Server 3 VidLink',
-    buildUrl: (id, t, s, e) => t === 'series' ? `${_s3}tv/${id}/${s}/${e}` : `${_s3}movie/${id}`
-  },
-  server4: {
-    name: 'Server 4 Kriss424',
-    buildUrl: (id) => `${_s4}${id}`
-  },
-  server5: {
-    name: 'Server 5 VidSrc',
-    buildUrl: (id, t, s, e) => t === 'series' ? `${_s5}tv/${id}/${s}/${e}` : `${_s5}movie/${id}`
-  },
-  server6: {
-    name: 'Server 6 Smashy',
-    buildUrl: (id, t, s, e) => t === 'series' ? `${_s6}tv/${id}/${s}/${e}` : `${_s6}movie/${id}`
-  },
-  server7: {
-    name: 'Server 7 2Embed',
-    buildUrl: (id, t, s, e) => t === 'series' ? `${_s7}${id}&s=${s}&e=${e}` : `https://www.2embed.cc/embed/${id}`
+  if (isIOS) {
+    // No install prompt API on iOS — show manual steps and hide the button
+    // since there's nothing programmatic it could trigger.
+    if (stepsEl) stepsEl.innerHTML = `
+      <div><b>1.</b> Tap the <b>Share</b> icon <i class="fas fa-arrow-up-from-bracket"></i> in Safari's toolbar</div>
+      <div><b>2.</b> Scroll down and tap <b>"Add to Home Screen"</b></div>
+      <div><b>3.</b> Tap <b>Add</b>, then open MINEXUS TV from your home screen</div>
+    `;
+    if (installBtn) installBtn.style.display = 'none';
+    if (noteEl) noteEl.textContent = isSafari ? 'This only works in Safari — other iOS browsers can\'t install apps.' : 'Please open this link in Safari to install the app.';
+    return;
   }
+
+  if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        if (outcome === 'accepted') {
+          // The 'appinstalled' event below will hide the overlay once the
+          // browser actually finishes installing.
+          installBtn.innerHTML = '<i class="fas fa-check"></i> Installing...';
+        }
+      } else {
+        // beforeinstallprompt hasn't fired yet (e.g. already dismissed once
+        // this session, or browser needs a moment) — give clear manual steps.
+        toast('Use your browser menu → "Install App" or "Add to Home Screen"', 'info');
+      }
+    });
+  }
+
+  window.addEventListener('appinstalled', () => {
+    toast('✅ App installed! Reopening...', 'success');
+    setTimeout(() => window.location.reload(), 800);
+  });
+})();
+
+/* Re-check standalone mode on visibility change / focus — covers the case
+   where someone installs the app while this locked tab is still open, or
+   switches back after installing from another tab. */
+function recheckPwaLock() {
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: fullscreen)').matches ||
+    window.navigator.standalone === true;
+  if (isStandalone) {
+    const overlay = document.getElementById('pwaLockOverlay');
+    if (overlay) overlay.style.display = 'none';
+    document.documentElement.style.overflow = '';
+  }
+}
+document.addEventListener('visibilitychange', recheckPwaLock);
+window.addEventListener('focus', recheckPwaLock);
+
+/* ---- MULTI-SERVER STREAMING ENGINES ----
+   Sourced from the community-vetted FMHY streaming-API list. Every entry
+   below follows the standard /embed/movie/{id} and /embed/tv/{id}/{s}/{e}
+   pattern that this whole class of embed sites shares (IMDb tt-id or TMDB
+   numeric id). Default server is chosen from the Admin Panel (Live Servers
+   tab) and synced live via Firebase — no code edits needed. If a server
+   fails, the player shows a one-tap "Try Next Server" so a single dead host
+   never blocks playback. */
+const SERVERS = {
+  server1:  { name: 'VidSrc.cc',       buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}` : `https://vidsrc.cc/v2/embed/movie/${id}` },
+  server2:  { name: 'VidSrc.to',       buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.to/embed/tv/${id}/${s}/${e}` : `https://vidsrc.to/embed/movie/${id}` },
+  server3:  { name: 'VidSrc.me',       buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.me/embed/tv?imdb=${id}&season=${s}&episode=${e}` : `https://vidsrc.me/embed/movie?imdb=${id}` },
+  server4:  { name: 'VidSrc.net',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.net/embed/tv/${id}/${s}/${e}` : `https://vidsrc.net/embed/movie/${id}` },
+  server5:  { name: 'VidSrc.nl',       buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.nl/embed/tv/${id}/${s}/${e}` : `https://vidsrc.nl/embed/movie/${id}` },
+  server6:  { name: 'VidSrc.dev',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.dev/embed/tv/${id}/${s}/${e}` : `https://vidsrc.dev/embed/movie/${id}` },
+  server7:  { name: 'MultiEmbed',      buildUrl: (id, t, s, e) => t === 'series' ? `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}` : `https://multiembed.mov/?video_id=${id}` },
+  server8:  { name: 'AutoEmbed',       buildUrl: (id, t, s, e) => t === 'series' ? `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}` : `https://player.autoembed.cc/embed/movie/${id}` },
+  server9:  { name: 'VidLink Pro',     buildUrl: (id, t, s, e) => t === 'series' ? `https://vidlink.pro/tv/${id}/${s}/${e}` : `https://vidlink.pro/movie/${id}` },
+  server10: { name: 'Embed.su',        buildUrl: (id, t, s, e) => t === 'series' ? `https://embed.su/embed/tv/${id}/${s}/${e}` : `https://embed.su/embed/movie/${id}` },
+  server11: { name: '2Embed.cc',       buildUrl: (id, t, s, e) => t === 'series' ? `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}` : `https://www.2embed.cc/embed/${id}` },
+  server12: { name: '2Embed.stream',   buildUrl: (id, t, s, e) => t === 'series' ? `https://www.2embed.stream/embed/tv/${id}/${s}/${e}` : `https://www.2embed.stream/embed/movie/${id}` },
+  server13: { name: 'SmashyStream',    buildUrl: (id, t, s, e) => t === 'series' ? `https://player.smashystream.com/tv/${id}?s=${s}&e=${e}` : `https://player.smashystream.com/movie/${id}` },
+  server14: { name: 'SmashyStream API',buildUrl: (id, t, s, e) => t === 'series' ? `https://embed.smashystream.com/playere.php?tmdb=${id}&s=${s}&e=${e}` : `https://embed.smashystream.com/playere.php?tmdb=${id}` },
+  server15: { name: 'GoMo',            buildUrl: (id, t, s, e) => t === 'series' ? `https://gomo.to/embed/tv/${id}/${s}/${e}` : `https://gomo.to/embed/movie/${id}` },
+  server16: { name: 'SuperEmbed',      buildUrl: (id, t, s, e) => t === 'series' ? `https://www.superembed.stream/embed/tv?video_id=${id}&s=${s}&e=${e}` : `https://www.superembed.stream/embed/movie?video_id=${id}` },
+  server17: { name: 'CineScrape',      buildUrl: (id, t, s, e) => t === 'series' ? `https://cinescrape.com/embed/tv/${id}/${s}/${e}` : `https://cinescrape.com/embed/movie/${id}` },
+  server18: { name: 'WHVX',            buildUrl: (id, t, s, e) => t === 'series' ? `https://whvx.net/embed/tv/${id}/${s}/${e}` : `https://whvx.net/embed/movie/${id}` },
+  server19: { name: 'TheyAllSayFlix',  buildUrl: (id, t, s, e) => t === 'series' ? `https://theyallsayflix.su/embed/tv/${id}/${s}/${e}` : `https://theyallsayflix.su/embed/movie/${id}` },
+  server20: { name: 'MoviesAPI.club',  buildUrl: (id, t, s, e) => t === 'series' ? `https://moviesapi.club/tv/${id}-${s}-${e}` : `https://moviesapi.club/movie/${id}` },
+  server21: { name: 'MoviesAPI.to',    buildUrl: (id, t, s, e) => t === 'series' ? `https://moviesapi.to/tv/${id}-${s}-${e}` : `https://moviesapi.to/movie/${id}` },
+  server22: { name: 'VidSrc.rip',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.rip/embed/tv/${id}/${s}/${e}` : `https://vidsrc.rip/embed/movie/${id}` },
+  server23: { name: 'VidSrc.pro',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.pro/embed/tv/${id}/${s}/${e}` : `https://vidsrc.pro/embed/movie/${id}` },
+  server24: { name: 'VidSrc.icu',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.icu/embed/tv/${id}/${s}/${e}` : `https://vidsrc.icu/embed/movie/${id}` },
+  server25: { name: 'VidSrc2.ru',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc2.ru/embed/tv/${id}/${s}/${e}` : `https://vidsrc2.ru/embed/movie/${id}` },
+  server26: { name: 'VidSrc.tw',       buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.tw/embed/tv/${id}/${s}/${e}` : `https://vidsrc.tw/embed/movie/${id}` },
+  server27: { name: 'VidSrc.sbs',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.sbs/embed/tv/${id}/${s}/${e}` : `https://vidsrc.sbs/embed/movie/${id}` },
+  server28: { name: 'VidSrc.fyi',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.fyi/embed/tv/${id}/${s}/${e}` : `https://vidsrc.fyi/embed/movie/${id}` },
+  server29: { name: 'VidSrc.hair',     buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.hair/embed/tv/${id}/${s}/${e}` : `https://vidsrc.hair/embed/movie/${id}` },
+  server30: { name: 'Vid-Src.top',     buildUrl: (id, t, s, e) => t === 'series' ? `https://vid-src.top/embed/tv/${id}/${s}/${e}` : `https://vid-src.top/embed/movie/${id}` },
+  server31: { name: 'AutoEmbed.cc',    buildUrl: (id, t, s, e) => t === 'series' ? `https://autoembed.cc/embed/tv/${id}/${s}/${e}` : `https://autoembed.cc/embed/movie/${id}` },
+  server32: { name: 'Watch.AutoEmbed', buildUrl: (id, t, s, e) => t === 'series' ? `https://watch.autoembed.cc/embed/tv/${id}/${s}/${e}` : `https://watch.autoembed.cc/embed/movie/${id}` },
+  server33: { name: 'Rive Stream',     buildUrl: (id, t, s, e) => t === 'series' ? `https://rivestream.live/embed?type=tv&id=${id}&season=${s}&episode=${e}` : `https://rivestream.live/embed?type=movie&id=${id}` },
+  server34: { name: 'CinemaOS',        buildUrl: (id, t, s, e) => t === 'series' ? `https://cinemaos-v2.vercel.app/embed?type=tv&id=${id}&season=${s}&episode=${e}` : `https://cinemaos-v2.vercel.app/embed?type=movie&id=${id}` },
+  server35: { name: 'Nunflix',         buildUrl: (id, t, s, e) => t === 'series' ? `https://nunflix.org/embed/tv/${id}/${s}/${e}` : `https://nunflix.org/embed/movie/${id}` }
 };
+
+/* Sensible default fallback order — every-genre-covering servers first
+   (VidSrc family carries the widest catalog including anime/drama). Admin
+   panel "Default Server" selection always takes priority over this. */
+const SERVER_FALLBACK_ORDER = ['server1','server2','server7','server9','server10','server8','server11','server13','server20','server3'];
 
 /* ---- POPULAR PAKISTANI & DESI SERIES DIRECT MAPPING DICTIONARY ---- */
 const DESI_SERIES_MAP = [
@@ -1615,7 +1798,7 @@ const S = {
   view: 'home', prevView: 'home',
   user: null, watchlist: {}, likes: {}, history: {}, searches: [],
   heroItems: [], heroIdx: 0, heroTimer: null,
-  activeItem: null, activeServer: 'server1',
+  activeItem: null, activeServer: 'server1', defaultServer: 'server1',
   activeSeason: 1, activeEpisode: 1, seriesMeta: null,
   moviesFilter: 'all', moviesSkip: 0, moviesSeenIds: new Set(),
   seriesFilter: 'all', seriesSkip: 0, seriesSeenIds: new Set(),
@@ -1691,15 +1874,25 @@ function switchView(name) {
 }
 
 /* ---- CONTENT CARDS ---- */
+const _fallbackPosterSvg = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450"><rect width="300" height="450" fill="%23151822"/><text x="150" y="225" font-family="sans-serif" font-size="16" fill="%235d637a" text-anchor="middle">No Poster</text></svg>')}`;
+
 function buildCard(item, size = 'standard') {
   const rating = item.rating ? `<div class="card-rating"><i class="fas fa-star"></i>${item.rating}</div>` : '';
   const typeBadge = `<div class="card-type">${item.type === 'series' ? 'SERIES' : 'MOVIE'}</div>`;
   const key = registerItem(item);
 
+  // Posters can come from TMDB (image.tmdb.org) or Cinemeta (metahub.space).
+  // If the primary URL 404s (common for niche series with sparse metadata),
+  // fall back to the OTHER provider by IMDb id, then finally to a generated
+  // placeholder — so a missing poster never leaves a broken image icon.
+  const primaryPoster = item.poster || `${IMGB}/poster/medium/${item.id}/img`;
+  const altPoster = `${IMGB}/poster/medium/${item.id}/img`;
+
   return `
     <div class="card ${size}" data-key="${key}">
-      <img class="card-poster" src="${esc(item.poster)}" alt="${esc(item.title)}" loading="lazy"
-        onerror="this.src='https://images.metahub.space/poster/medium/${item.id}/img';">
+      <img class="card-poster" src="${esc(primaryPoster)}" alt="${esc(item.title)}" loading="lazy"
+        data-fallback-stage="0"
+        onerror="posterFallback(this, '${esc(altPoster)}')">
       <div class="card-overlay"><div class="card-play-icon"><i class="fas fa-play"></i></div></div>
       ${rating}${typeBadge}
       <div class="card-info">
@@ -1708,6 +1901,20 @@ function buildCard(item, size = 'standard') {
       </div>
     </div>
   `;
+}
+
+/* Two-stage poster fallback: TMDB/Cinemeta URL -> the OTHER provider's URL
+   for the same IMDb id -> generated placeholder. The data-fallback-stage
+   guard prevents any possibility of an infinite onerror loop. */
+function posterFallback(img, altUrl) {
+  const stage = Number(img.dataset.fallbackStage || '0');
+  if (stage === 0 && altUrl && img.src !== altUrl) {
+    img.dataset.fallbackStage = '1';
+    img.src = altUrl;
+  } else {
+    img.onerror = null;
+    img.src = _fallbackPosterSvg;
+  }
 }
 
 /* ---- HERO CAROUSEL ---- */
@@ -1732,7 +1939,8 @@ async function initHero(retry = true) {
 function renderHero() {
   const item = S.heroItems[S.heroIdx];
   if (!item) return;
-  document.getElementById('heroBg').style.backgroundImage = `url('${item.backdrop || item.poster}')`;
+  const bg = item.backdrop || item.poster || `${IMGB}/background/medium/${item.id}/img`;
+  document.getElementById('heroBg').style.backgroundImage = `url('${bg}')`;
   document.getElementById('heroTitle').textContent = item.title;
   document.getElementById('heroSynopsis').textContent = item.synopsis || 'Stream on MINEXUS TV.';
   document.getElementById('heroYear').textContent = item.year;
@@ -2031,7 +2239,7 @@ window.addEventListener('blur', () => {
 /* ---- MULTI-SERVER CINEMA PLAYER (MULTISEMBED DEFAULT) ---- */
 function openPlayer(item) {
   S.activeItem = item;
-  S.activeServer = 'server1'; // DEFAULT: MultiEmbed
+  S.activeServer = S.defaultServer; // Admin-configured default (Firebase app_config/default_server)
   S.activeSeason = 1; S.activeEpisode = 1;
   switchView('player');
   buildPlayerUI();
@@ -2110,10 +2318,16 @@ function resetShareMeta() {
 }
 
 function buildShareUrl(item) {
-  const url = new URL(window.location.origin + window.location.pathname);
-  url.searchParams.set('watch', item.id);
-  url.searchParams.set('type', item.type || 'movie');
-  return url.toString();
+  // Uses /watch/:id (handled by api/watch.js) instead of a plain ?watch=
+  // query string. That server-side route bakes the CORRECT movie poster/
+  // title into the page's <head> before WhatsApp/Telegram/Facebook fetch
+  // it, then instantly redirects real visitors into the app. A query-param
+  // URL can't do this because those crawlers don't run JavaScript, so they
+  // would only ever see whatever poster was hardcoded in index.html's
+  // static <head> — this is what caused every shared link to show the same
+  // wrong poster regardless of which movie was actually shared.
+  const type = item.type === 'series' ? 'series' : 'movie';
+  return `${window.location.origin}/watch/${encodeURIComponent(item.id)}?type=${type}`;
 }
 
 async function copyShareLink(item) {
@@ -2147,6 +2361,23 @@ async function loadPlayerMeta(item) {
   } catch (e) {}
 }
 
+/* ---- DYNAMIC SERVER BUTTONS ----
+   Renders one button per entry in SERVERS (30+ verified embed sources).
+   The admin-selected default (from Firebase app_config/default_server) is
+   marked ⭐ and used first for every new title. */
+function initServerButtons() {
+  const row = document.getElementById('serversRow');
+  const countEl = document.getElementById('serverCount');
+  if (!row) return;
+  const keys = Object.keys(SERVERS);
+  countEl.textContent = `(${keys.length} sources)`;
+  row.innerHTML = keys.map(k => `
+    <button class="srv-btn${k === S.activeServer ? ' active' : ''}" data-server="${k}">
+      <i class="fas ${k === S.defaultServer ? 'fa-star' : 'fa-server'}"></i> ${esc(SERVERS[k].name)}${k === S.defaultServer ? ' (Default)' : ''}
+    </button>
+  `).join('');
+}
+
 function buildPlayerUI() {
   const item = S.activeItem;
   if (!item) return;
@@ -2154,7 +2385,10 @@ function buildPlayerUI() {
   // Topbar & info
   document.getElementById('playerTopTitle').textContent = item.title;
   document.getElementById('playerTitleBig').textContent = item.title;
-  document.getElementById('playerPoster').src = item.poster || '';
+  const posterEl = document.getElementById('playerPoster');
+  posterEl.dataset.fallbackStage = '0';
+  posterEl.dataset.altPoster = `${IMGB}/poster/medium/${item.id}/img`;
+  posterEl.src = item.poster || posterEl.dataset.altPoster;
   document.getElementById('playerDesc').textContent = item.synopsis || '';
   document.getElementById('episodesSection').style.display = item.type === 'series' ? 'block' : 'none';
 
@@ -2178,9 +2412,11 @@ function buildPlayerUI() {
   const shBtn = document.getElementById('playerShareBtn');
   shBtn.onclick = null;
   shBtn.addEventListener('click', function() { copyShareLink(item); }, { once: false });
+
+  initServerButtons();
 }
 
-function playStream() {
+function playStream(isAutoFallback) {
   const item = S.activeItem;
   if (!item) return;
   const srv = SERVERS[S.activeServer];
@@ -2194,20 +2430,36 @@ function playStream() {
   const token = (S.playToken = (S.playToken || 0) + 1);
 
   loader.style.display = 'flex';
-  loader.innerHTML = '<div class="spinner"></div><span>Connecting to Stream...</span>';
+  loader.innerHTML = `<div class="spinner"></div><span>${isAutoFallback ? 'Trying next server...' : 'Connecting to Stream...'}</span>`;
   frame.src = 'about:blank';
 
   requestAnimationFrame(() => {
     frame.src = url;
     frame.onload = () => { if (S.playToken === token) loader.style.display = 'none'; };
-    // Fallback hide in case onload doesn't fire (cross-origin iframes often don't)
-    setTimeout(() => { if (S.playToken === token) loader.style.display = 'none'; }, 2500);
+    // If nothing loads within 6s, offer a one-tap switch to the next server —
+    // covers dead/slow embed hosts without the user having to know which
+    // server to pick manually.
+    setTimeout(() => {
+      if (S.playToken !== token) return;
+      if (loader.style.display === 'none') return; // it loaded fine
+      loader.innerHTML = `<span style="color:#ffb648">This server is slow or unavailable.</span>
+        <button class="filter-pill" style="margin-top:10px" onclick="tryNextServer()"><i class="fas fa-forward"></i> Try Next Server</button>`;
+    }, 6000);
   });
 
   // Highlight active server button
   document.querySelectorAll('.srv-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.server === S.activeServer);
   });
+}
+
+function tryNextServer() {
+  const keys = Object.keys(SERVERS);
+  const idx = keys.indexOf(S.activeServer);
+  const next = keys[(idx + 1) % keys.length];
+  S.activeServer = next;
+  toast(`🔀 Switched to ${SERVERS[next].name}`, 'info');
+  playStream(true);
 }
 
 function buildEpisodes() {
@@ -2314,6 +2566,18 @@ function handleLiveSearch(q, dropdownEl) {
 }
 
 /* ---- WATCHLIST & LIKES ---- */
+function playSaveAnimation(btn) {
+  if (!btn) return;
+  btn.classList.remove('just-saved');
+  void btn.offsetWidth; // restart animation if clicked rapidly
+  btn.classList.add('just-saved');
+  const burst = document.createElement('span');
+  burst.className = 'save-burst';
+  btn.appendChild(burst);
+  setTimeout(() => burst.remove(), 500);
+  setTimeout(() => btn.classList.remove('just-saved'), 450);
+}
+
 function toggleWatchlist(item, btn) {
   if (!S.user) { toast('⚠️ Sign in to save your Watchlist', 'error'); switchView('account'); return; }
   const id = item.id;
@@ -2325,6 +2589,7 @@ function toggleWatchlist(item, btn) {
     S.watchlist[id] = { id: item.id, title: item.title, poster: item.poster, type: item.type, year: item.year };
     db.ref(`users/${S.user.uid}/watchlist/${id}`).set({ ...S.watchlist[id], savedAt: firebase.database.ServerValue.TIMESTAMP });
     toast('Saved to Watchlist', 'success');
+    playSaveAnimation(btn);
   }
   buildPlayerUI();
 }
@@ -2340,6 +2605,7 @@ function toggleLike(item, btn) {
     S.likes[id] = { id: item.id, title: item.title, poster: item.poster, type: item.type, year: item.year };
     db.ref(`users/${S.user.uid}/likes/${id}`).set({ ...S.likes[id], likedAt: firebase.database.ServerValue.TIMESTAMP });
     toast('Added to Liked Movies ❤️', 'success');
+    playSaveAnimation(btn);
   }
   buildPlayerUI();
 }
@@ -2415,14 +2681,21 @@ function renderLeaderboard() {
 }
 
 /* ---- ACCOUNT VIEW & SUBTABS ---- */
+function refreshAccountCounts() {
+  const wc = document.getElementById('accWatchCount');
+  const wl = document.getElementById('accWlCount');
+  const lk = document.getElementById('accLikeCount');
+  if (wc) wc.textContent = Object.keys(S.history || {}).length;
+  if (wl) wl.textContent = Object.keys(S.watchlist || {}).length;
+  if (lk) lk.textContent = Object.keys(S.likes || {}).length;
+}
+
 function renderAccountView() {
   if (!S.user) return;
   const contentEl = document.getElementById('accTabContent');
   const sub = S.accountSubTab;
 
-  document.getElementById('accWatchCount').textContent = Object.keys(S.history || {}).length;
-  document.getElementById('accWlCount').textContent = Object.keys(S.watchlist || {}).length;
-  document.getElementById('accLikeCount').textContent = Object.keys(S.likes || {}).length;
+  refreshAccountCounts();
 
   let items = [];
   if (sub === 'history') items = Object.values(S.history || {}).reverse();
@@ -2474,6 +2747,12 @@ db.ref('app_config').on('value', snap => {
     document.getElementById('forceUpdateOverlay').style.display = 'none';
   }
 
+  // Live-sync default streaming server from admin panel
+  const newDefaultServer = (cfg && cfg.default_server) || 'server1';
+  if (newDefaultServer !== S.defaultServer && SERVERS[newDefaultServer]) {
+    S.defaultServer = newDefaultServer;
+  }
+
   // Live-sync TMDB API key from admin panel — no code edits/redeploys needed.
   // If it changes mid-session, clear the API cache and reload current data
   // so the switch between TMDB-live and Cinemeta-fallback takes effect now.
@@ -2501,10 +2780,30 @@ auth.onAuthStateChanged(user => {
     document.getElementById('desktopNavAvatar').textContent = init;
     document.getElementById('desktopNavUname').textContent = uname;
 
-    db.ref(`users/${user.uid}/watchlist`).on('value', s => { S.watchlist = s.val() || {}; });
-    db.ref(`users/${user.uid}/likes`).on('value', s => { S.likes = s.val() || {}; });
-    db.ref(`users/${user.uid}/history`).on('value', s => { S.history = s.val() || {}; });
-    db.ref(`users/${user.uid}/searches`).limitToLast(20).on('value', s => { S.searches = Object.values(s.val() || {}).reverse(); });
+    db.ref(`users/${user.uid}/watchlist`).on('value', s => {
+      S.watchlist = s.val() || {};
+      if (S.view === 'account' && S.accountSubTab === 'watchlist') renderAccountView();
+      refreshAccountCounts();
+      if (S.view === 'player' && S.activeItem) buildPlayerUI();
+    });
+    db.ref(`users/${user.uid}/likes`).on('value', s => {
+      S.likes = s.val() || {};
+      if (S.view === 'account' && S.accountSubTab === 'likes') renderAccountView();
+      refreshAccountCounts();
+      if (S.view === 'player' && S.activeItem) buildPlayerUI();
+    });
+    db.ref(`users/${user.uid}/history`).on('value', s => {
+      S.history = s.val() || {};
+      if (S.view === 'account' && S.accountSubTab === 'history') renderAccountView();
+      refreshAccountCounts();
+    });
+    db.ref(`users/${user.uid}/searches`).limitToLast(20).on('value', s => {
+      S.searches = Object.values(s.val() || {}).reverse();
+      if (S.view === 'account' && S.accountSubTab === 'searches') renderAccountView();
+    });
+    db.ref(`users/${user.uid}/stats`).on('value', s => {
+      S.userStats = s.val() || {};
+    });
 
     db.ref(`users/${user.uid}`).update({
       email: user.email || '',
