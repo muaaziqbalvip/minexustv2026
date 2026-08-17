@@ -736,45 +736,36 @@ input,select{font-family:inherit}
 .auth-lock-title{font-family:var(--font2);font-size:22px;font-weight:900;margin-bottom:4px}
 .auth-lock-sub{font-size:12px;color:var(--text2);margin-bottom:20px}
 
-/* ===== PWA-ONLY ENFORCEMENT OVERLAY =====
-   Shown whenever the site is opened directly in a mobile browser tab
-   (Chrome/Safari address bar) instead of as the installed standalone app.
-   Blocks all interaction until the person installs and reopens from their
-   home screen — this is intentional per product requirement, not a bug. */
-.pwa-lock-overlay{
-  position:fixed;inset:0;z-index:99999;
-  background:radial-gradient(circle at center, #141724 0%, #07080c 100%);
-  display:flex;align-items:center;justify-content:center;padding:20px;
+/* ===== NON-BLOCKING INSTALL-APP NUDGE BANNER =====
+   Small dismissable banner suggesting the installed app for a faster,
+   full-screen experience — never blocks browser usage. Sits above the
+   bottom nav/footer on mobile, above the footer on desktop. */
+.pwa-nudge{
+  position:fixed;left:12px;right:12px;z-index:500;
+  bottom:calc(var(--bottom-h) + var(--footer-h) + 10px);
+  background:#12141c;border:1px solid var(--border-active);border-radius:14px;
+  padding:12px 14px;display:flex;align-items:center;gap:12px;
+  box-shadow:0 12px 30px rgba(0,0,0,.6);
+  animation:pwaNudgeIn .35s cubic-bezier(.2,.8,.2,1);
+  max-width:420px;margin:0 auto;
 }
-.pwa-lock-card{
-  width:100%;max-width:390px;background:#0e1017;
-  border:1px solid rgba(255,71,87,0.35);border-radius:20px;
-  padding:32px 26px;box-shadow:0 24px 60px rgba(0,0,0,.95);text-align:center;
-  animation:pwaCardIn .4s cubic-bezier(.2,.8,.2,1);
-}
-@keyframes pwaCardIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
-.pwa-lock-icon{
-  width:64px;height:64px;border-radius:16px;margin:0 auto 16px;
+@media(min-width:769px){ .pwa-nudge{ bottom:calc(var(--footer-h) + 16px); left:auto; right:20px; width:360px; } }
+@keyframes pwaNudgeIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.pwa-nudge-icon{
+  width:36px;height:36px;border-radius:9px;flex-shrink:0;
   background:linear-gradient(135deg,var(--accent),#8b0000);
-  display:flex;align-items:center;justify-content:center;
-  font-size:28px;color:#fff;box-shadow:0 0 26px var(--accent-glow);
+  display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;
 }
-.pwa-lock-title{font-family:var(--font2);font-size:20px;font-weight:900;margin-bottom:8px}
-.pwa-lock-sub{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:22px}
-.pwa-lock-steps{
-  text-align:left;background:var(--bg3);border-radius:12px;padding:14px 16px;
-  margin-bottom:20px;font-size:12px;color:var(--text2);line-height:1.9;
+.pwa-nudge-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.pwa-nudge-text strong{font-size:12.5px}
+.pwa-nudge-text span{font-size:10.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pwa-nudge-btn{
+  padding:8px 12px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#c9101c);
+  color:#fff;font-weight:800;font-size:11.5px;white-space:nowrap;
+  display:flex;align-items:center;gap:5px;flex-shrink:0;
 }
-.pwa-lock-steps b{color:var(--text)}
-.pwa-lock-btn{
-  width:100%;padding:14px;border-radius:12px;
-  background:linear-gradient(135deg,var(--accent),#c9101c);
-  color:#fff;font-weight:800;font-size:14px;
-  box-shadow:0 8px 22px var(--accent-glow);
-  display:flex;align-items:center;justify-content:center;gap:8px;
-}
-.pwa-lock-btn:active{transform:scale(.97)}
-.pwa-lock-note{font-size:10.5px;color:var(--text3);margin-top:14px}
+.pwa-nudge-btn:active{transform:scale(.95)}
+.pwa-nudge-close{color:var(--text3);font-size:13px;padding:4px;flex-shrink:0}
 .auth-toggle-row{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px}
 .auth-tbtn{flex:1;padding:10px;font-size:12px;font-weight:700;color:var(--text3);border-bottom:2px solid transparent}
 .auth-tbtn.active{color:var(--accent);border-bottom-color:var(--accent)}
@@ -872,11 +863,13 @@ input,select{font-family:inherit}
 <body>
 
 <script>
-/* ---- EARLY PWA-MODE DETECTION (runs synchronously, before paint) ----
+/* ---- PWA-MODE DETECTION (non-blocking) ----
    Detects whether the page is running as the installed standalone app vs a
-   regular browser tab, and shows/hides the lock overlay immediately so
-   there's no flash of the real app before the lock kicks in. The rest of
-   the install-button wiring happens later in the main script block. */
+   regular browser tab. This used to gate access behind a mandatory install
+   screen — that's been removed per product decision: the app now works
+   fully in a normal browser tab. Detection is kept only to power a small
+   dismissable "Install App" banner (see #pwaInstallNudge below), not to
+   block anything. */
 (function() {
   function isStandalone() {
     return window.matchMedia('(display-mode: standalone)').matches ||
@@ -888,30 +881,22 @@ input,select{font-family:inherit}
 })();
 </script>
 
-<!-- ===== MANDATORY PWA-INSTALL LOCK SCREEN =====
-     Hidden by default; JS shows it immediately (before paint-blocking auth
-     screen) if the page detects it's running in a plain browser tab instead
-     of the installed standalone app. See detectPwaMode() near the bottom. -->
-<div class="pwa-lock-overlay" id="pwaLockOverlay" style="display:none;" data-pwa-lock>
-  <div class="pwa-lock-card">
-    <div class="pwa-lock-icon"><i class="fas fa-mobile-screen-button"></i></div>
-    <h2 class="pwa-lock-title">Install the App to Continue</h2>
-    <p class="pwa-lock-sub">For the fastest, ad-free 4K streaming experience, MINEXUS TV only plays inside the installed app — not in a regular browser tab.</p>
-    <div class="pwa-lock-steps" id="pwaLockSteps">
-      <div><b>1.</b> Tap <b>Install App</b> below</div>
-      <div><b>2.</b> Confirm "Add to Home Screen"</div>
-      <div><b>3.</b> Open MINEXUS TV from your home screen icon</div>
-    </div>
-    <button class="pwa-lock-btn" id="pwaLockInstallBtn"><i class="fas fa-download"></i> Install App Now</button>
-    <p class="pwa-lock-note" id="pwaLockNote">Already installed? Close this tab and open the app from your home screen.</p>
+<!-- ===== NON-BLOCKING "INSTALL APP" NUDGE =====
+     Small dismissable banner shown only when NOT running as the installed
+     app. The browser experience works exactly the same either way — this
+     is purely an optional upsell to installing, never a barrier. -->
+<div class="pwa-nudge" id="pwaInstallNudge" style="display:none;">
+  <div class="pwa-nudge-icon"><i class="fas fa-mobile-screen-button"></i></div>
+  <div class="pwa-nudge-text">
+    <strong>Install MINEXUS TV</strong>
+    <span>Faster loading & a full-screen experience</span>
   </div>
+  <button class="pwa-nudge-btn" id="pwaNudgeInstallBtn"><i class="fas fa-download"></i> Install</button>
+  <button class="pwa-nudge-close" id="pwaNudgeCloseBtn" aria-label="Dismiss"><i class="fas fa-times"></i></button>
 </div>
 <script>
-  // Apply the detection result immediately (still before the big main
-  // script block runs) so there is zero flash of unlocked app content.
-  if (!window.__MINEXUS_PWA_OK__) {
-    document.getElementById('pwaLockOverlay').style.display = 'flex';
-    document.documentElement.style.overflow = 'hidden';
+  if (!window.__MINEXUS_PWA_OK__ && !sessionStorage.getItem('pwaNudgeDismissed')) {
+    document.getElementById('pwaInstallNudge').style.display = 'flex';
   }
 </script>
 
@@ -1447,137 +1432,96 @@ document.getElementById('btnPwaInstall')?.addEventListener('click', async () => 
   }
 });
 
-/* ---- PWA-ONLY LOCK: install button + platform-specific instructions ----
-   Android/Chrome/Edge support the native beforeinstallprompt flow (one tap,
-   handled above). iOS Safari and some other browsers have no such API — for
-   those we swap in manual "Share → Add to Home Screen" instructions instead
-   of a non-functional button, since programmatic install isn't possible there. */
-(function setupPwaLock() {
+/* ---- INSTALL NUDGE: optional, never blocking ----
+   Browser tab usage is fully supported — this only offers a one-tap install
+   for people who'd like the full-screen app experience. iOS has no
+   programmatic install API, so on iOS the button instead explains the
+   manual Share → Add to Home Screen steps via a toast. */
+(function setupPwaNudge() {
   const ua = navigator.userAgent || '';
   const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
-  const isSafari = isIOS && /Safari/.test(ua) && !/CriOS|FxiOS/.test(ua);
-  const stepsEl = document.getElementById('pwaLockSteps');
-  const installBtn = document.getElementById('pwaLockInstallBtn');
-  const noteEl = document.getElementById('pwaLockNote');
+  const nudge = document.getElementById('pwaInstallNudge');
+  const installBtn = document.getElementById('pwaNudgeInstallBtn');
+  const closeBtn = document.getElementById('pwaNudgeCloseBtn');
 
-  if (isIOS) {
-    // No install prompt API on iOS — show manual steps and hide the button
-    // since there's nothing programmatic it could trigger.
-    if (stepsEl) stepsEl.innerHTML = `
-      <div><b>1.</b> Tap the <b>Share</b> icon <i class="fas fa-arrow-up-from-bracket"></i> in Safari's toolbar</div>
-      <div><b>2.</b> Scroll down and tap <b>"Add to Home Screen"</b></div>
-      <div><b>3.</b> Tap <b>Add</b>, then open MINEXUS TV from your home screen</div>
-    `;
-    if (installBtn) installBtn.style.display = 'none';
-    if (noteEl) noteEl.textContent = isSafari ? 'This only works in Safari — other iOS browsers can\'t install apps.' : 'Please open this link in Safari to install the app.';
-    return;
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      if (nudge) nudge.style.display = 'none';
+      sessionStorage.setItem('pwaNudgeDismissed', '1');
+    });
   }
 
   if (installBtn) {
     installBtn.addEventListener('click', async () => {
+      if (isIOS) {
+        toast('Tap the Share icon, then "Add to Home Screen"', 'info');
+        return;
+      }
       if (deferredPrompt) {
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
         deferredPrompt = null;
-        if (outcome === 'accepted') {
-          // The 'appinstalled' event below will hide the overlay once the
-          // browser actually finishes installing.
-          installBtn.innerHTML = '<i class="fas fa-check"></i> Installing...';
-        }
+        if (outcome === 'accepted' && nudge) nudge.style.display = 'none';
       } else {
-        // beforeinstallprompt hasn't fired yet (e.g. already dismissed once
-        // this session, or browser needs a moment) — give clear manual steps.
         toast('Use your browser menu → "Install App" or "Add to Home Screen"', 'info');
       }
     });
   }
 
   window.addEventListener('appinstalled', () => {
-    toast('✅ App installed! Reopening...', 'success');
-    setTimeout(() => window.location.reload(), 800);
+    toast('✅ App installed!', 'success');
+    if (nudge) nudge.style.display = 'none';
   });
 })();
 
-/* Re-check standalone mode on visibility change / focus — covers the case
-   where someone installs the app while this locked tab is still open, or
-   switches back after installing from another tab. */
-function recheckPwaLock() {
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-    window.matchMedia('(display-mode: fullscreen)').matches ||
-    window.navigator.standalone === true;
-  if (isStandalone) {
-    const overlay = document.getElementById('pwaLockOverlay');
-    if (overlay) overlay.style.display = 'none';
-    document.documentElement.style.overflow = '';
-  }
-}
-document.addEventListener('visibilitychange', recheckPwaLock);
-window.addEventListener('focus', recheckPwaLock);
-
 /* ---- MULTI-SERVER STREAMING ENGINES ----
-   Sourced from the community-vetted FMHY streaming-API list. Every entry
-   below follows the standard /embed/movie/{id} and /embed/tv/{id}/{s}/{e}
-   pattern that this whole class of embed sites shares (IMDb tt-id or TMDB
-   numeric id). Default server is chosen from the Admin Panel (Live Servers
-   tab) and synced live via Firebase — no code edits needed. If a server
-   fails, the player shows a one-tap "Try Next Server" so a single dead host
-   never blocks playback. */
+   List verified against the official VidSrc domain registry (vidsrc.domains)
+   and current 2026 scraper/aggregator projects (which only bother targeting
+   domains that are actually still live) — dead mirrors confirmed by the
+   registry (vidsrc.to, vidsrc.net, vidsrc.tw, vidsrc.pm, vidsrc.xyz,
+   vidsrc.vc, vidsrc.mn) have been removed, and vidsrc.me (registry marks it
+   "retiring, use new") replaced with its verified-active successor domain.
+   Per Muaaz's request: kriss424 is server #1 (first tried), MultiEmbed is
+   #2, everything else follows. Default server is still overridable from the
+   Admin Panel (Live Servers tab) and synced live via Firebase — no code
+   edits needed. If a server fails, the player shows a one-tap "Try Next
+   Server" so a single dead host never blocks playback. */
 const SERVERS = {
-  server1:  { name: 'VidSrc.cc',       buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}` : `https://vidsrc.cc/v2/embed/movie/${id}` },
-  server2:  { name: 'VidSrc.to',       buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.to/embed/tv/${id}/${s}/${e}` : `https://vidsrc.to/embed/movie/${id}` },
-  server3:  { name: 'VidSrc.me',       buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.me/embed/tv?imdb=${id}&season=${s}&episode=${e}` : `https://vidsrc.me/embed/movie?imdb=${id}` },
-  server4:  { name: 'VidSrc.net',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.net/embed/tv/${id}/${s}/${e}` : `https://vidsrc.net/embed/movie/${id}` },
-  server5:  { name: 'VidSrc.nl',       buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.nl/embed/tv/${id}/${s}/${e}` : `https://vidsrc.nl/embed/movie/${id}` },
-  server6:  { name: 'VidSrc.dev',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.dev/embed/tv/${id}/${s}/${e}` : `https://vidsrc.dev/embed/movie/${id}` },
-  server7:  { name: 'MultiEmbed',      buildUrl: (id, t, s, e) => t === 'series' ? `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}` : `https://multiembed.mov/?video_id=${id}` },
-  server8:  { name: 'AutoEmbed',       buildUrl: (id, t, s, e) => t === 'series' ? `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}` : `https://player.autoembed.cc/embed/movie/${id}` },
-  server9:  { name: 'VidLink Pro',     buildUrl: (id, t, s, e) => t === 'series' ? `https://vidlink.pro/tv/${id}/${s}/${e}` : `https://vidlink.pro/movie/${id}` },
-  server10: { name: 'Embed.su',        buildUrl: (id, t, s, e) => t === 'series' ? `https://embed.su/embed/tv/${id}/${s}/${e}` : `https://embed.su/embed/movie/${id}` },
-  server11: { name: '2Embed.cc',       buildUrl: (id, t, s, e) => t === 'series' ? `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}` : `https://www.2embed.cc/embed/${id}` },
-  server12: { name: '2Embed.stream',   buildUrl: (id, t, s, e) => t === 'series' ? `https://www.2embed.stream/embed/tv/${id}/${s}/${e}` : `https://www.2embed.stream/embed/movie/${id}` },
-  server13: { name: 'SmashyStream',    buildUrl: (id, t, s, e) => t === 'series' ? `https://player.smashystream.com/tv/${id}?s=${s}&e=${e}` : `https://player.smashystream.com/movie/${id}` },
-  server14: { name: 'SmashyStream API',buildUrl: (id, t, s, e) => t === 'series' ? `https://embed.smashystream.com/playere.php?tmdb=${id}&s=${s}&e=${e}` : `https://embed.smashystream.com/playere.php?tmdb=${id}` },
-  server15: { name: 'GoMo',            buildUrl: (id, t, s, e) => t === 'series' ? `https://gomo.to/embed/tv/${id}/${s}/${e}` : `https://gomo.to/embed/movie/${id}` },
-  server16: { name: 'SuperEmbed',      buildUrl: (id, t, s, e) => t === 'series' ? `https://www.superembed.stream/embed/tv?video_id=${id}&s=${s}&e=${e}` : `https://www.superembed.stream/embed/movie?video_id=${id}` },
-  server17: { name: 'CineScrape',      buildUrl: (id, t, s, e) => t === 'series' ? `https://cinescrape.com/embed/tv/${id}/${s}/${e}` : `https://cinescrape.com/embed/movie/${id}` },
-  server18: { name: 'WHVX',            buildUrl: (id, t, s, e) => t === 'series' ? `https://whvx.net/embed/tv/${id}/${s}/${e}` : `https://whvx.net/embed/movie/${id}` },
-  server19: { name: 'TheyAllSayFlix',  buildUrl: (id, t, s, e) => t === 'series' ? `https://theyallsayflix.su/embed/tv/${id}/${s}/${e}` : `https://theyallsayflix.su/embed/movie/${id}` },
-  server20: { name: 'MoviesAPI.club',  buildUrl: (id, t, s, e) => t === 'series' ? `https://moviesapi.club/tv/${id}-${s}-${e}` : `https://moviesapi.club/movie/${id}` },
-  server21: { name: 'MoviesAPI.to',    buildUrl: (id, t, s, e) => t === 'series' ? `https://moviesapi.to/tv/${id}-${s}-${e}` : `https://moviesapi.to/movie/${id}` },
-  server22: { name: 'VidSrc.rip',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.rip/embed/tv/${id}/${s}/${e}` : `https://vidsrc.rip/embed/movie/${id}` },
-  server23: { name: 'VidSrc.pro',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.pro/embed/tv/${id}/${s}/${e}` : `https://vidsrc.pro/embed/movie/${id}` },
-  server24: { name: 'VidSrc.icu',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.icu/embed/tv/${id}/${s}/${e}` : `https://vidsrc.icu/embed/movie/${id}` },
-  server25: { name: 'VidSrc2.ru',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc2.ru/embed/tv/${id}/${s}/${e}` : `https://vidsrc2.ru/embed/movie/${id}` },
-  server26: { name: 'VidSrc.tw',       buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.tw/embed/tv/${id}/${s}/${e}` : `https://vidsrc.tw/embed/movie/${id}` },
-  server27: { name: 'VidSrc.sbs',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.sbs/embed/tv/${id}/${s}/${e}` : `https://vidsrc.sbs/embed/movie/${id}` },
-  server28: { name: 'VidSrc.fyi',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.fyi/embed/tv/${id}/${s}/${e}` : `https://vidsrc.fyi/embed/movie/${id}` },
-  server29: { name: 'VidSrc.hair',     buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.hair/embed/tv/${id}/${s}/${e}` : `https://vidsrc.hair/embed/movie/${id}` },
-  server30: { name: 'Vid-Src.top',     buildUrl: (id, t, s, e) => t === 'series' ? `https://vid-src.top/embed/tv/${id}/${s}/${e}` : `https://vid-src.top/embed/movie/${id}` },
-  server31: { name: 'AutoEmbed.cc',    buildUrl: (id, t, s, e) => t === 'series' ? `https://autoembed.cc/embed/tv/${id}/${s}/${e}` : `https://autoembed.cc/embed/movie/${id}` },
-  server32: { name: 'Watch.AutoEmbed', buildUrl: (id, t, s, e) => t === 'series' ? `https://watch.autoembed.cc/embed/tv/${id}/${s}/${e}` : `https://watch.autoembed.cc/embed/movie/${id}` },
-  server33: { name: 'Rive Stream',     buildUrl: (id, t, s, e) => t === 'series' ? `https://rivestream.live/embed?type=tv&id=${id}&season=${s}&episode=${e}` : `https://rivestream.live/embed?type=movie&id=${id}` },
-  server34: { name: 'CinemaOS',        buildUrl: (id, t, s, e) => t === 'series' ? `https://cinemaos-v2.vercel.app/embed?type=tv&id=${id}&season=${s}&episode=${e}` : `https://cinemaos-v2.vercel.app/embed?type=movie&id=${id}` },
-  server35: { name: 'Nunflix',         buildUrl: (id, t, s, e) => t === 'series' ? `https://nunflix.org/embed/tv/${id}/${s}/${e}` : `https://nunflix.org/embed/movie/${id}` }
+  server1:  { name: 'Kriss424 (Default)', buildUrl: (id, t, s, e) => t === 'series' ? `https://kriss424did.com/play/${id}/${s}/${e}` : `https://kriss424did.com/play/${id}` },
+  server2:  { name: 'MultiEmbed',      buildUrl: (id, t, s, e) => t === 'series' ? `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}` : `https://multiembed.mov/?video_id=${id}` },
+  server3:  { name: 'VidSrc.cc',       buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}` : `https://vidsrc.cc/v2/embed/movie/${id}` },
+  server4:  { name: 'VidSrc2.ru',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc2.ru/embed/tv/${id}/${s}/${e}` : `https://vidsrc2.ru/embed/movie/${id}` },
+  server5:  { name: 'VidSrc-Embed.su', buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc-embed.su/embed/tv/${id}/${s}/${e}` : `https://vidsrc-embed.su/embed/movie/${id}` },
+  server6:  { name: 'AutoEmbed',       buildUrl: (id, t, s, e) => t === 'series' ? `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}` : `https://player.autoembed.cc/embed/movie/${id}` },
+  server7:  { name: 'VidLink Pro',     buildUrl: (id, t, s, e) => t === 'series' ? `https://vidlink.pro/tv/${id}/${s}/${e}` : `https://vidlink.pro/movie/${id}` },
+  server8:  { name: 'Embed.su',        buildUrl: (id, t, s, e) => t === 'series' ? `https://embed.su/embed/tv/${id}/${s}/${e}` : `https://embed.su/embed/movie/${id}` },
+  server9:  { name: '2Embed.cc',       buildUrl: (id, t, s, e) => t === 'series' ? `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}` : `https://www.2embed.cc/embed/${id}` },
+  server10: { name: 'SmashyStream',    buildUrl: (id, t, s, e) => t === 'series' ? `https://player.smashystream.com/tv/${id}?s=${s}&e=${e}` : `https://player.smashystream.com/movie/${id}` },
+  server11: { name: 'GoMo',            buildUrl: (id, t, s, e) => t === 'series' ? `https://gomo.to/embed/tv/${id}/${s}/${e}` : `https://gomo.to/embed/movie/${id}` },
+  server12: { name: 'SuperEmbed',      buildUrl: (id, t, s, e) => t === 'series' ? `https://www.superembed.stream/embed/tv?video_id=${id}&s=${s}&e=${e}` : `https://www.superembed.stream/embed/movie?video_id=${id}` },
+  server13: { name: 'VidFast',         buildUrl: (id, t, s, e) => t === 'series' ? `https://vidfast.pro/tv/${id}/${s}/${e}` : `https://vidfast.pro/movie/${id}` },
+  server14: { name: 'Videasy',         buildUrl: (id, t, s, e) => t === 'series' ? `https://player.videasy.net/tv/${id}/${s}/${e}` : `https://player.videasy.net/movie/${id}` },
+  server15: { name: 'MoviesAPI.club',  buildUrl: (id, t, s, e) => t === 'series' ? `https://moviesapi.club/tv/${id}-${s}-${e}` : `https://moviesapi.club/movie/${id}` },
+  server16: { name: 'VidSrc.rip',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.rip/embed/tv/${id}/${s}/${e}` : `https://vidsrc.rip/embed/movie/${id}` },
+  server17: { name: 'VidSrc.pro',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.pro/embed/tv/${id}/${s}/${e}` : `https://vidsrc.pro/embed/movie/${id}` },
+  server18: { name: 'VidSrc.icu',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.icu/embed/tv/${id}/${s}/${e}` : `https://vidsrc.icu/embed/movie/${id}` },
+  server19: { name: 'VidSrc.fyi',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.fyi/embed/tv/${id}/${s}/${e}` : `https://vidsrc.fyi/embed/movie/${id}` },
+  server20: { name: 'VidSrc.hair',     buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.hair/embed/tv/${id}/${s}/${e}` : `https://vidsrc.hair/embed/movie/${id}` },
+  server21: { name: 'Vid-Src.top',     buildUrl: (id, t, s, e) => t === 'series' ? `https://vid-src.top/embed/tv/${id}/${s}/${e}` : `https://vid-src.top/embed/movie/${id}` },
+  server22: { name: 'AutoEmbed.cc',    buildUrl: (id, t, s, e) => t === 'series' ? `https://autoembed.cc/embed/tv/${id}/${s}/${e}` : `https://autoembed.cc/embed/movie/${id}` },
+  server23: { name: 'Rive Stream',     buildUrl: (id, t, s, e) => t === 'series' ? `https://rivestream.live/embed?type=tv&id=${id}&season=${s}&episode=${e}` : `https://rivestream.live/embed?type=movie&id=${id}` },
+  server24: { name: 'CinemaOS',        buildUrl: (id, t, s, e) => t === 'series' ? `https://cinemaos-v2.vercel.app/embed?type=tv&id=${id}&season=${s}&episode=${e}` : `https://cinemaos-v2.vercel.app/embed?type=movie&id=${id}` },
+  server25: { name: 'Nunflix',         buildUrl: (id, t, s, e) => t === 'series' ? `https://nunflix.org/embed/tv/${id}/${s}/${e}` : `https://nunflix.org/embed/movie/${id}` }
 };
 
-/* Sensible default fallback order — every-genre-covering servers first
-   (VidSrc family carries the widest catalog including anime/drama). Admin
-   panel "Default Server" selection always takes priority over this. */
-const SERVER_FALLBACK_ORDER = ['server1','server2','server7','server9','server10','server8','server11','server13','server20','server3'];
-
-/* ---- POPULAR PAKISTANI & DESI SERIES DIRECT MAPPING DICTIONARY ---- */
-const DESI_SERIES_MAP = [
-  { keywords: ['aladdin', 'naam toh suna hoga', 'aladin'], id: 'tt8922332', title: 'Aladdin - Naam Toh Suna Hoga', type: 'series', year: '2018', poster: 'https://images.metahub.space/poster/medium/tt8922332/img', synopsis: 'A fantasy television series based on the Arabian Nights character Aladdin.' },
-  { keywords: ['mere paas tum ho', 'mere pass tum ho'], id: 'tt10850020', title: 'Mere Paas Tum Ho', type: 'series', year: '2019', poster: 'https://images.metahub.space/poster/medium/tt10850020/img', synopsis: 'Danish, a simple man of honesty, is married to Mehwish. His life falls apart when Shehwar offers her wealth.' },
-  { keywords: ['parizaad', 'parizad'], id: 'tt15144866', title: 'Parizaad', type: 'series', year: '2021', poster: 'https://images.metahub.space/poster/medium/tt15144866/img', synopsis: 'The journey of a dark-skinned man named Parizaad with a pure soul.' },
-  { keywords: ['maula jatt', 'the legend of maula jatt'], id: 'tt10333202', title: 'The Legend of Maula Jatt', type: 'movie', year: '2022', poster: 'https://images.metahub.space/poster/medium/tt10333202/img', synopsis: 'Maula Jatt, a fierce prizefighter, seeks revenge against his rival Noori Natt.' },
-  { keywords: ['tere bin', 'terebin'], id: 'tt25368940', title: 'Tere Bin', type: 'series', year: '2022', poster: 'https://images.metahub.space/poster/medium/tt25368940/img', synopsis: 'Murtasim and Meerab are brought together by destiny despite their differences.' },
-  { keywords: ['ertugrul', 'dirilis ertugrul', 'ertugral'], id: 'tt4376484', title: 'Dirilis: Ertugrul', type: 'series', year: '2014', poster: 'https://images.metahub.space/poster/medium/tt4376484/img', synopsis: 'Ertugrul Ghazi leads his tribe towards honor and establishing the Ottoman Empire.' },
-  { keywords: ['kurulus osman', 'osman'], id: 'tt10877994', title: 'Kurulus: Osman', type: 'series', year: '2019', poster: 'https://images.metahub.space/poster/medium/tt10877994/img', synopsis: 'Osman I establishes and leads the great Ottoman Empire against internal and external enemies.' },
-  { keywords: ['chupke chupke'], id: 'tt14467384', title: 'Chupke Chupke', type: 'series', year: '2021', poster: 'https://images.metahub.space/poster/medium/tt14467384/img', synopsis: 'A comedy drama featuring Faasi and Hadi in a hilarious family rivalry.' },
-  { keywords: ['ishq murshid', 'ishq murshad'], id: 'tt29580646', title: 'Ishq Murshid', type: 'series', year: '2023', poster: 'https://images.metahub.space/poster/medium/tt29580646/img', synopsis: 'Shahmeer disguised as Fazal Bakhsh pursues Shibra in this heartwarming love tale.' },
-  { keywords: ['khuda aur mohabbat', 'khuda aur muhabbat'], id: 'tt13919694', title: 'Khuda Aur Mohabbat Season 3', type: 'series', year: '2021', poster: 'https://images.metahub.space/poster/medium/tt13919694/img', synopsis: 'Farhad falls desperately in love with Mahi, transforming his worldly passion into divine love.' }
-];
+/* Removed from the previous list (confirmed dead/retiring per vidsrc.domains
+   official registry checked live on 2026-08-17): vidsrc.to (site owner
+   confirmed shutdown), vidsrc.net (Dead), vidsrc.tw (Dead), vidsrc.me
+   (registry says "Use New" — replaced above), vidsrc.dev / vidsrc.nl / 2Embed
+   .stream / CineScrape / WHVX / TheyAllSayFlix / MoviesAPI.to / SmashyStream
+   API / Watch.AutoEmbed (no longer showing up in any actively-maintained
+   2026 scraper/aggregator project, a reliable signal they've gone stale). */
+const SERVER_FALLBACK_ORDER = ['server1','server2','server3','server4','server6','server7','server8','server9','server13','server14'];
 
 /* ---- LIVE CATALOG API CLIENT (TMDB primary + Cinemeta fallback) ----
    TMDB (The Movie Database) gives real-time trending/now-playing/on-air data
@@ -1672,6 +1616,23 @@ async function tmdbResolveImdbIds(list, type) {
 }
 
 const API = {
+  async regional(type, langCode, skip) {
+    // Live "Bollywood row" via TMDB's with_original_language discover filter
+    // — always reflects what's actually popular right now instead of a
+    // fixed hand-picked list. Falls back to a Cinemeta genre catalog when
+    // no TMDB key is configured, so the row is never empty.
+    if (tmdbEnabled()) {
+      try {
+        const tmdbType = type === 'series' ? 'tv' : 'movie';
+        const page = Math.floor((skip || 0) / 20) + 1;
+        const endpoint = `${TMDB_BASE}/discover/${tmdbType}?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&page=${page}&with_original_language=${langCode}`;
+        const d = await _fetch(endpoint);
+        const withIds = await tmdbResolveImdbIds((d.results || []).slice(0, 20), tmdbType);
+        return withIds.map(m => mapTmdb(m, type));
+      } catch (e) { /* fall through */ }
+    }
+    return this.catalog(type, 'top', 'Romance', skip);
+  },
   async catalog(type, catalogId, genre, skip) {
     if (tmdbEnabled()) {
       try {
@@ -1697,8 +1658,6 @@ const API = {
     return (d.metas || []).map(m => mapMeta(m, type));
   },
   async getMeta(type, id) {
-    // Check dictionary first (only used as a synopsis backstop if live APIs fail)
-    const dict = DESI_SERIES_MAP.find(d => d.id === id);
     if (tmdbEnabled()) {
       try {
         const tmdbType = type === 'series' ? 'tv' : 'movie';
@@ -1719,14 +1678,8 @@ const API = {
         }
       } catch (e) { /* fall through */ }
     }
-    try {
-      const d = await _fetch(`${CBASE}/meta/${type}/${id}.json`);
-      if (d && d.meta) return mapMeta(d.meta, type);
-    } catch (e) {
-      if (dict) return dict;
-      throw new Error('Not found');
-    }
-    if (dict) return dict;
+    const d = await _fetch(`${CBASE}/meta/${type}/${id}.json`);
+    if (d && d.meta) return mapMeta(d.meta, type);
     throw new Error('Not found');
   },
   async detect(id) {
@@ -1734,49 +1687,57 @@ const API = {
   },
   async search(q) {
     if (!q.trim()) return { movies: [], series: [] };
-    const cleanQ = q.trim().toLowerCase();
+    const enc = encodeURIComponent(q.trim());
+    const qLower = q.trim().toLowerCase();
 
-    // Local dictionary match is instant, always shown at top regardless of source
-    const desiMatches = DESI_SERIES_MAP.filter(item =>
-      item.keywords.some(k => cleanQ.includes(k) || k.includes(cleanQ)) ||
-      item.title.toLowerCase().includes(cleanQ)
-    );
+    // Query TMDB AND Cinemeta at the same time (not one-then-fallback) so
+    // results are as complete as possible — TMDB tends to have better
+    // Western/mainstream coverage, Cinemeta often has better coverage of
+    // older/regional titles. Merging both gives a noticeably fuller result
+    // set than relying on just one source.
+    const tmdbSearch = tmdbEnabled()
+      ? Promise.all([
+          _fetch(`${TMDB_BASE}/search/movie?api_key=${TMDB_API_KEY}&query=${enc}&include_adult=false`, 1, 30000).catch(() => ({ results: [] })),
+          _fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${enc}&include_adult=false`, 1, 30000).catch(() => ({ results: [] }))
+        ]).then(async ([mr, sr]) => {
+          const [mIds, sIds] = await Promise.all([
+            tmdbResolveImdbIds((mr.results || []).slice(0, 12), 'movie'),
+            tmdbResolveImdbIds((sr.results || []).slice(0, 12), 'tv')
+          ]);
+          return { movies: mIds.map(m => mapTmdb(m, 'movie')), series: sIds.map(m => mapTmdb(m, 'series')) };
+        })
+      : Promise.resolve({ movies: [], series: [] });
 
-    let movies = [], series = [];
-    if (tmdbEnabled()) {
-      try {
-        const enc = encodeURIComponent(q.trim());
-        const [mr, sr] = await Promise.all([
-          _fetch(`${TMDB_BASE}/search/movie?api_key=${TMDB_API_KEY}&query=${enc}`, 1, 30000),
-          _fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${enc}`, 1, 30000)
-        ]);
-        const [mIds, sIds] = await Promise.all([
-          tmdbResolveImdbIds((mr.results || []).slice(0, 10), 'movie'),
-          tmdbResolveImdbIds((sr.results || []).slice(0, 10), 'tv')
-        ]);
-        movies = mIds.map(m => mapTmdb(m, 'movie'));
-        series = sIds.map(m => mapTmdb(m, 'series'));
-      } catch (e) { /* fall through to Cinemeta below */ }
-    }
+    const cinemetaSearch = Promise.all([
+      _fetch(`${CBASE}/catalog/movie/top/search=${enc}.json`, 1, 30000).catch(() => ({ metas: [] })),
+      _fetch(`${CBASE}/catalog/series/top/search=${enc}.json`, 1, 30000).catch(() => ({ metas: [] }))
+    ]).then(([mr, sr]) => ({
+      movies: (mr.metas || []).map(m => mapMeta(m, 'movie')),
+      series: (sr.metas || []).map(m => mapMeta(m, 'series'))
+    }));
 
-    if (!movies.length && !series.length) {
-      const enc = encodeURIComponent(q.trim());
-      const [mr, sr] = await Promise.all([
-        _fetch(`${CBASE}/catalog/movie/top/search=${enc}.json`, 1, 30000).catch(() => ({ metas: [] })),
-        _fetch(`${CBASE}/catalog/series/top/search=${enc}.json`, 1, 30000).catch(() => ({ metas: [] }))
-      ]);
-      movies = (mr.metas || []).map(m => mapMeta(m, 'movie'));
-      series = (sr.metas || []).map(m => mapMeta(m, 'series'));
-    }
+    const [tmdbRes, cinemetaRes] = await Promise.all([tmdbSearch, cinemetaSearch]);
 
-    // Inject Desi dictionary matches at the top of results
-    desiMatches.forEach(d => {
-      if (d.type === 'series') {
-        if (!series.some(s => s.id === d.id)) series.unshift(d);
-      } else {
-        if (!movies.some(m => m.id === d.id)) movies.unshift(d);
-      }
-    });
+    // Merge + dedupe by IMDb id, TMDB first since it resolved fewer/more
+    // relevant matches by relevance score already.
+    const dedupe = (a, b) => {
+      const seen = new Set(a.map(x => x.id));
+      return [...a, ...b.filter(x => x.id && !seen.has(x.id))];
+    };
+    let movies = dedupe(tmdbRes.movies, cinemetaRes.movies);
+    let series = dedupe(tmdbRes.series, cinemetaRes.series);
+
+    // Relevance sort: exact title match first, then "starts with", then
+    // "contains" — a plain merge left better matches buried under noise.
+    const rank = (title) => {
+      const t = (title || '').toLowerCase();
+      if (t === qLower) return 0;
+      if (t.startsWith(qLower)) return 1;
+      if (t.includes(qLower)) return 2;
+      return 3;
+    };
+    movies.sort((a, b) => rank(a.title) - rank(b.title));
+    series.sort((a, b) => rank(a.title) - rank(b.title));
 
     return { movies, series };
   },
@@ -1925,7 +1886,7 @@ function withValidIds(list) {
 async function initHero(retry = true) {
   try {
     const [mv, sv] = await Promise.all([API.catalog('movie', 'top'), API.catalog('series', 'top')]);
-    S.heroItems = [...withValidIds(mv).slice(0, 6), ...withValidIds(sv).slice(0, 4), ...DESI_SERIES_MAP.slice(0, 3)].sort(() => Math.random() - .5);
+    S.heroItems = [...withValidIds(mv).slice(0, 8), ...withValidIds(sv).slice(0, 6)].sort(() => Math.random() - .5);
     renderHero();
     const dots = document.getElementById('heroDots');
     dots.innerHTML = S.heroItems.map((_, i) => `<span class="hero-dot${i === 0 ? ' active' : ''}" onclick="setHero(${i})"></span>`).join('');
@@ -1971,7 +1932,7 @@ async function loadRows(retry = true) {
   try {
     const [trend, bw, topS] = await Promise.all([
       API.catalog('movie', 'top', null, 0),
-      API.catalog('movie', 'top', 'Romance', 0),
+      API.regional('movie', 'hi', 0), // live Bollywood/Hindi row via TMDB language filter (falls back to Cinemeta Romance genre if TMDB isn't configured)
       API.catalog('series', 'top', null, 0)
     ]);
     const render = (id, list, sz) => {
@@ -1979,9 +1940,8 @@ async function loadRows(retry = true) {
       if (el) el.innerHTML = withValidIds(list).slice(0, 16).map(i => buildCard(i, sz)).join('');
     };
     render('trendingRow', trend, 'featured');
-    // Prepend popular desi titles
-    render('bollywoodRow', [...DESI_SERIES_MAP.slice(0, 4), ...bw], 'featured');
-    render('seriesRow', [...DESI_SERIES_MAP.filter(d => d.type === 'series'), ...topS], 'featured');
+    render('bollywoodRow', bw, 'featured');
+    render('seriesRow', topS, 'featured');
   } catch (e) {
     if (retry) { setTimeout(() => loadRows(false), 2500); return; }
     ids.forEach(id => {
@@ -2039,11 +1999,7 @@ async function loadSeriesGrid(append = false) {
     items = (items || []).filter(i => i.id && !S.seriesSeenIds.has(i.id));
     items.forEach(i => S.seriesSeenIds.add(i.id));
 
-    if (!append) {
-      const desi = DESI_SERIES_MAP.filter(d => d.type === 'series');
-      desi.forEach(d => S.seriesSeenIds.add(d.id));
-      grid.innerHTML = desi.map(i => buildCard(i, 'big')).join('');
-    }
+    if (!append) grid.innerHTML = '';
     grid.innerHTML += items.map(i => buildCard(i, 'big')).join('');
     S.seriesSkip += 20;
     document.getElementById('seriesLoadMoreWrap').style.display = items.length >= 5 ? 'block' : 'none';
@@ -2811,7 +2767,14 @@ auth.onAuthStateChanged(user => {
       lastSeen: firebase.database.ServerValue.TIMESTAMP
     });
   } else {
-    lock.style.display = 'flex';
+    // A shared link ("/?watch=ttXXXXXXX" or the /watch/:id redirect) should
+    // let a guest watch immediately — requiring login just to view a movie
+    // someone sent them defeats the whole point of sharing. Login stays
+    // mandatory for browsing the rest of the app (home, search, etc.);
+    // watchlist/likes/history simply won't save until they do sign in —
+    // toggleWatchlist/toggleLike already prompt for that at the right time.
+    const hasWatchParam = new URLSearchParams(window.location.search).has('watch');
+    lock.style.display = hasWatchParam ? 'none' : 'flex';
     S.watchlist = {}; S.likes = {}; S.history = {};
   }
 });
@@ -3000,15 +2963,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  document.getElementById('lockGoogleBtn').addEventListener('click', () =>
-    auth.signInWithPopup(googleProvider).catch(e => toast('❌ ' + e.message, 'error'))
-  );
-  document.getElementById('lockGoogleSignBtn').addEventListener('click', () =>
-    auth.signInWithPopup(googleProvider).catch(e => toast('❌ ' + e.message, 'error'))
-  );
+  /* ---- GOOGLE SIGN-IN: redirect flow, not popup ----
+     signInWithPopup opens a separate browser window/tab to complete OAuth.
+     That reliably fails or hangs inside an installed standalone PWA and in
+     many mobile WebViews (no proper popup context to return the result to)
+     — this was the "Google sign-in doesn't work properly" issue. signIn
+     WithRedirect instead navigates the whole page to Google and back,
+     which works identically in a normal browser tab, a standalone PWA, and
+     mobile WebViews. The result is picked up by getRedirectResult() below,
+     which runs once on every page load. */
+  document.getElementById('lockGoogleBtn').addEventListener('click', () => {
+    auth.signInWithRedirect(googleProvider).catch(e => toast('❌ ' + e.message, 'error'));
+  });
+  document.getElementById('lockGoogleSignBtn').addEventListener('click', () => {
+    auth.signInWithRedirect(googleProvider).catch(e => toast('❌ ' + e.message, 'error'));
+  });
   document.getElementById('accountLogoutBtn').addEventListener('click', () => {
     auth.signOut();
     toast('Logged out. Bye! 👋', 'info');
+  });
+
+  // Picks up the result after Google redirects back to this page.
+  // Runs harmlessly (resolves to null) on every normal page load too.
+  auth.getRedirectResult().then(result => {
+    if (result && result.user) {
+      toast(`✅ Welcome, ${result.user.displayName || 'friend'}!`, 'success');
+    }
+  }).catch(e => {
+    if (e && e.code !== 'auth/no-auth-event') toast('❌ Google sign-in failed: ' + e.message, 'error');
   });
 
   initHero();
