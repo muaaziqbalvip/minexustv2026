@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script src="https://quge5.com/88/tag.min.js" data-zone="270795" async data-cfasync="false"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>MINEXUS TV — 4K Cinema, Pakistani & Indian Series & Live TV</title>
@@ -645,6 +644,25 @@ input,select{font-family:inherit}
 
 /* All Servers Bar */
 .server-section{padding:12px 14px 6px;flex-shrink:0}
+
+/* ===== AD SLOT CONTAINERS =====
+   Populated at runtime from Firebase app_config/ad_slots (see Admin Panel →
+   Monetization tab) with whatever ad-network embed code is pasted there.
+   Hidden by default (display:none in markup) and only shown once real ad
+   HTML is injected, so an empty/unconfigured slot never leaves a blank box
+   on the page. */
+.ad-slot{
+  margin:14px;border-radius:12px;overflow:hidden;
+  background:var(--bg3);border:1px solid var(--border);
+  min-height:50px;display:flex;align-items:center;justify-content:center;
+  position:relative;
+}
+.ad-slot::before{
+  content:'Advertisement';
+  position:absolute;top:4px;left:8px;font-size:9px;font-weight:700;
+  color:var(--text3);letter-spacing:.5px;text-transform:uppercase;
+  opacity:.6;pointer-events:none;
+}
 .server-label{
   font-size:10px;font-weight:800;letter-spacing:1px;
   color:var(--text3);text-transform:uppercase;margin-bottom:8px;
@@ -881,6 +899,7 @@ input,select{font-family:inherit}
   window.__MINEXUS_PWA_OK__ = isStandalone();
 })();
 </script>
+
 <!-- ===== NON-BLOCKING "INSTALL APP" NUDGE =====
      Small dismissable banner shown only when NOT running as the installed
      app. The browser experience works exactly the same either way — this
@@ -911,9 +930,7 @@ input,select{font-family:inherit}
       <button class="auth-tbtn active" id="lockTabLogin">Login</button>
       <button class="auth-tbtn" id="lockTabSignup">Register</button>
     </div>
-<a href="https://www.effectivecpmnetwork.com/wyccip3g?key=472384bf63b5f8dfb90269618247026a" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:8px;background:linear-gradient(135deg,#ffd700,#ff9100);color:#000;font-weight:900;text-decoration:none;font-size:13px;box-shadow:0 0 14px rgba(255,215,0,0.35);">
-  ⚡ 4K Ultra VIP Stream
-</a>
+
 
     <div id="lockLoginForm">
       <div class="auth-field-row">
@@ -1054,6 +1071,9 @@ input,select{font-family:inherit}
     <div class="hero-dots" id="heroDots"></div>
   </section>
 
+  <!-- AD SLOT: Home Top (below hero, above content — high visibility, non-intrusive) -->
+  <div class="ad-slot" id="adSlotHomeTop" style="display:none"></div>
+
   <!-- DIRECT PLAY BAR -->
   <section>
     <div class="direct-bar">
@@ -1087,6 +1107,9 @@ input,select{font-family:inherit}
       <div class="h-scroll" id="trendingRow"></div>
     </div>
   </section>
+
+  <!-- AD SLOT: Between Home Rows (natural scroll-break placement) -->
+  <div class="ad-slot" id="adSlotHomeMid" style="display:none"></div>
 
   <!-- BOLLYWOOD & DESI CINEMA -->
   <section class="section">
@@ -1280,6 +1303,9 @@ input,select{font-family:inherit}
     <div class="servers-row" id="serversRow"></div>
   </div>
 
+  <!-- AD SLOT: Player (below server picker, never covers the video — highest natural engagement zone) -->
+  <div class="ad-slot" id="adSlotPlayer" style="display:none"></div>
+
   <!-- Series Episode Bar -->
   <div class="episodes-section" id="episodesSection" style="display:none">
     <div class="season-row">
@@ -1338,6 +1364,7 @@ input,select{font-family:inherit}
     <p style="font-size:11px;color:var(--text3)">High quality encrypted HLS player stream for mobile and desktop.</p>
   </div>
 </div>
+
 <!-- ===== BOTTOM TAB BAR (MOBILE) ===== -->
 <nav class="bottom-bar" id="bottomBar">
   <button class="tab-btn active" data-view="home">
@@ -1524,6 +1551,31 @@ const SERVERS = {
    2026 scraper/aggregator project, a reliable signal they've gone stale). */
 const SERVER_FALLBACK_ORDER = ['server1','server2','server3','server4','server6','server7','server8','server9','server13','server14'];
 
+/* Custom servers added from the Admin Panel (Live Servers → "Add / Manage
+   Custom Servers") sync in from Firebase `custom_servers/{key}` and get
+   merged directly into SERVERS here, so they behave identically to the
+   built-in list everywhere else in the app (server picker, fallback order,
+   default-server selection). See the db.ref('custom_servers') listener
+   further down for where this actually gets called. */
+function mergeCustomServers(customServersObj) {
+  // Remove any previously-merged custom servers first (in case one was
+  // deleted from admin — Firebase 'value' events always send the full set).
+  Object.keys(SERVERS).forEach(k => { if (k.startsWith('custom')) delete SERVERS[k]; });
+  Object.entries(customServersObj || {}).forEach(([key, s]) => {
+    if (!s || !s.name || !s.movieUrl || !s.seriesUrl) return;
+    SERVERS[key] = {
+      name: s.name,
+      buildUrl: (id, t, se, ep) => {
+        const pattern = t === 'series' ? s.seriesUrl : s.movieUrl;
+        return pattern.replace(/\{id\}/g, id).replace(/\{s\}/g, se).replace(/\{e\}/g, ep);
+      }
+    };
+  });
+  // Re-render the server picker if the player is currently open, so a
+  // newly-added server shows up immediately without needing a reload.
+  if (S.view === 'player' && typeof initServerButtons === 'function') initServerButtons();
+}
+
 /* ---- LIVE CATALOG API CLIENT (TMDB primary + Cinemeta fallback) ----
    TMDB (The Movie Database) gives real-time trending/now-playing/on-air data
    with a personal free API key. The key is managed live from the ADMIN PANEL
@@ -1597,7 +1649,7 @@ function mapTmdb(m, type) {
     rating: m.vote_average ? m.vote_average.toFixed(1) : '8.0',
     genres: (m.genres || []).map(g => g.name),
     runtime: type === 'series' ? 'TV Series' : (m.runtime ? `${m.runtime}m` : 'HD Movie'),
-    poster: m.poster_path ? `${TMDB_IMG}/w500${m.poster_path}` : '',
+    poster: m.poster_path ? `${TMDB_IMG}/w780${m.poster_path}` : '',
     backdrop: m.backdrop_path ? `${TMDB_IMG}/original${m.backdrop_path}` : '',
     synopsis: m.overview || 'Watch now in full HD on MINEXUS TV.',
     videos: []
@@ -2704,9 +2756,13 @@ db.ref('app_config').on('value', snap => {
     document.getElementById('forceUpdateOverlay').style.display = 'none';
   }
 
-  // Live-sync default streaming server from admin panel
+  // Live-sync default streaming server from admin panel. Stored even if
+  // SERVERS[newDefaultServer] isn't populated yet (e.g. it's a custom
+  // server and the custom_servers listener below hasn't fired yet) — the
+  // pendingDefaultServer/mergeCustomServers flow re-applies it once ready.
   const newDefaultServer = (cfg && cfg.default_server) || 'server1';
-  if (newDefaultServer !== S.defaultServer && SERVERS[newDefaultServer]) {
+  S.pendingDefaultServer = newDefaultServer;
+  if (SERVERS[newDefaultServer]) {
     S.defaultServer = newDefaultServer;
   }
 
@@ -2722,6 +2778,48 @@ db.ref('app_config').on('value', snap => {
     if (S.view === 'series') loadSeriesGrid();
   }
 });
+
+// Live-sync admin-added custom embed servers (Admin Panel → Live Servers →
+// "Add / Manage Custom Servers"). Merges into SERVERS so custom entries work
+// identically to built-in ones everywhere in the app.
+db.ref('custom_servers').on('value', snap => {
+  mergeCustomServers(snap.val() || {});
+  // If the configured default server was a custom one that only just
+  // became available, apply it now instead of silently staying on server1.
+  if (S.pendingDefaultServer && SERVERS[S.pendingDefaultServer]) {
+    S.defaultServer = S.pendingDefaultServer;
+  }
+});
+
+/* ---- AD SLOTS ----
+   Each slot (adSlotHomeTop, adSlotHomeMid, adSlotPlayer) gets its HTML from
+   Firebase app_config/ad_slots/{slotName}, set from the Admin Panel's
+   Monetization tab. A slot stays hidden until it actually has content, so
+   nothing ever shows an empty box. Paste whatever your ad network (Google
+   AdSense, etc.) gives you as embed code — it's injected as-is. */
+db.ref('app_config/ad_slots').on('value', snap => {
+  const slots = snap.val() || {};
+  ['adSlotHomeTop', 'adSlotHomeMid', 'adSlotPlayer'].forEach(slotId => {
+    const el = document.getElementById(slotId);
+    if (!el) return;
+    const html = slots[slotId] || '';
+    if (html.trim()) {
+      el.innerHTML = html;
+      el.style.display = 'flex';
+      // Re-execute any <script> tags — innerHTML doesn't run them automatically.
+      el.querySelectorAll('script').forEach(oldScript => {
+        const newScript = document.createElement('script');
+        [...oldScript.attributes].forEach(attr => newScript.setAttribute(attr.name, attr.value));
+        newScript.textContent = oldScript.textContent;
+        oldScript.replaceWith(newScript);
+      });
+    } else {
+      el.innerHTML = '';
+      el.style.display = 'none';
+    }
+  });
+});
+
 
 /* ---- AUTH STATE ---- */
 auth.onAuthStateChanged(user => {
@@ -3023,6 +3121,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
-<script src="https://pl30888514.effectivecpmnetwork.com/2a/31/a7/2a31a72a19cc74027f8f3c8e9dd444e0.js"></script>
 </body>
 </html>

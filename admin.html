@@ -155,6 +155,7 @@ tr:hover td{background:var(--bg-card-hover)}
     <button class="nav-item" data-tab="channels"><i class="fas fa-tv"></i> Live TV Channels & M3U</button>
     <button class="nav-item" data-tab="version"><i class="fas fa-code-branch"></i> App Version & Update</button>
     <button class="nav-item" data-tab="notifications"><i class="fas fa-bullhorn"></i> Push Notifications</button>
+    <button class="nav-item" data-tab="monetization"><i class="fas fa-dollar-sign" style="color:var(--gold)"></i> Monetization / Ads</button>
     <button class="nav-item" data-tab="users"><i class="fas fa-users"></i> Registered Users</button>
   </nav>
 
@@ -382,9 +383,9 @@ tr:hover td{background:var(--bg-card-hover)}
           <h2 class="card-title"><i class="fas fa-server" style="color:var(--gold)"></i> Default Streaming Server</h2>
         </div>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.6">
-          MINEXUS TV includes 30+ embed servers. Pick whichever one is currently fastest/most reliable and every
-          visitor's player will open on it by default. Viewers can still manually switch servers per title, and
-          the player auto-suggests "Try Next Server" if the default one is slow.
+          MINEXUS TV includes 25+ built-in embed servers, plus any custom ones you add below. Pick whichever is
+          currently fastest/most reliable and every visitor's player will open on it by default. Viewers can still
+          manually switch servers per title, and the player auto-suggests "Try Next Server" if the default one is slow.
         </p>
         <form id="defaultServerForm" class="form-grid">
           <div class="form-group" style="grid-column:1/-1">
@@ -396,6 +397,36 @@ tr:hover td{background:var(--bg-card-hover)}
             <span id="defaultServerStatus" style="font-size:11px;color:var(--text-muted);margin-left:10px"></span>
           </div>
         </form>
+      </div>
+
+      <!-- CUSTOM SERVER MANAGEMENT -->
+      <div class="card" style="margin-top:20px">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-plus-square" style="color:var(--gold)"></i> Add / Manage Custom Servers</h2>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.6">
+          Found a new working embed provider? Add it here — it syncs live to every visitor's server list, no code
+          or redeploy needed. Use <code>{id}</code> for the IMDb/TMDB ID, and for TV shows also
+          <code>{s}</code> (season) and <code>{e}</code> (episode) in the URL pattern.
+        </p>
+        <form id="customServerForm" class="form-grid">
+          <div class="form-group">
+            <label>Display Name</label>
+            <input type="text" class="form-control" id="csName" placeholder="e.g. MyStream Pro" required>
+          </div>
+          <div class="form-group">
+            <label>Movie URL Pattern</label>
+            <input type="text" class="form-control" id="csMovieUrl" placeholder="https://example.com/embed/movie/{id}" required>
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>TV/Series URL Pattern</label>
+            <input type="text" class="form-control" id="csSeriesUrl" placeholder="https://example.com/embed/tv/{id}/{s}/{e}" required>
+          </div>
+          <div style="grid-column:1/-1">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Add Server</button>
+          </div>
+        </form>
+        <div id="customServerList" style="display:flex;flex-direction:column;gap:8px;margin-top:16px"></div>
       </div>
     </div>
 
@@ -419,7 +450,58 @@ tr:hover td{background:var(--bg-card-hover)}
             <textarea class="form-control" id="notifMsg" rows="2" placeholder="Watch now in 4K on MINEXUS TV!" required></textarea>
           </div>
           <div style="grid-column:1/-1">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-broadcast-tower"></i> Send Notification</button>
+            <button type="submit" class="btn btn-primary" id="notifSubmitBtn"><i class="fas fa-broadcast-tower"></i> Send Notification</button>
+            <button type="button" class="btn" id="notifCancelEditBtn" style="display:none;background:var(--bg3);color:var(--text2)">Cancel Edit</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-clock-rotate-left" style="color:var(--gold)"></i> Notification History</h2>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">
+          Edit or delete previously sent notifications. Editing updates the message everywhere it's still shown to users; deleting removes it entirely.
+        </p>
+        <div id="notifHistoryList" style="display:flex;flex-direction:column;gap:10px">
+          <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">Loading history...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MONETIZATION / AD SLOTS -->
+    <div class="tab-content" id="tab-monetization">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-dollar-sign" style="color:var(--gold)"></i> Ad Slots</h2>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.7">
+          Paste embed code from a <b>trusted, verified ad network</b> (Google AdSense, or a CPM network with a real
+          account you control) into any slot below — it syncs live to every visitor, no redeploy needed. Leave a
+          slot empty to hide it completely; nothing shows until you add code.
+          <br><br>
+          <b style="color:#ff6b6b">⚠️ Safety note:</b> only use code from networks you've personally signed up with
+          and verified. Random ad-tag snippets from unfamiliar sites are a common way malware and deceptive
+          redirects get distributed — several were caught and removed from this app for exactly that reason. When
+          in doubt, Google AdSense is the safest and most reliable option for a site like this.
+        </p>
+
+        <form id="adSlotsForm" class="form-grid">
+          <div class="form-group" style="grid-column:1/-1">
+            <label>🏠 Home Top (below the hero banner — most visible slot)</label>
+            <textarea class="form-control" id="adSlotHomeTop" rows="3" placeholder="<!-- Paste AdSense or other verified ad embed code here -->" style="font-family:monospace;font-size:11px"></textarea>
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>📜 Home Middle (between content rows — natural scroll break)</label>
+            <textarea class="form-control" id="adSlotHomeMid" rows="3" placeholder="<!-- Paste ad embed code here -->" style="font-family:monospace;font-size:11px"></textarea>
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>▶️ Player (below the server picker — highest engagement, never covers the video)</label>
+            <textarea class="form-control" id="adSlotPlayer" rows="3" placeholder="<!-- Paste ad embed code here -->" style="font-family:monospace;font-size:11px"></textarea>
+          </div>
+          <div style="grid-column:1/-1">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Ad Slots</button>
+            <span id="adSlotsStatus" style="font-size:11px;color:var(--text-muted);margin-left:10px"></span>
           </div>
         </form>
       </div>
@@ -457,6 +539,10 @@ tr:hover td{background:var(--bg-card-hover)}
 <div class="toast-box" id="toastBox"></div>
 
 <script>
+// Declared early so it's always available regardless of which Firebase
+// listener callback (app_config vs custom_servers) happens to fire first.
+let _customServersCache = {};
+
 const firebaseConfig = {
   apiKey: "AIzaSyCe9EAy36fx3RHy_cHOKP9BG8F_zkkTd4c",
   authDomain: "minexustv-a23ba.firebaseapp.com",
@@ -658,8 +744,6 @@ const SERVER_NAMES = {
   server21: 'Vid-Src.top', server22: 'AutoEmbed.cc', server23: 'Rive Stream', server24: 'CinemaOS',
   server25: 'Nunflix'
 };
-document.getElementById('defaultServerSelect').innerHTML = Object.entries(SERVER_NAMES)
-  .map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
 
 // Version
 db.ref('app_config').on('value', snap => {
@@ -671,7 +755,8 @@ db.ref('app_config').on('value', snap => {
   document.getElementById('tmdbApiKey').value = cfg.tmdb_api_key || '';
   document.getElementById('tmdbStatus').textContent = cfg.tmdb_api_key ? '✅ Live TMDB data active' : '⚠️ Not set — using Cinemeta fallback';
   document.getElementById('defaultServerSelect').value = cfg.default_server || 'server1';
-  document.getElementById('defaultServerStatus').textContent = `Currently: ${SERVER_NAMES[cfg.default_server] || SERVER_NAMES.server1}`;
+  const dsLabel = SERVER_NAMES[cfg.default_server] || (_customServersCache[cfg.default_server] && _customServersCache[cfg.default_server].name) || SERVER_NAMES.server1;
+  document.getElementById('defaultServerStatus').textContent = `Currently: ${dsLabel}`;
 });
 
 document.getElementById('versionForm').onsubmit = async (e) => {
@@ -696,24 +781,181 @@ document.getElementById('tmdbForm').onsubmit = async (e) => {
 document.getElementById('defaultServerForm').onsubmit = async (e) => {
   e.preventDefault();
   const server = document.getElementById('defaultServerSelect').value;
+  const label = SERVER_NAMES[server] || (_customServersCache[server] && _customServersCache[server].name) || server;
   await db.ref('app_config').update({ default_server: server });
-  toast(`Default Server set to ${SERVER_NAMES[server]}!`);
+  toast(`Default Server set to ${label}!`);
+};
+
+/* ---- CUSTOM SERVER MANAGEMENT ----
+   Custom servers live under Firebase `custom_servers/{key}` and get merged
+   into the built-in SERVERS list by index.html at runtime — see the
+   loadCustomServers() addition there. Keys are auto-generated (custom1,
+   custom2, ...) so they never collide with the built-in server1..server25. */
+
+function rebuildDefaultServerOptions() {
+  const sel = document.getElementById('defaultServerSelect');
+  const current = sel.value;
+  const builtIn = Object.entries(SERVER_NAMES).map(([k, v]) => `<option value="${k}">${escapeHtml(v)}</option>`);
+  const custom = Object.entries(_customServersCache).map(([k, v]) => `<option value="${k}">${escapeHtml(v.name)} (Custom)</option>`);
+  sel.innerHTML = builtIn.join('') + custom.join('');
+  if ([...sel.options].some(o => o.value === current)) sel.value = current;
+}
+
+document.getElementById('customServerForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('csName').value.trim();
+  const movieUrl = document.getElementById('csMovieUrl').value.trim();
+  const seriesUrl = document.getElementById('csSeriesUrl').value.trim();
+  if (!name || !movieUrl || !seriesUrl) return;
+  if (!movieUrl.includes('{id}') || !seriesUrl.includes('{id}')) {
+    toast('URL pattern must include {id}', 'error');
+    return;
+  }
+  const key = 'custom' + Date.now();
+  await db.ref(`custom_servers/${key}`).set({ name, movieUrl, seriesUrl, addedAt: firebase.database.ServerValue.TIMESTAMP });
+  document.getElementById('customServerForm').reset();
+  toast(`Server "${name}" added!`);
+};
+
+async function deleteCustomServer(key) {
+  if (!confirm('Remove this custom server? Visitors currently defaulted to it will fall back to server1.')) return;
+  await db.ref(`custom_servers/${key}`).remove();
+  toast('Custom server removed', 'info');
+}
+window.deleteCustomServer = deleteCustomServer;
+
+function renderCustomServerList() {
+  const el = document.getElementById('customServerList');
+  const entries = Object.entries(_customServersCache);
+  if (!entries.length) {
+    el.innerHTML = '<div style="text-align:center;padding:14px;color:var(--text-muted);font-size:12px">No custom servers added yet.</div>';
+    return;
+  }
+  el.innerHTML = entries.map(([key, s]) => `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div style="min-width:0">
+        <div style="font-weight:700;font-size:13px">${escapeHtml(s.name)}</div>
+        <div style="font-size:10.5px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(s.movieUrl)}</div>
+      </div>
+      <button class="btn" style="padding:6px 10px;background:rgba(255,71,87,.12);color:#ff4757;flex-shrink:0" onclick="deleteCustomServer('${key}')"><i class="fas fa-trash"></i></button>
+    </div>
+  `).join('');
+}
+
+db.ref('custom_servers').on('value', snap => {
+  _customServersCache = snap.val() || {};
+  rebuildDefaultServerOptions();
+  renderCustomServerList();
+});
+
+// Monetization / Ad Slots
+const AD_SLOT_IDS = ['adSlotHomeTop', 'adSlotHomeMid', 'adSlotPlayer'];
+
+db.ref('app_config/ad_slots').on('value', snap => {
+  const slots = snap.val() || {};
+  AD_SLOT_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = slots[id] || '';
+  });
+  const activeCount = AD_SLOT_IDS.filter(id => (slots[id] || '').trim()).length;
+  document.getElementById('adSlotsStatus').textContent = activeCount
+    ? `${activeCount} of ${AD_SLOT_IDS.length} slots active`
+    : 'No ad slots configured yet';
+});
+
+document.getElementById('adSlotsForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const payload = {};
+  AD_SLOT_IDS.forEach(id => { payload[id] = document.getElementById(id).value.trim(); });
+  await db.ref('app_config/ad_slots').set(payload);
+  toast('Ad Slots Saved — live for all visitors now!');
 };
 
 // Notifications
+let notifEditingId = null;
+
 document.getElementById('notifForm').onsubmit = async (e) => {
   e.preventDefault();
   const title = document.getElementById('notifTitle').value.trim();
   const target = document.getElementById('notifTargetId').value.trim();
   const message = document.getElementById('notifMsg').value.trim();
 
-  await db.ref('notifications').push({ title, target, message, time: firebase.database.ServerValue.TIMESTAMP });
+  if (notifEditingId) {
+    // Editing an existing notification — update() so we don't lose the
+    // original timestamp, and keep it in place in the history list.
+    await db.ref(`notifications/${notifEditingId}`).update({ title, target, message });
+    toast('Notification Updated!');
+    exitNotifEditMode();
+  } else {
+    await db.ref('notifications').push({ title, target, message, time: firebase.database.ServerValue.TIMESTAMP });
+    toast('Push Notification Broadcasted!');
+  }
   document.getElementById('notifForm').reset();
-  toast('Push Notification Broadcasted!');
 };
 
+function enterNotifEditMode(id, data) {
+  notifEditingId = id;
+  document.getElementById('notifTitle').value = data.title || '';
+  document.getElementById('notifTargetId').value = data.target || '';
+  document.getElementById('notifMsg').value = data.message || '';
+  document.getElementById('notifSubmitBtn').innerHTML = '<i class="fas fa-check"></i> Save Changes';
+  document.getElementById('notifCancelEditBtn').style.display = 'inline-flex';
+  document.getElementById('notifForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function exitNotifEditMode() {
+  notifEditingId = null;
+  document.getElementById('notifSubmitBtn').innerHTML = '<i class="fas fa-broadcast-tower"></i> Send Notification';
+  document.getElementById('notifCancelEditBtn').style.display = 'none';
+}
+document.getElementById('notifCancelEditBtn').addEventListener('click', () => {
+  document.getElementById('notifForm').reset();
+  exitNotifEditMode();
+});
+
+async function deleteNotif(id) {
+  if (!confirm('Delete this notification permanently?')) return;
+  await db.ref(`notifications/${id}`).remove();
+  toast('Notification Deleted', 'info');
+  if (notifEditingId === id) { document.getElementById('notifForm').reset(); exitNotifEditMode(); }
+}
+
+function renderNotifHistory(items) {
+  const el = document.getElementById('notifHistoryList');
+  if (!items.length) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">No notifications sent yet.</div>';
+    return;
+  }
+  el.innerHTML = items.map(([id, n]) => `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
+      <div style="min-width:0">
+        <div style="font-weight:700;font-size:13px;margin-bottom:3px">${escapeHtml(n.title || '(untitled)')}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">${escapeHtml(n.message || '')}</div>
+        <div style="font-size:10.5px;color:var(--text-muted)">
+          ${n.target ? `Target: ${escapeHtml(n.target)} • ` : ''}${n.time ? new Date(n.time).toLocaleString() : ''}
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn" style="padding:6px 10px;background:var(--bg2);color:var(--text2)" onclick='editNotifFromHistory("${id}")'><i class="fas fa-pen"></i></button>
+        <button class="btn" style="padding:6px 10px;background:rgba(255,71,87,.12);color:#ff4757" onclick="deleteNotif('${id}')"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+let _notifCache = {};
+window.editNotifFromHistory = (id) => enterNotifEditMode(id, _notifCache[id] || {});
+
 db.ref('notifications').on('value', snap => {
-  document.getElementById('statNotifications').textContent = Object.keys(snap.val() || {}).length;
+  const val = snap.val() || {};
+  _notifCache = val;
+  document.getElementById('statNotifications').textContent = Object.keys(val).length;
+  const sorted = Object.entries(val).sort((a, b) => (b[1].time || 0) - (a[1].time || 0));
+  renderNotifHistory(sorted);
 });
 </script>
 </body>
