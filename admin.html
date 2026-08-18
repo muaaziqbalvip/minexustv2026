@@ -38,6 +38,13 @@ body{
   min-height:100vh;
   display:flex;
 }
+/* #adminApp wraps the sidebar + main-wrap (see markup). body's display:flex
+   only affects its DIRECT children, so without this, #adminApp being a
+   plain display:block div broke the side-by-side sidebar/content layout —
+   everything rendered stacked vertically instead of side-by-side. The JS
+   that shows this container sets display:flex directly (not 'block'), so
+   this class isn't strictly required, but is kept as a safety net. */
+#adminApp{width:100%}
 button{cursor:pointer;border:none;background:none;font-family:inherit;color:inherit}
 input,select,textarea{font-family:inherit;border:none;outline:none}
 
@@ -708,6 +715,7 @@ tr:hover td{background:var(--bg-card-hover)}
   </div>
 </main>
 
+</div>
 <div class="toast-box" id="toastBox"></div>
 
 <script>
@@ -823,6 +831,16 @@ async function clearAllChannels() {
     toast('All channels deleted!');
   }
 }
+
+// All data listeners below only attach once admin access is verified (see
+// initAdminListeners() call in the auth state handler further down) —
+// previously they ran immediately at page load, before Firebase Auth had
+// even resolved whether anyone was signed in. Since these all read data
+// gated by the database rules, that meant the very first attempt was
+// always a permission-denied failure with no automatic retry, so the
+// dashboard could show stale/empty stats until a manual page refresh
+// happened to land after auth was ready.
+function initAdminListeners() {
 
 // Realtime Channels Listener
 db.ref('custom_channels').on('value', snap => {
@@ -1240,6 +1258,8 @@ db.ref('notifications').on('value', snap => {
   renderNotifHistory(sorted);
 });
 
+} // end initAdminListeners()
+
 /* ---- ADMIN LOGIN / ACCESS CONTROL ----
    The real security boundary is the Firebase Database Rules (see
    database.rules.json — only uid's listed under /admins with value `true`
@@ -1249,6 +1269,7 @@ db.ref('notifications').on('value', snap => {
    someone bypassed this HTML entirely and called the Firebase API directly,
    the database rules would still reject their writes. */
 let _adminAuthChecked = false;
+let _adminListenersStarted = false;
 
 auth.onAuthStateChanged(async (user) => {
   const overlay = document.getElementById('adminLoginOverlay');
@@ -1264,29 +1285,41 @@ auth.onAuthStateChanged(async (user) => {
     const adminSnap = await db.ref(`admins/${user.uid}`).get();
     if (adminSnap.exists() && adminSnap.val() === true) {
       overlay.style.display = 'none';
-      app.style.display = 'block';
+      app.style.display = 'flex';
+      if (!_adminListenersStarted) {
+        _adminListenersStarted = true;
+        initAdminListeners();
+      }
     } else {
-      // Signed in, but not an admin — sign them back out and show an error
-      // rather than leaving a signed-in-but-locked-out limbo state.
+      // Signed in, but this uid isn't listed under /admins with value
+      // `true`. Most common cause: SECURITY_SETUP.md Step 2 (adding the uid
+      // to /admins in Firebase Console) hasn't been done yet.
       overlay.style.display = 'flex';
       app.style.display = 'none';
-      if (!_adminAuthChecked) {
-        document.getElementById('adminLoginError').textContent = 'This account does not have admin access.';
-        document.getElementById('adminLoginError').style.display = 'block';
-      }
+      document.getElementById('adminLoginError').innerHTML =
+        `Signed in, but this account isn't registered as an admin.<br><span style="font-size:10.5px;opacity:.8">Add uid <code style="background:#000;padding:1px 4px;border-radius:3px">${user.uid}</code> to <code style="background:#000;padding:1px 4px;border-radius:3px">/admins</code> in Firebase Console (see SECURITY_SETUP.md).</span>`;
+      document.getElementById('adminLoginError').style.display = 'block';
       await auth.signOut();
     }
   } catch (e) {
-    // Rules correctly reject a non-admin's read of /admins/{uid} in some
-    // configurations — treat any read failure here as "not an admin".
+    // A read failure here almost always means the database.rules.json
+    // rules haven't been published in Firebase Console yet (still on the
+    // project's original/default rules), OR they were published but don't
+    // match what's in this repo. Surface the actual Firebase error code so
+    // it's diagnosable instead of a generic "Access denied".
     overlay.style.display = 'flex';
     app.style.display = 'none';
-    document.getElementById('adminLoginError').textContent = 'Access denied.';
+    document.getElementById('adminLoginError').innerHTML =
+      `Could not verify admin access (${esc2(e.code || e.message || 'unknown error')}).<br><span style="font-size:10.5px;opacity:.8">Make sure database.rules.json has been published in Firebase Console → Realtime Database → Rules (see SECURITY_SETUP.md).</span>`;
     document.getElementById('adminLoginError').style.display = 'block';
     await auth.signOut();
   }
   _adminAuthChecked = true;
 });
+
+function esc2(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 document.getElementById('adminLoginForm').onsubmit = async (e) => {
   e.preventDefault();
@@ -1323,6 +1356,5 @@ document.getElementById('adminLogoutBtn')?.addEventListener('click', () => {
   if (confirm('Sign out of the admin panel?')) auth.signOut();
 });
 </script>
-</div>
 </body>
 </html>

@@ -39,6 +39,17 @@
 
 یہی اصل حفاظت ہے — یہ rules اب کسی کو بھی (چاہے وہ آپ کی websites کی files copy کر لے) آپ کے database میں لکھنے سے روک دیں گے، جب تک وہ آپ کا verified admin account نہ ہو۔ چاہے کوئی آپ کی `index.html`/`admin.html` copy کر کے اپنی website بنا لے، وہ آپ کے database میں کچھ نہیں لکھ سکے گا۔
 
+**⚠️ اہم: اگر آپ نے پہلے یہ rules publish کی تھیں تو دوبارہ publish کریں** — اس version میں `leaderboard` اور `users` rules میں بگ فکس ہوئی ہے (leaderboard خالی دکھ رہا تھا اور admin panel میں users کا ڈیٹا صحیح نہیں آ رہا تھا)۔ پرانی rules کے ساتھ یہ مسئلے جاری رہیں گے۔
+
+## Step 4: Google Sign-In کے لیے Authorized Domain
+
+اگر آپ کے app میں "Sign in with Google" کام نہیں کر رہا:
+
+1. Firebase Console → **Authentication** → **Settings** tab → **Authorized domains** کھولیں
+2. چیک کریں کہ `minexustv.vercel.app` (یا آپ کا اصل domain) اس list میں موجود ہے
+3. اگر نہیں ہے تو **Add domain** پر click کر کے شامل کریں
+4. یہ بھی چیک کریں: Authentication → **Sign-in method** میں **Google** provider **Enabled** ہونا چاہیے (بند ہو تو on کریں)
+
 ---
 
 ## کیسے پتا چلے گا کہ سب کام کر گیا؟
@@ -47,6 +58,7 @@
 2. Step 1 والا email/password ڈال کر sign in کریں
 3. اگر admin panel کھل جائے — سب صحیح ہے ✅
 4. اگر "This account does not have admin access" آئے — Step 2 دوبارہ چیک کریں (uid صحیح ہے یا نہیں)
+5. اگر "Could not verify admin access" کوئی error code کے ساتھ آئے — Step 3 دوبارہ چیک کریں (rules publish ہوئیں یا نہیں)
 
 ## Password بھول جائیں تو؟
 

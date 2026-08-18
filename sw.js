@@ -3,7 +3,7 @@
    version instead of a stale cached build. Static assets (icons/manifest) still
    cache for speed & offline fallback. */
 
-const CACHE_VERSION = 'minexus-v3-' + '20260818';
+const CACHE_VERSION = 'minexus-v4-' + '20260818';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 
 const PRECACHE_ASSETS = [
@@ -48,6 +48,19 @@ self.addEventListener('fetch', e => {
 
   // Never touch non-GET, cross-origin API/stream/auth traffic
   if (req.method !== 'GET' || shouldBypass(url)) return;
+
+  // CRITICAL: only ever intercept same-origin requests. `req.mode ===
+  // 'navigate'` is true for ANY top-level navigation, including clicking an
+  // external link with target="_blank" (e.g. a WhatsApp/Instagram contact
+  // link on the Developer page) — without this origin check, the service
+  // worker would swallow that external navigation into its own HTML
+  // network-first/cache-fallback logic below, and its catch() fallback to
+  // caches.match('/index.html') would silently redirect the external link
+  // back into this app instead of letting it open normally. This was the
+  // "contact links go to Vercel instead of WhatsApp/etc" bug.
+  let sameOrigin = true;
+  try { sameOrigin = new URL(url).origin === self.location.origin; } catch (e2) { sameOrigin = false; }
+  if (!sameOrigin) return;
 
   const isHTML = req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html');
   const isAppShell = url.endsWith('/index.html') || url.endsWith('/') || url.includes('/admin');

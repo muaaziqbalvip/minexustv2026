@@ -9,7 +9,9 @@
         { "key": "Access-Control-Allow-Origin", "value": "*" },
         { "key": "Access-Control-Allow-Methods", "value": "GET, OPTIONS" },
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" }
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "interest-cohort=()" }
       ]
     },
     {
@@ -28,6 +30,10 @@
   "rewrites": [
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/admin-recover.html", "destination": "/admin-recover.html" },
+    { "source": "/privacy-policy.html", "destination": "/privacy-policy.html" },
+    { "source": "/privacy", "destination": "/privacy-policy.html" },
+    { "source": "/terms-of-service.html", "destination": "/terms-of-service.html" },
+    { "source": "/terms", "destination": "/terms-of-service.html" },
     { "source": "/sw.js", "destination": "/sw.js" },
     { "source": "/manifest.json", "destination": "/manifest.json" },
     { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
