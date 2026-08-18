@@ -9,6 +9,7 @@
 <meta name="keywords" content="MINEXUS TV, Pakistani Movies, Hindi Web Series, Aladdin Naam Toh Suna Hoga, Mere Paas Tum Ho, Maula Jatt, Live TV Streaming, 4K Cinema">
 <meta name="author" content="Muaaz Iqbal">
 <meta name="theme-color" content="#07080c">
+<meta name="google-adsense-account" content="ca-pub-6534138055091827">
 
 <!-- PWA Manifest & Icons -->
 <link rel="manifest" href="/manifest.json">
@@ -22,13 +23,13 @@
 <meta property="og:url" content="https://minexustv.vercel.app/">
 <meta property="og:title" content="MINEXUS TV — 4K Cinema & Live TV">
 <meta property="og:description" content="Stream all Pakistani, Bollywood & Hollywood movies, TV shows, and Live TV.">
-<meta property="og:image" content="https://images.metahub.space/logo/medium/tt1375666/img">
+<meta property="og:image" content="https://i.ibb.co/0yqS66nD/Chat-GPT-Image-Aug-17-2026-04-45-52-AM.png">
 
 <!-- Twitter Card Meta (also updated per-movie for share previews) -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="MINEXUS TV — 4K Cinema & Live TV">
 <meta name="twitter:description" content="Stream all Pakistani, Bollywood & Hollywood movies, TV shows, and Live TV.">
-<meta name="twitter:image" content="https://images.metahub.space/logo/medium/tt1375666/img">
+<meta name="twitter:image" content="https://i.ibb.co/0yqS66nD/Chat-GPT-Image-Aug-17-2026-04-45-52-AM.png">
 
 <!-- Schema.org JSON-LD for Google Search Engine -->
 <script type="application/ld+json">
@@ -87,6 +88,21 @@
   --font:'Inter',sans-serif;
   --font2:'Space Grotesk',sans-serif;
 }
+/* Light theme — toggled via Account → Settings → Dark Mode switch.
+   Only swaps surface/text colors; accent/gold/cyan stay identical so
+   branding is consistent between themes. */
+html.light-theme{
+  --bg:#f4f5f8;
+  --bg2:#ffffff;
+  --bg3:#eef0f4;
+  --bg4:#e4e7ee;
+  --border:rgba(0,0,0,0.08);
+  --border-active:rgba(229,9,20,0.35);
+  --text:#14161c;
+  --text2:#525868;
+  --text3:#8b91a2;
+}
+html, body{transition:background-color .25s ease, color .25s ease}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
 body{
   font-family:var(--font);
@@ -403,6 +419,14 @@ input,select{font-family:inherit}
   background:rgba(229,9,20,.9);border-radius:3px;padding:2px 5px;
   font-size:8px;font-weight:800;color:#fff;letter-spacing:.4px;
 }
+.card-resume-badge{
+  position:absolute;bottom:34px;left:6px;right:6px;
+  background:rgba(0,0,0,.75);backdrop-filter:blur(4px);
+  border:1px solid rgba(255,71,87,.5);border-radius:5px;
+  padding:3px 6px;font-size:9px;font-weight:700;color:#fff;
+  display:flex;align-items:center;gap:4px;
+}
+.card-resume-badge i{color:var(--accent);font-size:7px}
 
 .grid{
   display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;
@@ -531,6 +555,29 @@ input,select{font-family:inherit}
 }
 .acc-stat-box strong{display:block;font-size:16px;font-weight:900;color:#fff}
 .acc-stat-box span{font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase}
+
+/* ===== SETTINGS TAB: rows + iOS-style toggle switch ===== */
+.settings-row{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+  padding:14px 16px;
+}
+.settings-row-text{flex:1;min-width:0}
+.settings-row-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.settings-row-title i{color:var(--accent);width:14px;text-align:center}
+.settings-row-sub{font-size:11px;color:var(--text3);line-height:1.4}
+.switch{position:relative;display:inline-block;width:44px;height:25px;flex-shrink:0}
+.switch input{opacity:0;width:0;height:0}
+.switch-slider{
+  position:absolute;cursor:pointer;inset:0;background:var(--bg4);
+  border:1px solid var(--border);border-radius:999px;transition:.2s;
+}
+.switch-slider::before{
+  content:'';position:absolute;height:19px;width:19px;left:2px;top:2px;
+  background:#fff;border-radius:50%;transition:.2s;
+}
+.switch input:checked + .switch-slider{background:var(--accent);border-color:var(--accent)}
+.switch input:checked + .switch-slider::before{transform:translateX(19px)}
 
 .acc-sub-tabs{
   display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;
@@ -879,6 +926,19 @@ input,select{font-family:inherit}
 .site-footer .footer-heart{color:var(--accent);font-size:8px}
 
 </style>
+<script>
+// Applied synchronously in <head>, before any content paints, so a
+// returning visitor with light mode saved never sees a flash of the dark
+// theme first. The full settings object (S.settings) is initialized later
+// in the main script and reads the same localStorage key.
+(function() {
+  try {
+    if (localStorage.getItem('minexus_theme') === 'light') {
+      document.documentElement.classList.add('light-theme');
+    }
+  } catch (e) {}
+})();
+</script>
 </head>
 <body>
 
@@ -1266,6 +1326,8 @@ input,select{font-family:inherit}
       <button class="acc-stab" data-sub="watchlist"><i class="fas fa-bookmark"></i> My Watchlist</button>
       <button class="acc-stab" data-sub="likes"><i class="fas fa-heart"></i> Liked Movies</button>
       <button class="acc-stab" data-sub="searches"><i class="fas fa-search"></i> Searches</button>
+      <button class="acc-stab" data-sub="invite"><i class="fas fa-user-plus"></i> Invite Friends</button>
+      <button class="acc-stab" data-sub="settings"><i class="fas fa-gear"></i> Settings</button>
     </div>
 
     <div id="accTabContent" class="acc-list-grid"></div>
@@ -1819,7 +1881,15 @@ const S = {
   seriesFilter: 'all', seriesSkip: 0, seriesSeenIds: new Set(),
   channels: [], customChannels: [], activeCountry: 'PK',
   accountSubTab: 'history',
-  hlsInstance: null, playToken: 0
+  hlsInstance: null, playToken: 0,
+  // App settings — persisted locally per-device (not per-account, since a
+  // display preference shouldn't force-sync across someone's phone and TV).
+  settings: {
+    theme: localStorage.getItem('minexus_theme') || 'dark',
+    autoRotate: localStorage.getItem('minexus_autorotate') !== 'off', // default ON
+    dataSaver: localStorage.getItem('minexus_datasaver') === 'on',   // default OFF
+    autoplayNext: localStorage.getItem('minexus_autoplaynext') !== 'off' // default ON
+  }
 };
 
 function toast(msg, type = 'info') {
@@ -1870,6 +1940,7 @@ function switchView(name) {
       const cf = document.getElementById('cinemaFrame');
       if (cf) cf.src = '';
       resetShareMeta();
+      applyAutoRotate(false);
     }
   }
 
@@ -1900,8 +1971,23 @@ function buildCard(item, size = 'standard') {
   // If the primary URL 404s (common for niche series with sparse metadata),
   // fall back to the OTHER provider by IMDb id, then finally to a generated
   // placeholder — so a missing poster never leaves a broken image icon.
-  const primaryPoster = item.poster || `${IMGB}/poster/medium/${item.id}/img`;
+  let primaryPoster = item.poster || `${IMGB}/poster/medium/${item.id}/img`;
   const altPoster = `${IMGB}/poster/medium/${item.id}/img`;
+
+  // Data Saver: downgrade TMDB posters from w780 to w342 (roughly 1/4 the
+  // file size) when the setting is on. Cinemeta posters are already a
+  // fairly small fixed size, so only TMDB URLs need adjusting.
+  if (S.settings.dataSaver && primaryPoster.includes('image.tmdb.org')) {
+    primaryPoster = primaryPoster.replace('/w780/', '/w342/');
+  }
+
+  // "Continue Watching" resume badge — shown for history cards that have a
+  // saved season/episode beyond the very start, so the person can see at a
+  // glance where they'll pick back up without opening the title first.
+  const hasProgress = item.type === 'series' && (item.season > 1 || item.episode > 1);
+  const resumeBadge = hasProgress
+    ? `<div class="card-resume-badge"><i class="fas fa-play"></i> S${item.season}:E${item.episode}</div>`
+    : '';
 
   return `
     <div class="card ${size}" data-key="${key}">
@@ -1909,7 +1995,7 @@ function buildCard(item, size = 'standard') {
         data-fallback-stage="0"
         onerror="posterFallback(this, '${esc(altPoster)}')">
       <div class="card-overlay"><div class="card-play-icon"><i class="fas fa-play"></i></div></div>
-      ${rating}${typeBadge}
+      ${rating}${typeBadge}${resumeBadge}
       <div class="card-info">
         <div class="card-title">${esc(item.title)}</div>
         <div class="card-sub">${esc(item.year)} • ${(item.genres || []).slice(0, 1).join('')}</div>
@@ -2247,29 +2333,73 @@ window.addEventListener('blur', () => {
 });
 
 /* ---- MULTI-SERVER CINEMA PLAYER (MULTISEMBED DEFAULT) ---- */
-function openPlayer(item) {
+function openPlayer(item, forceRestart) {
   S.activeItem = item;
   S.activeServer = S.defaultServer; // Admin-configured default (Firebase app_config/default_server)
-  S.activeSeason = 1; S.activeEpisode = 1;
+
+  // Resume from where the user left off: if this title is already in their
+  // watch history with a saved season/episode, pick up there instead of
+  // always restarting at S1E1. Passing forceRestart=true (used by the
+  // "Watch from Start" button) skips this and always starts fresh.
+  const savedProgress = !forceRestart && S.user && S.history && S.history[item.id];
+  S.activeSeason = (savedProgress && savedProgress.season) || 1;
+  S.activeEpisode = (savedProgress && savedProgress.episode) || 1;
+  S.resumedFromHistory = !!savedProgress && (savedProgress.season > 1 || savedProgress.episode > 1);
+
   switchView('player');
   buildPlayerUI();
   playStream();
   loadPlayerMeta(item);
   updateShareableUrl(item);
+  applyAutoRotate(true);
 
   if (S.user) {
-    db.ref(`users/${S.user.uid}/history/${item.id}`).set({
-      id: item.id,
-      title: item.title,
-      poster: item.poster || '',
-      type: item.type || 'movie',
-      year: item.year || '2024',
-      watchedAt: firebase.database.ServerValue.TIMESTAMP
-    });
-
+    saveWatchProgress(item);
     db.ref(`users/${S.user.uid}/stats/watchCount`).transaction(c => (c || 0) + 1);
     db.ref(`users/${S.user.uid}/stats/points`).transaction(p => (p || 0) + 15);
   }
+
+  if (S.resumedFromHistory) {
+    toast(`▶️ Resuming ${item.type === 'series' ? `S${S.activeSeason}:E${S.activeEpisode}` : ''}`, 'info');
+  }
+}
+
+/* ---- AUTO-ROTATE ----
+   Locks the screen to landscape while watching (if the setting is on) and
+   releases the lock when leaving the player. The Screen Orientation lock
+   API only works on Android Chrome/Edge in a real fullscreen context and
+   silently no-ops elsewhere (iOS Safari, desktop) — that's expected and
+   harmless, the person can still rotate manually there. */
+function applyAutoRotate(entering) {
+  if (!S.settings.autoRotate) return;
+  try {
+    if (entering) {
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(() => {});
+      }
+    } else {
+      if (screen.orientation && screen.orientation.unlock) {
+        screen.orientation.unlock();
+      }
+    }
+  } catch (e) { /* orientation lock unsupported — ignore */ }
+}
+
+/* Saves/updates the current season+episode position for this title in the
+   signed-in user's watch history — called on open and on every episode
+   switch, so "Continue Watching" always reflects the real last-watched spot. */
+function saveWatchProgress(item) {
+  if (!S.user) return;
+  db.ref(`users/${S.user.uid}/history/${item.id}`).update({
+    id: item.id,
+    title: item.title,
+    poster: item.poster || '',
+    type: item.type || 'movie',
+    year: item.year || '2024',
+    season: S.activeSeason || 1,
+    episode: S.activeEpisode || 1,
+    watchedAt: firebase.database.ServerValue.TIMESTAMP
+  });
 }
 
 /* ---- SHAREABLE WATCH LINKS ----
@@ -2342,18 +2472,29 @@ function buildShareUrl(item) {
 
 async function copyShareLink(item) {
   const url = buildShareUrl(item);
+  // Build a rich share caption — matches the style of the screenshots
+  // Muaaz shared (title, year, rating, genre line before the link) so the
+  // WhatsApp message itself looks like a proper movie card even before the
+  // link preview loads.
+  const bits = [];
+  if (item.year) bits.push(item.year);
+  if (item.rating) bits.push(`⭐ ${item.rating}`);
+  if (item.genres && item.genres.length) bits.push(item.genres.slice(0, 2).join(', '));
+  const metaLine = bits.length ? ` (${bits.join(' • ')})` : '';
+  const shareText = `🎬 ${item.title}${metaLine}\nWatch now in HD on MINEXUS TV 👇`;
+
   try {
     if (navigator.share) {
-      await navigator.share({ title: item.title, text: `Watch ${item.title} on MINEXUS TV`, url });
+      await navigator.share({ title: item.title, text: shareText, url });
       return;
     }
-    await navigator.clipboard.writeText(url);
+    await navigator.clipboard.writeText(`${shareText}\n${url}`);
     toast('🔗 Link copied! Share it anywhere', 'success');
   } catch (e) {
     // navigator.share throws if user cancels the native sheet — not an error
     if (e && e.name === 'AbortError') return;
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(`${shareText}\n${url}`);
       toast('🔗 Link copied! Share it anywhere', 'success');
     } catch (e2) {
       toast('Could not copy link', 'error');
@@ -2425,6 +2566,40 @@ function buildPlayerUI() {
 
   initServerButtons();
 }
+
+/* ---- AUTOPLAY NEXT EPISODE (best-effort) ----
+   Several VidSrc-family embed players broadcast a postMessage when playback
+   ends (commonly {type:'PLAYER_EVENT', data:{event:'ended'}} or similar
+   shapes across providers). This listens globally for anything that looks
+   like an "ended" signal and auto-advances to the next episode if the
+   setting is on. Not every embed provider sends these — for ones that
+   don't, the manual "Next Episode" button still works as a fallback, so
+   nothing breaks either way. */
+window.addEventListener('message', (e) => {
+  if (!S.settings.autoplayNext) return;
+  if (S.view !== 'player' || !S.activeItem || S.activeItem.type !== 'series') return;
+  if (S.playToken === undefined) return;
+
+  let looksLikeEnded = false;
+  try {
+    const d = e.data;
+    if (typeof d === 'string') {
+      looksLikeEnded = /["']?event["']?\s*:\s*["']ended["']/i.test(d) || d === 'ended';
+    } else if (d && typeof d === 'object') {
+      const evt = d.event || (d.data && d.data.event) || d.type;
+      looksLikeEnded = typeof evt === 'string' && /ended|finish|complete/i.test(evt);
+    }
+  } catch (err) { /* ignore malformed messages from unrelated origins */ }
+
+  if (looksLikeEnded) {
+    // Small delay avoids double-firing if a provider sends the event twice.
+    if (S._autoplayDebounce) return;
+    S._autoplayDebounce = true;
+    setTimeout(() => { S._autoplayDebounce = false; }, 3000);
+    toast('⏭️ Autoplaying next episode...', 'info');
+    selectEp(S.activeEpisode + 1);
+  }
+});
 
 function playStream(isAutoFallback) {
   const item = S.activeItem;
@@ -2501,6 +2676,7 @@ function buildEpisodes() {
     S.activeEpisode = 1;
     renderChips(bySeason[S.activeSeason] || []);
     playStream();
+    if (S.activeItem) saveWatchProgress(S.activeItem);
   };
 
   document.getElementById('prevEpBtn').onclick = () => { if (S.activeEpisode > 1) selectEp(S.activeEpisode - 1); };
@@ -2524,6 +2700,7 @@ function selectEp(epNum) {
   });
   document.getElementById('curEpBadge').textContent = `S${S.activeSeason}:E${S.activeEpisode}`;
   playStream();
+  if (S.activeItem) saveWatchProgress(S.activeItem);
 }
 
 function directPlay(rawId) {
@@ -2707,6 +2884,9 @@ function renderAccountView() {
 
   refreshAccountCounts();
 
+  if (sub === 'invite') { renderInviteTab(contentEl); return; }
+  if (sub === 'settings') { renderSettingsTab(contentEl); return; }
+
   let items = [];
   if (sub === 'history') items = Object.values(S.history || {}).reverse();
   else if (sub === 'watchlist') items = Object.values(S.watchlist || {}).reverse();
@@ -2726,6 +2906,208 @@ function renderAccountView() {
   }
 
   contentEl.innerHTML = items.map(i => buildCard(i, 'standard')).join('');
+}
+
+/* ---- REFERRAL CREDITING ----
+   Called on every sign-in. Only actually credits points once per account —
+   guarded by users/{uid}/referredBy being unset — so repeat logins from the
+   same device (which still carries the ?ref= param in the URL/history)
+   never re-trigger the bonus. Matches the ref code against the inviteCodes
+   lookup index (see ensureInviteCodeRegistered below). */
+async function processReferralCredit(user) {
+  const refCode = new URLSearchParams(window.location.search).get('ref');
+  if (!refCode || refCode.length < 6) return;
+
+  try {
+    const snap = await db.ref(`users/${user.uid}/referredBy`).get();
+    if (snap.exists()) return; // already processed for this account, ever
+
+    // Can't refer yourself — compare against this user's own code prefix.
+    if (user.uid.slice(0, 8) === refCode) return;
+
+    // Firebase can't query "uid starts with X" directly, so referral codes
+    // are also written to a dedicated lookup index: inviteCodes/{code} -> uid.
+    const codeSnap = await db.ref(`inviteCodes/${refCode}`).get();
+    const referrerUid = codeSnap.exists() ? codeSnap.val() : null;
+    if (!referrerUid || referrerUid === user.uid) return;
+
+    await db.ref(`users/${user.uid}/referredBy`).set(referrerUid);
+    await db.ref(`users/${user.uid}/stats/points`).transaction(p => (p || 0) + 50);
+    await db.ref(`users/${referrerUid}/stats/points`).transaction(p => (p || 0) + 50);
+    await db.ref(`users/${referrerUid}/stats/referralCount`).transaction(c => (c || 0) + 1);
+
+    toast('🎉 Welcome bonus: +50 points for joining via invite!', 'success');
+  } catch (e) { /* referral is a nice-to-have, never block sign-in on failure */ }
+}
+
+/* Registers this user's own invite code in the lookup index (idempotent —
+   safe to call every time the Invite tab is opened) so a friend's
+   processReferralCredit call above can resolve who invited them. */
+async function ensureInviteCodeRegistered(user) {
+  const code = user.uid.slice(0, 8);
+  try {
+    const snap = await db.ref(`inviteCodes/${code}`).get();
+    if (!snap.exists()) await db.ref(`inviteCodes/${code}`).set(user.uid);
+  } catch (e) {}
+}
+
+/* ---- INVITE FRIENDS ----
+   Each signed-in user gets a stable invite code (their uid, shortened) and
+   a link that opens the app with ?ref=CODE. When someone signs up through
+   that link, both the inviter and the new user get a points bonus — see
+   the referral-crediting logic above. */
+function renderInviteTab(contentEl) {
+  ensureInviteCodeRegistered(S.user);
+  const code = S.user.uid.slice(0, 8);
+  const link = `${window.location.origin}/?ref=${code}`;
+  const referralCount = (S.userStats && S.userStats.referralCount) || 0;
+  const referralPoints = referralCount * 50;
+
+  contentEl.innerHTML = `
+    <div style="grid-column:1/-1">
+      <div style="background:linear-gradient(135deg,var(--bg3),var(--bg4));border:1px solid var(--border-active);border-radius:16px;padding:22px 18px;text-align:center;margin-bottom:16px">
+        <i class="fas fa-gift" style="font-size:28px;color:var(--gold);margin-bottom:10px"></i>
+        <h3 style="font-size:16px;font-weight:800;margin-bottom:6px">Invite Friends, Earn Points</h3>
+        <p style="font-size:12px;color:var(--text2);line-height:1.6;max-width:320px;margin:0 auto">
+          Share your invite link — when a friend signs up through it, you both get <b style="color:var(--gold)">+50 points</b> instantly.
+        </p>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:14px">
+        <div style="flex:1;background:var(--bg3);border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:20px;font-weight:900;color:var(--gold)">${referralCount}</div>
+          <div style="font-size:10.5px;color:var(--text3)">Friends Invited</div>
+        </div>
+        <div style="flex:1;background:var(--bg3);border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:20px;font-weight:900;color:var(--gold)">${referralPoints}</div>
+          <div style="font-size:10.5px;color:var(--text3)">Points Earned</div>
+        </div>
+      </div>
+
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <code style="flex:1;font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(link)}</code>
+        <button class="btn" style="padding:8px 12px;background:var(--bg4);flex-shrink:0" onclick="copyInviteLink('${esc(link)}')"><i class="fas fa-copy"></i></button>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="shareInviteLink('${esc(link)}')">
+        <i class="fas fa-share-nodes"></i> Share Invite Link
+      </button>
+    </div>
+  `;
+}
+
+async function copyInviteLink(link) {
+  try {
+    await navigator.clipboard.writeText(link);
+    toast('🔗 Invite link copied!', 'success');
+  } catch (e) {
+    toast('Could not copy link', 'error');
+  }
+}
+
+async function shareInviteLink(link) {
+  const text = `🎬 Join me on MINEXUS TV — free 4K movies, series & live TV!`;
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: 'MINEXUS TV', text, url: link });
+      return;
+    }
+    await copyInviteLink(link);
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+    await copyInviteLink(link);
+  }
+}
+
+/* ---- SETTINGS ---- */
+function renderSettingsTab(contentEl) {
+  const s = S.settings;
+  contentEl.innerHTML = `
+    <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:10px">
+
+      <div class="settings-row">
+        <div class="settings-row-text">
+          <div class="settings-row-title"><i class="fas fa-moon"></i> Dark Mode</div>
+          <div class="settings-row-sub">Switch between dark and light theme</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="setDarkMode" ${s.theme === 'dark' ? 'checked' : ''}>
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-text">
+          <div class="settings-row-title"><i class="fas fa-rotate"></i> Auto-Rotate While Watching</div>
+          <div class="settings-row-sub">Automatically switch to landscape when a video starts playing</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="setAutoRotate" ${s.autoRotate ? 'checked' : ''}>
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-text">
+          <div class="settings-row-title"><i class="fas fa-forward"></i> Autoplay Next Episode</div>
+          <div class="settings-row-sub">Automatically start the next episode when one ends</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="setAutoplayNext" ${s.autoplayNext ? 'checked' : ''}>
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="settings-row">
+        <div class="settings-row-text">
+          <div class="settings-row-title"><i class="fas fa-gauge-simple-high"></i> Data Saver</div>
+          <div class="settings-row-sub">Load smaller poster images to save mobile data</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="setDataSaver" ${s.dataSaver ? 'checked' : ''}>
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <div style="margin-top:8px;padding:14px;background:var(--bg3);border-radius:12px;font-size:11px;color:var(--text3);line-height:1.6">
+        <i class="fas fa-circle-info" style="color:var(--accent)"></i>
+        Settings are saved on this device. Sign in on another device to set them there too.
+      </div>
+    </div>
+  `;
+
+  document.getElementById('setDarkMode').addEventListener('change', e => {
+    applyTheme(e.target.checked ? 'dark' : 'light');
+  });
+  document.getElementById('setAutoRotate').addEventListener('change', e => {
+    S.settings.autoRotate = e.target.checked;
+    localStorage.setItem('minexus_autorotate', e.target.checked ? 'on' : 'off');
+    toast(e.target.checked ? 'Auto-rotate enabled' : 'Auto-rotate disabled', 'info');
+  });
+  document.getElementById('setAutoplayNext').addEventListener('change', e => {
+    S.settings.autoplayNext = e.target.checked;
+    localStorage.setItem('minexus_autoplaynext', e.target.checked ? 'on' : 'off');
+    toast(e.target.checked ? 'Autoplay next episode enabled' : 'Autoplay next episode disabled', 'info');
+  });
+  document.getElementById('setDataSaver').addEventListener('change', e => {
+    S.settings.dataSaver = e.target.checked;
+    localStorage.setItem('minexus_datasaver', e.target.checked ? 'on' : 'off');
+    toast(e.target.checked ? 'Data Saver enabled — reloading images' : 'Data Saver disabled', 'info');
+    // Re-render current view's cards at the new image quality
+    if (S.view === 'home') loadRows();
+    else if (S.view === 'movies') loadMoviesGrid();
+    else if (S.view === 'series') loadSeriesGrid();
+  });
+}
+
+/* Applies the dark/light theme by toggling a class on <html> — CSS variables
+   for the light theme live in the .light-theme block near the top of the
+   stylesheet. Persisted to localStorage so it survives reloads/reopens. */
+function applyTheme(theme) {
+  S.settings.theme = theme;
+  localStorage.setItem('minexus_theme', theme);
+  document.documentElement.classList.toggle('light-theme', theme === 'light');
+  toast(theme === 'light' ? '☀️ Light mode on' : '🌙 Dark mode on', 'info');
 }
 
 /* ---- FIREBASE LISTENERS ---- */
@@ -2866,6 +3248,8 @@ auth.onAuthStateChanged(user => {
       name: uname,
       lastSeen: firebase.database.ServerValue.TIMESTAMP
     });
+
+    processReferralCredit(user);
   } else {
     // A shared link ("/?watch=ttXXXXXXX" or the /watch/:id redirect) should
     // let a guest watch immediately — requiring login just to view a movie
@@ -2881,6 +3265,10 @@ auth.onAuthStateChanged(user => {
 
 /* ---- INITIALIZATION ---- */
 document.addEventListener('DOMContentLoaded', () => {
+
+  // Theme class was already applied pre-paint by the <head> script (to
+  // avoid a flash); this just keeps document state consistent with S.settings.
+  document.documentElement.classList.toggle('light-theme', S.settings.theme === 'light');
 
   // ---- ALL [data-view] navigation buttons ----
   document.querySelectorAll('[data-view]').forEach(el => {

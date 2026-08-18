@@ -19,6 +19,7 @@
     { "source": "/manifest.json", "destination": "/manifest.json" },
     { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
     { "source": "/robots.txt", "destination": "/robots.txt" },
+    { "source": "/google1f4b4bc6b89cbb98.html", "destination": "/google1f4b4bc6b89cbb98.html" },
     { "source": "/watch/:id", "destination": "/api/watch" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
