@@ -41,6 +41,29 @@ body{
 button{cursor:pointer;border:none;background:none;font-family:inherit;color:inherit}
 input,select,textarea{font-family:inherit;border:none;outline:none}
 
+/* ===== ADMIN LOGIN SCREEN ===== */
+.admin-login-overlay{
+  position:fixed;inset:0;z-index:9999;
+  background:radial-gradient(circle at center, #141724 0%, #07080c 100%);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.admin-login-card{
+  width:100%;max-width:380px;background:var(--bg-card);
+  border:1px solid var(--border);border-radius:18px;
+  padding:32px 28px;box-shadow:0 20px 60px rgba(0,0,0,.6);text-align:center;
+}
+.admin-login-logo{
+  width:56px;height:56px;border-radius:14px;margin:0 auto 16px;
+  background:linear-gradient(135deg,var(--accent),#8b0000);
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;font-weight:900;color:#fff;
+  box-shadow:0 0 24px var(--accent-glow);
+}
+.admin-login-title{font-size:20px;font-weight:900;margin-bottom:4px}
+.admin-login-sub{font-size:12.5px;color:var(--text-muted);margin-bottom:24px}
+.admin-login-card .form-group{text-align:left}
+.admin-login-card label{display:block;font-size:11.5px;font-weight:700;color:var(--text-muted);margin-bottom:6px}
+
 .sidebar{
   width:260px;background:#0c0e14;border-right:1px solid var(--border);
   display:flex;flex-direction:column;padding:24px 16px;flex-shrink:0;
@@ -140,6 +163,37 @@ tr:hover td{background:var(--bg-card-hover)}
 </head>
 <body>
 
+<!-- ===== ADMIN LOGIN SCREEN ===== -->
+<div class="admin-login-overlay" id="adminLoginOverlay">
+  <div class="admin-login-card">
+    <div class="admin-login-logo">M</div>
+    <h2 class="admin-login-title">Admin Access</h2>
+    <p class="admin-login-sub">Sign in to manage MINEXUS TV</p>
+
+    <form id="adminLoginForm">
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Email</label>
+        <input type="email" class="form-control" id="adminLoginEmail" placeholder="you@example.com" required autocomplete="username">
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>Password</label>
+        <input type="password" class="form-control" id="adminLoginPassword" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center" id="adminLoginBtn">
+        <i class="fas fa-right-to-bracket"></i> Sign In
+      </button>
+      <div id="adminLoginError" style="color:#ff4757;font-size:12px;margin-top:12px;text-align:center;display:none"></div>
+    </form>
+
+    <a href="/admin-recover.html" style="display:block;text-align:center;font-size:11.5px;color:var(--text-muted);margin-top:16px">
+      Forgot password? Recover access
+    </a>
+  </div>
+</div>
+
+<!-- ===== ADMIN APP (hidden until authenticated as an admin) ===== -->
+<div id="adminApp" style="display:none">
+
 <aside class="sidebar">
   <div class="admin-brand">
     <div class="brand-icon">M</div>
@@ -156,6 +210,7 @@ tr:hover td{background:var(--bg-card-hover)}
     <button class="nav-item" data-tab="version"><i class="fas fa-code-branch"></i> App Version & Update</button>
     <button class="nav-item" data-tab="notifications"><i class="fas fa-bullhorn"></i> Push Notifications</button>
     <button class="nav-item" data-tab="monetization"><i class="fas fa-dollar-sign" style="color:var(--gold)"></i> Monetization / Ads</button>
+    <button class="nav-item" data-tab="devpage"><i class="fas fa-id-card" style="color:var(--cyan)"></i> Developer Page</button>
     <button class="nav-item" data-tab="users"><i class="fas fa-users"></i> Registered Users</button>
   </nav>
 
@@ -163,6 +218,9 @@ tr:hover td{background:var(--bg-card-hover)}
     <a href="https://minexustv.vercel.app" target="_blank" class="nav-item" style="color:var(--cyan)">
       <i class="fas fa-globe"></i> Open Live Vercel App
     </a>
+    <button class="nav-item" id="adminLogoutBtn" style="color:#ff4757;width:100%;text-align:left">
+      <i class="fas fa-right-from-bracket"></i> Sign Out
+    </button>
   </div>
 </aside>
 
@@ -502,6 +560,120 @@ tr:hover td{background:var(--bg-card-hover)}
           <div style="grid-column:1/-1">
             <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Ad Slots</button>
             <span id="adSlotsStatus" style="font-size:11px;color:var(--text-muted);margin-left:10px"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- DEVELOPER PAGE -->
+    <div class="tab-content" id="tab-devpage">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-id-card" style="color:var(--cyan)"></i> Developer / About Page</h2>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">
+          This is what visitors see when they tap your name in the footer. Changes go live instantly for everyone.
+        </p>
+        <form id="devPageForm" class="form-grid">
+          <div class="form-group">
+            <label>Your Name</label>
+            <input type="text" class="form-control" id="devName" placeholder="Muaaz Iqbal">
+          </div>
+          <div class="form-group">
+            <label>Role / Title</label>
+            <input type="text" class="form-control" id="devRole" placeholder="Founder & Lead Developer">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Avatar Image URL (optional — shows your initial if empty)</label>
+            <input type="text" class="form-control" id="devAvatarUrl" placeholder="https://...">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>About</label>
+            <textarea class="form-control" id="devAbout" rows="4" placeholder="Tell visitors about yourself and MINEXUS TV..."></textarea>
+          </div>
+          <div style="grid-column:1/-1">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Profile</button>
+            <span id="devPageStatus" style="font-size:11px;color:var(--text-muted);margin-left:10px"></span>
+          </div>
+        </form>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-handshake" style="color:var(--gold)"></i> Partners & Team</h2>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Optional — the section hides automatically if you add none.</p>
+        <form id="devPartnerForm" class="form-grid">
+          <div class="form-group">
+            <label>Name</label>
+            <input type="text" class="form-control" id="dpName" placeholder="Partner name" required>
+          </div>
+          <div class="form-group">
+            <label>Role</label>
+            <input type="text" class="form-control" id="dpRole" placeholder="Co-Founder">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Avatar URL (optional)</label>
+            <input type="text" class="form-control" id="dpAvatarUrl" placeholder="https://...">
+          </div>
+          <div style="grid-column:1/-1">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Add Partner</button>
+          </div>
+        </form>
+        <div id="devPartnersAdminList" style="display:flex;flex-direction:column;gap:8px;margin-top:14px"></div>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-envelope" style="color:var(--accent)"></i> Contact Links</h2>
+        </div>
+        <form id="devContactForm" class="form-grid">
+          <div class="form-group">
+            <label>Type</label>
+            <select class="form-control" id="dcType">
+              <option value="email">Email</option>
+              <option value="website">Website</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="instagram">Instagram</option>
+              <option value="youtube">YouTube</option>
+              <option value="telegram">Telegram</option>
+              <option value="facebook">Facebook</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Display Label</label>
+            <input type="text" class="form-control" id="dcLabel" placeholder="e.g. Contact via Email" required>
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>URL / Link</label>
+            <input type="text" class="form-control" id="dcUrl" placeholder="mailto:you@example.com or https://..." required>
+          </div>
+          <div style="grid-column:1/-1">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Add Contact Link</button>
+          </div>
+        </form>
+        <div id="devContactsAdminList" style="display:flex;flex-direction:column;gap:8px;margin-top:14px"></div>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fab fa-android" style="color:var(--green)"></i> Android App Download</h2>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">
+          If you have a native Android APK, set the download link here — a download card appears in Settings for every visitor. Leave empty to hide it.
+        </p>
+        <form id="devApkForm" class="form-grid">
+          <div class="form-group" style="grid-column:1/-1">
+            <label>APK Download URL</label>
+            <input type="text" class="form-control" id="devApkUrl" placeholder="https://.../minexustv.apk">
+          </div>
+          <div class="form-group">
+            <label>Version (optional)</label>
+            <input type="text" class="form-control" id="devApkVersion" placeholder="1.0.0">
+          </div>
+          <div style="grid-column:1/-1">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save APK Link</button>
+            <span id="devApkStatus" style="font-size:11px;color:var(--text-muted);margin-left:10px"></span>
           </div>
         </form>
       </div>
@@ -871,6 +1043,116 @@ document.getElementById('adSlotsForm').onsubmit = async (e) => {
   toast('Ad Slots Saved — live for all visitors now!');
 };
 
+// Developer Page
+let _devPartnersCache = [];
+let _devContactsCache = [];
+
+db.ref('app_config/developer_page').on('value', snap => {
+  const d = snap.val() || {};
+  document.getElementById('devName').value = d.name || '';
+  document.getElementById('devRole').value = d.role || '';
+  document.getElementById('devAvatarUrl').value = d.avatarUrl || '';
+  document.getElementById('devAbout').value = d.about || '';
+  document.getElementById('devApkUrl').value = (d.androidApkUrl) || '';
+  document.getElementById('devApkVersion').value = (d.androidApkVersion) || '';
+  document.getElementById('devApkStatus').textContent = d.androidApkUrl ? '✅ APK download active' : 'No APK link set';
+
+  _devPartnersCache = d.partners || [];
+  _devContactsCache = d.contacts || [];
+  renderDevPartnersAdmin();
+  renderDevContactsAdmin();
+});
+
+document.getElementById('devPageForm').onsubmit = async (e) => {
+  e.preventDefault();
+  await db.ref('app_config/developer_page').update({
+    name: document.getElementById('devName').value.trim(),
+    role: document.getElementById('devRole').value.trim(),
+    avatarUrl: document.getElementById('devAvatarUrl').value.trim(),
+    about: document.getElementById('devAbout').value.trim()
+  });
+  toast('Developer profile saved!');
+};
+
+document.getElementById('devApkForm').onsubmit = async (e) => {
+  e.preventDefault();
+  await db.ref('app_config/developer_page').update({
+    androidApkUrl: document.getElementById('devApkUrl').value.trim(),
+    androidApkVersion: document.getElementById('devApkVersion').value.trim()
+  });
+  toast('APK link saved!');
+};
+
+document.getElementById('devPartnerForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('dpName').value.trim();
+  const role = document.getElementById('dpRole').value.trim();
+  const avatarUrl = document.getElementById('dpAvatarUrl').value.trim();
+  if (!name) return;
+  const updated = [..._devPartnersCache, { name, role, avatarUrl }];
+  await db.ref('app_config/developer_page/partners').set(updated);
+  document.getElementById('devPartnerForm').reset();
+  toast('Partner added!');
+};
+
+async function removeDevPartner(idx) {
+  const updated = _devPartnersCache.filter((_, i) => i !== idx);
+  await db.ref('app_config/developer_page/partners').set(updated);
+}
+window.removeDevPartner = removeDevPartner;
+
+function renderDevPartnersAdmin() {
+  const el = document.getElementById('devPartnersAdminList');
+  if (!_devPartnersCache.length) {
+    el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px">No partners added yet.</div>';
+    return;
+  }
+  el.innerHTML = _devPartnersCache.map((p, i) => `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:700;font-size:13px">${escapeHtml(p.name)}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${escapeHtml(p.role || '')}</div>
+      </div>
+      <button class="btn" style="padding:6px 10px;background:rgba(255,71,87,.12);color:#ff4757" onclick="removeDevPartner(${i})"><i class="fas fa-trash"></i></button>
+    </div>
+  `).join('');
+}
+
+document.getElementById('devContactForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const type = document.getElementById('dcType').value;
+  const label = document.getElementById('dcLabel').value.trim();
+  const url = document.getElementById('dcUrl').value.trim();
+  if (!label || !url) return;
+  const updated = [..._devContactsCache, { type, label, url }];
+  await db.ref('app_config/developer_page/contacts').set(updated);
+  document.getElementById('devContactForm').reset();
+  toast('Contact link added!');
+};
+
+async function removeDevContact(idx) {
+  const updated = _devContactsCache.filter((_, i) => i !== idx);
+  await db.ref('app_config/developer_page/contacts').set(updated);
+}
+window.removeDevContact = removeDevContact;
+
+function renderDevContactsAdmin() {
+  const el = document.getElementById('devContactsAdminList');
+  if (!_devContactsCache.length) {
+    el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px">No contact links added yet.</div>';
+    return;
+  }
+  el.innerHTML = _devContactsCache.map((c, i) => `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+      <div style="min-width:0">
+        <div style="font-weight:700;font-size:13px">${escapeHtml(c.label)}</div>
+        <div style="font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(c.url)}</div>
+      </div>
+      <button class="btn" style="padding:6px 10px;background:rgba(255,71,87,.12);color:#ff4757;flex-shrink:0" onclick="removeDevContact(${i})"><i class="fas fa-trash"></i></button>
+    </div>
+  `).join('');
+}
+
 // Notifications
 let notifEditingId = null;
 
@@ -957,6 +1239,90 @@ db.ref('notifications').on('value', snap => {
   const sorted = Object.entries(val).sort((a, b) => (b[1].time || 0) - (a[1].time || 0));
   renderNotifHistory(sorted);
 });
+
+/* ---- ADMIN LOGIN / ACCESS CONTROL ----
+   The real security boundary is the Firebase Database Rules (see
+   database.rules.json — only uid's listed under /admins with value `true`
+   can write to app_config, custom_servers, notifications, etc). This login
+   screen just gates the UI: nobody sees the dashboard or can trigger writes
+   without first authenticating AND being confirmed as an admin. Even if
+   someone bypassed this HTML entirely and called the Firebase API directly,
+   the database rules would still reject their writes. */
+let _adminAuthChecked = false;
+
+auth.onAuthStateChanged(async (user) => {
+  const overlay = document.getElementById('adminLoginOverlay');
+  const app = document.getElementById('adminApp');
+
+  if (!user) {
+    overlay.style.display = 'flex';
+    app.style.display = 'none';
+    return;
+  }
+
+  try {
+    const adminSnap = await db.ref(`admins/${user.uid}`).get();
+    if (adminSnap.exists() && adminSnap.val() === true) {
+      overlay.style.display = 'none';
+      app.style.display = 'block';
+    } else {
+      // Signed in, but not an admin — sign them back out and show an error
+      // rather than leaving a signed-in-but-locked-out limbo state.
+      overlay.style.display = 'flex';
+      app.style.display = 'none';
+      if (!_adminAuthChecked) {
+        document.getElementById('adminLoginError').textContent = 'This account does not have admin access.';
+        document.getElementById('adminLoginError').style.display = 'block';
+      }
+      await auth.signOut();
+    }
+  } catch (e) {
+    // Rules correctly reject a non-admin's read of /admins/{uid} in some
+    // configurations — treat any read failure here as "not an admin".
+    overlay.style.display = 'flex';
+    app.style.display = 'none';
+    document.getElementById('adminLoginError').textContent = 'Access denied.';
+    document.getElementById('adminLoginError').style.display = 'block';
+    await auth.signOut();
+  }
+  _adminAuthChecked = true;
+});
+
+document.getElementById('adminLoginForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('adminLoginEmail').value.trim();
+  const password = document.getElementById('adminLoginPassword').value;
+  const btn = document.getElementById('adminLoginBtn');
+  const errEl = document.getElementById('adminLoginError');
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
+
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+    // onAuthStateChanged above handles showing/hiding the app based on
+    // whether this account is actually listed as an admin.
+  } catch (err) {
+    const messages = {
+      'auth/invalid-credential': 'Incorrect email or password.',
+      'auth/user-not-found': 'No account found with that email.',
+      'auth/wrong-password': 'Incorrect password.',
+      'auth/too-many-requests': 'Too many attempts — please wait a moment and try again.',
+      'auth/invalid-email': 'Please enter a valid email address.'
+    };
+    errEl.textContent = messages[err.code] || 'Sign-in failed. Please try again.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-right-to-bracket"></i> Sign In';
+  }
+};
+
+// Logout button (added to sidebar bottom — see markup) 
+document.getElementById('adminLogoutBtn')?.addEventListener('click', () => {
+  if (confirm('Sign out of the admin panel?')) auth.signOut();
+});
 </script>
+</div>
 </body>
 </html>

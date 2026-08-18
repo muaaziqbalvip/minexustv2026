@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MINEXUS TV — Admin Password Recovery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080c; --bg-card:#10131c; --border:rgba(255,255,255,0.08);
+  --accent:#e50914; --accent-glow:rgba(229,9,20,0.35);
+  --text:#f0f2f8; --text-muted:#8a90a2;
+}
+body{
+  font-family:'Inter',sans-serif;background:radial-gradient(circle at center, #141724 0%, #07080c 100%);
+  color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.card{
+  width:100%;max-width:400px;background:var(--bg-card);
+  border:1px solid var(--border);border-radius:18px;
+  padding:32px 28px;box-shadow:0 20px 60px rgba(0,0,0,.6);text-align:center;
+}
+.logo{
+  width:56px;height:56px;border-radius:14px;margin:0 auto 16px;
+  background:linear-gradient(135deg,var(--accent),#8b0000);
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;font-weight:900;color:#fff;box-shadow:0 0 24px var(--accent-glow);
+}
+h1{font-size:19px;font-weight:900;margin-bottom:4px}
+p.sub{font-size:12.5px;color:var(--text-muted);margin-bottom:24px;line-height:1.6}
+.form-group{text-align:left;margin-bottom:16px}
+label{display:block;font-size:11.5px;font-weight:700;color:var(--text-muted);margin-bottom:6px}
+input{
+  width:100%;padding:11px 14px;background:#171a26;border:1px solid var(--border);
+  border-radius:9px;color:var(--text);font-size:13px;font-family:inherit;
+}
+input:focus{outline:none;border-color:var(--accent)}
+button{
+  width:100%;padding:13px;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),#c9101c);
+  color:#fff;font-weight:800;font-size:13px;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+button:active{transform:scale(.98)}
+button:disabled{opacity:.6;cursor:not-allowed}
+.msg{font-size:12px;margin-top:16px;padding:10px;border-radius:8px;display:none}
+.msg.success{display:block;background:rgba(0,230,118,.1);color:#00e676;border:1px solid rgba(0,230,118,.25)}
+.msg.error{display:block;background:rgba(255,71,87,.1);color:#ff4757;border:1px solid rgba(255,71,87,.25)}
+.back-link{display:block;margin-top:18px;font-size:11.5px;color:var(--text-muted);text-decoration:none}
+.back-link:hover{color:var(--text)}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">M</div>
+  <h1>Recover Admin Access</h1>
+  <p class="sub">Enter the email address linked to your admin account. If it's registered, we'll send a password reset link.</p>
+
+  <form id="recoverForm">
+    <div class="form-group">
+      <label>Admin Email</label>
+      <input type="email" id="recoverEmail" placeholder="you@example.com" required autocomplete="username">
+    </div>
+    <button type="submit" id="recoverBtn"><i class="fas fa-paper-plane"></i> Send Reset Link</button>
+  </form>
+
+  <div class="msg" id="recoverMsg"></div>
+
+  <a href="/admin" class="back-link"><i class="fas fa-arrow-left"></i> Back to Admin Login</a>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCe9EAy36fx3RHy_cHOKP9BG8F_zkkTd4c",
+  authDomain: "minexustv-a23ba.firebaseapp.com",
+  databaseURL: "https://minexustv-a23ba-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "minexustv-a23ba",
+  storageBucket: "minexustv-a23ba.firebasestorage.app",
+  messagingSenderId: "33081080111",
+  appId: "1:33081080111:web:cd23b4fe22c0b7c18e09da",
+  measurementId: "G-CRYG4T0FDT"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+document.getElementById('recoverForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('recoverEmail').value.trim();
+  const btn = document.getElementById('recoverBtn');
+  const msg = document.getElementById('recoverMsg');
+  msg.className = 'msg';
+  msg.style.display = 'none';
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+
+  try {
+    // Always shows the same success message regardless of whether the email
+    // is actually a registered admin — this deliberately avoids leaking
+    // which email addresses have admin access to anyone probing this form.
+    await auth.sendPasswordResetEmail(email).catch(() => {});
+    msg.textContent = 'If that email is registered, a password reset link has been sent. Check your inbox (and spam folder).';
+    msg.className = 'msg success';
+  } catch (err) {
+    msg.textContent = 'Something went wrong. Please try again in a moment.';
+    msg.className = 'msg error';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reset Link';
+  }
+};
+</script>
+</body>
+</html>
