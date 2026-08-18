@@ -62,9 +62,26 @@ export default async function handler(request) {
     meta = await fetchMeta(type, id);
   }
 
-  const title = meta ? `${meta.name} (${(meta.releaseInfo || meta.year || '').toString().split('–')[0]})` : `Watch on MINEXUS TV`;
-  const desc = meta ? (meta.description || 'Stream in full HD on MINEXUS TV.').slice(0, 200) : 'Stream movies, series & live TV in full HD.';
-  const image = meta ? (meta.background || meta.poster || `${IMGB}/background/medium/${id}/img`) : `${IMGB}/background/medium/${id}/img`;
+  const year = meta ? (meta.releaseInfo || meta.year || '').toString().split('–')[0] : '';
+  const title = meta ? `${meta.name}${year ? ` (${year})` : ''}` : `Watch on MINEXUS TV`;
+
+  // Rich description: genre + rating + runtime + synopsis, matching how a
+  // WhatsApp/Instagram link preview for Netflix/IMDb typically reads —
+  // this is what makes the shared link look like a "real" movie card
+  // instead of just a plain title.
+  const bits = [];
+  if (meta && meta.genres && meta.genres.length) bits.push(meta.genres.slice(0, 3).join(', '));
+  if (meta && meta.imdbRating) bits.push(`⭐ ${meta.imdbRating}/10`);
+  if (meta && meta.runtime) bits.push(meta.runtime);
+  const metaLine = bits.join(' • ');
+  const synopsis = meta ? (meta.description || '').slice(0, 160) : '';
+  const desc = [metaLine, synopsis].filter(Boolean).join('\n') || 'Stream movies, series & live TV in full HD on MINEXUS TV.';
+
+  // Use the actual PORTRAIT movie POSTER (not the landscape backdrop) —
+  // this is what makes a shared link render as a proper upright poster
+  // card in WhatsApp/Telegram/Instagram, matching real movie-poster style
+  // shares instead of a cropped landscape thumbnail.
+  const image = meta ? (meta.poster || meta.background || `${IMGB}/poster/medium/${id}/img`) : `${IMGB}/poster/medium/${id}/img`;
   const destUrl = `${SITE}/?watch=${encodeURIComponent(id)}&type=${type}`;
 
   const html = `<!DOCTYPE html>
@@ -77,14 +94,15 @@ export default async function handler(request) {
 
 <meta property="og:type" content="video.other">
 <meta property="og:url" content="${destUrl}">
-<meta property="og:title" content="${escapeHtml(title)} — Watch on MINEXUS TV">
+<meta property="og:site_name" content="MINEXUS TV">
+<meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(desc)}">
 <meta property="og:image" content="${escapeHtml(image)}">
-<meta property="og:image:width" content="1280">
-<meta property="og:image:height" content="720">
+<meta property="og:image:width" content="1000">
+<meta property="og:image:height" content="1500">
 
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="${escapeHtml(title)} — Watch on MINEXUS TV">
+<meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(desc)}">
 <meta name="twitter:image" content="${escapeHtml(image)}">
 
