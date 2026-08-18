@@ -11,15 +11,29 @@
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
         { "key": "X-Content-Type-Options", "value": "nosniff" }
       ]
+    },
+    {
+      "source": "/admin",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }
+      ]
+    },
+    {
+      "source": "/admin-recover.html",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }
+      ]
     }
   ],
   "rewrites": [
     { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/admin-recover.html", "destination": "/admin-recover.html" },
     { "source": "/sw.js", "destination": "/sw.js" },
     { "source": "/manifest.json", "destination": "/manifest.json" },
     { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
     { "source": "/robots.txt", "destination": "/robots.txt" },
     { "source": "/google1f4b4bc6b89cbb98.html", "destination": "/google1f4b4bc6b89cbb98.html" },
+    { "source": "/icons/:file", "destination": "/icons/:file" },
     { "source": "/watch/:id", "destination": "/api/watch" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]

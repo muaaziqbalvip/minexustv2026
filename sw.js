@@ -3,7 +3,7 @@
    version instead of a stale cached build. Static assets (icons/manifest) still
    cache for speed & offline fallback. */
 
-const CACHE_VERSION = 'minexus-v2-' + '20260816';
+const CACHE_VERSION = 'minexus-v3-' + '20260818';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 
 const PRECACHE_ASSETS = [

@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /admin
+Disallow: /admin-recover.html
 
 Sitemap: https://minexustv.vercel.app/sitemap.xml
