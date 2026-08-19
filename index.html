@@ -503,6 +503,27 @@ input,select{font-family:inherit}
 .cal-card-info{padding:8px}
 .cal-card-title{font-size:11.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* News tab — article-style cards generated from real-time trending/now-
+   playing data (not a third-party news feed, which would be one more thing
+   that can silently break — this is always live because it's the same API
+   already powering the rest of the app). */
+.news-list{display:flex;flex-direction:column;gap:12px}
+.news-card{
+  display:flex;gap:12px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:12px;padding:12px;cursor:pointer;transition:border-color .15s,transform .15s;
+}
+.news-card:active{transform:scale(.98)}
+.news-card:hover{border-color:var(--border-active)}
+.news-thumb{width:70px;height:100px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--bg4);-webkit-user-drag:none}
+.news-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+.news-badge{
+  display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:800;
+  color:var(--accent);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;
+}
+.news-headline{font-size:13px;font-weight:800;line-height:1.35;margin-bottom:5px}
+.news-summary{font-size:11.5px;color:var(--text2);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.news-meta{font-size:10px;color:var(--text3);margin-top:6px}
+
 /* ===== DEVELOPER / ABOUT PAGE ===== */
 .dev-page-wrap{padding:16px;max-width:600px;margin:0 auto}
 .dev-back-btn{
@@ -951,6 +972,13 @@ input,select{font-family:inherit}
 .auth-tbtn{flex:1;padding:10px;font-size:12px;font-weight:700;color:var(--text3);border-bottom:2px solid transparent}
 .auth-tbtn.active{color:var(--accent);border-bottom-color:var(--accent)}
 .auth-field-row{display:flex;flex-direction:column;gap:5px;text-align:left;margin-bottom:12px}
+.auth-terms-check{
+  display:flex;align-items:flex-start;gap:8px;text-align:left;
+  margin-bottom:14px;cursor:pointer;
+}
+.auth-terms-check input{margin-top:2px;flex-shrink:0;accent-color:var(--accent)}
+.auth-terms-check span{font-size:11px;color:var(--text2);line-height:1.5}
+.auth-terms-check a{color:var(--cyan);text-decoration:underline}
 .auth-field-row label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase}
 .auth-input{
   background:#161924;border:1px solid var(--border);
@@ -1095,7 +1123,7 @@ input,select{font-family:inherit}
 </script>
 
 <!-- ===== MANDATORY AUTH LOCK SCREEN ===== -->
-<div class="auth-lock-overlay" id="authLockOverlay" style="display:flex;">
+<div class="auth-lock-overlay" id="authLockOverlay" style="display:none;">
   <div class="auth-lock-card">
     <div class="auth-lock-logo">M</div>
     <h2 class="auth-lock-title">MINE<span>XUS</span> TV</h2>
@@ -1118,6 +1146,7 @@ input,select{font-family:inherit}
       </div>
       <button class="btn btn-lock-submit" id="lockLoginBtn"><i class="fas fa-right-to-bracket"></i> Sign In to MINEXUS</button>
       <button class="btn-google-lock" id="lockGoogleBtn"><i class="fab fa-google" style="color:#4285f4"></i> Continue with Google</button>
+      <a href="#" id="lockForgotPasswordLink" style="display:block;text-align:center;font-size:11.5px;color:var(--text2);margin-top:14px;text-decoration:underline">Forgot your password?</a>
     </div>
 
     <div id="lockSignupForm" style="display:none;">
@@ -1133,8 +1162,24 @@ input,select{font-family:inherit}
         <label>Password</label>
         <input type="password" id="lockSignPass" class="auth-input" placeholder="Min 6 characters" required>
       </div>
+      <label class="auth-terms-check">
+        <input type="checkbox" id="lockAcceptTerms">
+        <span>I agree to the <a href="/terms-of-service.html" target="_blank" onclick="event.stopPropagation()">Terms of Service</a> and <a href="/privacy-policy.html" target="_blank" onclick="event.stopPropagation()">Privacy Policy</a></span>
+      </label>
       <button class="btn btn-lock-submit" id="lockSignupBtn"><i class="fas fa-user-plus"></i> Create Account</button>
       <button class="btn-google-lock" id="lockGoogleSignBtn"><i class="fab fa-google" style="color:#4285f4"></i> Sign Up with Google</button>
+    </div>
+
+    <div id="lockForgotForm" style="display:none;">
+      <p style="font-size:12px;color:var(--text2);margin-bottom:16px;text-align:left;line-height:1.6">
+        Enter the email you signed up with — we'll send you a link to reset your password.
+      </p>
+      <div class="auth-field-row">
+        <label>Email Address</label>
+        <input type="email" id="lockForgotEmail" class="auth-input" placeholder="you@example.com" required>
+      </div>
+      <button class="btn btn-lock-submit" id="lockForgotSubmitBtn"><i class="fas fa-paper-plane"></i> Send Reset Link</button>
+      <a href="#" id="lockBackToLoginLink" style="display:block;text-align:center;font-size:11.5px;color:var(--text2);margin-top:14px;text-decoration:underline">← Back to Sign In</a>
     </div>
   </div>
 </div>
@@ -1174,8 +1219,8 @@ input,select{font-family:inherit}
         <button class="nav-tab" data-view="movies"><i class="fas fa-film"></i>Movies</button>
         <button class="nav-tab" data-view="series"><i class="fas fa-tv"></i>Series</button>
         <button class="nav-tab" data-view="live"><i class="fas fa-circle" style="color:#ff3d3d;font-size:8px"></i>Live TV</button>
+        <button class="nav-tab" data-view="calendar"><i class="fas fa-calendar-days" style="color:var(--gold)"></i>Calendar &amp; News</button>
         <button class="nav-tab" data-view="leaderboard"><i class="fas fa-trophy" style="color:var(--gold)"></i>Leaderboard</button>
-        <button class="nav-tab" data-view="account"><i class="fas fa-user-circle"></i>My Account</button>
       </nav>
     </div>
 
@@ -1410,17 +1455,18 @@ input,select{font-family:inherit}
   <div id="channelsGrid" class="channels-grid"></div>
 </div>
 
-<!-- ===== RELEASE CALENDAR VIEW ===== -->
+<!-- ===== RELEASE CALENDAR & NEWS VIEW ===== -->
 <div class="view" id="viewCalendar">
   <div class="calendar-wrap">
     <div class="calendar-header">
-      <h2 class="calendar-title"><i class="fas fa-calendar-days" style="color:var(--gold)"></i> Release Calendar</h2>
-      <p style="font-size:12px;color:var(--text2)">New releases and upcoming movies, month by month</p>
+      <h2 class="calendar-title"><i class="fas fa-calendar-days" style="color:var(--gold)"></i> Calendar &amp; News</h2>
+      <p style="font-size:12px;color:var(--text2)">Real-time release dates and what's happening in movies &amp; series right now</p>
     </div>
 
     <div class="calendar-tabs" id="calendarTabs">
       <button class="cal-tab active" data-cal="new">🆕 New Releases</button>
       <button class="cal-tab" data-cal="upcoming">📅 Coming Soon</button>
+      <button class="cal-tab" data-cal="news">📰 News</button>
     </div>
 
     <div id="calendarContent" class="calendar-content">
@@ -1930,6 +1976,59 @@ async function tmdbResolveImdbIds(list, type) {
 }
 
 const API = {
+  async getNews() {
+    // Real-time "movie news" built directly from TMDB's trending/now-playing/
+    // upcoming endpoints — every headline traces back to genuine live data
+    // (a title's actual trending rank, actual release date, actual rating),
+    // not a third-party news API that could go stale, rate-limit, or break
+    // independently of everything else in the app.
+    if (!tmdbEnabled()) return [];
+    try {
+      const [trending, nowPlaying, upcoming] = await Promise.all([
+        _fetch(`${TMDB_BASE}/trending/movie/day?api_key=${TMDB_API_KEY}`, 1, 900000),
+        _fetch(`${TMDB_BASE}/movie/now_playing?api_key=${TMDB_API_KEY}`, 1, 900000),
+        _fetch(`${TMDB_BASE}/movie/upcoming?api_key=${TMDB_API_KEY}`, 1, 900000)
+      ]);
+
+      const items = [];
+      (trending.results || []).slice(0, 5).forEach((m, i) => {
+        items.push({
+          badge: '🔥 Trending Now', tag: `#${i + 1} Trending Today`,
+          headline: `${m.title} is #${i + 1} on today's trending chart`,
+          summary: m.overview || 'No synopsis available.',
+          poster: m.poster_path ? `${TMDB_IMG}/w342${m.poster_path}` : '',
+          rating: m.vote_average ? m.vote_average.toFixed(1) : null,
+          tmdbId: m.id, tmdbType: 'movie', mapped: mapTmdb(m, 'movie'),
+          sortTime: Date.now() - i * 60000
+        });
+      });
+      (nowPlaying.results || []).slice(0, 5).forEach((m, i) => {
+        items.push({
+          badge: '🎬 In Theaters', tag: 'Now Playing',
+          headline: `${m.title} is now playing in theaters`,
+          summary: m.overview || 'No synopsis available.',
+          poster: m.poster_path ? `${TMDB_IMG}/w342${m.poster_path}` : '',
+          rating: m.vote_average ? m.vote_average.toFixed(1) : null,
+          tmdbId: m.id, tmdbType: 'movie', mapped: mapTmdb(m, 'movie'),
+          sortTime: Date.now() - 300000 - i * 60000
+        });
+      });
+      (upcoming.results || []).slice(0, 5).forEach((m, i) => {
+        const date = m.release_date ? new Date(m.release_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'soon';
+        items.push({
+          badge: '📅 Coming Soon', tag: `Releases ${date}`,
+          headline: `${m.title} releases ${date}`,
+          summary: m.overview || 'No synopsis available.',
+          poster: m.poster_path ? `${TMDB_IMG}/w342${m.poster_path}` : '',
+          rating: m.vote_average ? m.vote_average.toFixed(1) : null,
+          tmdbId: m.id, tmdbType: 'movie', mapped: mapTmdb(m, 'movie'),
+          sortTime: Date.now() - 600000 - i * 60000
+        });
+      });
+
+      return items.sort((a, b) => b.sortTime - a.sortTime);
+    } catch (e) { return []; }
+  },
   async getReleases(mode) {
     // mode: 'new' = already released, most recent first
     //       'upcoming' = future release dates, soonest first
@@ -3205,11 +3304,13 @@ async function renderCalendarView() {
 
   if (!tmdbEnabled()) {
     el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--text3);font-size:13px">
-      Release Calendar needs a TMDB API key to show accurate dates.<br>
+      Calendar &amp; News needs a TMDB API key to show real-time data.<br>
       <span style="font-size:11px">Ask the site admin to add one in the Admin Panel.</span>
     </div>`;
     return;
   }
+
+  if (_calendarMode === 'news') { renderNewsMode(el); return; }
 
   try {
     const items = await API.getReleases(_calendarMode);
@@ -3262,6 +3363,42 @@ async function renderCalendarView() {
     });
   } catch (e) {
     el.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text3)">Couldn't load the calendar — <a href="#" onclick="renderCalendarView();return false;" style="color:var(--accent)">tap to retry</a></div>`;
+  }
+}
+
+/* News tab: real-time article-style cards built from live TMDB data
+   (trending / now playing / upcoming) — see API.getNews(). */
+async function renderNewsMode(el) {
+  try {
+    const news = await API.getNews();
+    if (!news.length) {
+      el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--text3);font-size:13px">No news available right now.</div>`;
+      return;
+    }
+
+    el.innerHTML = `<div class="news-list">${news.map(n => {
+      const key = registerItem(n.mapped);
+      return `
+        <div class="news-card" data-key="${key}">
+          <img class="news-thumb" src="${esc(n.poster || _fallbackPosterSvg)}" alt="" loading="lazy" onerror="this.src='${_fallbackPosterSvg}'">
+          <div class="news-body">
+            <div class="news-badge">${esc(n.badge)}</div>
+            <div class="news-headline">${esc(n.headline)}</div>
+            <div class="news-summary">${esc(n.summary)}</div>
+            <div class="news-meta">${esc(n.tag)}${n.rating ? ` • ⭐ ${n.rating}` : ''}</div>
+          </div>
+        </div>
+      `;
+    }).join('')}</div>`;
+
+    el.querySelectorAll('.news-card[data-key]').forEach(card => {
+      card.addEventListener('click', () => {
+        const item = getRegisteredItem(card.dataset.key);
+        if (item) openPlayer(item);
+      });
+    });
+  } catch (e) {
+    el.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text3)">Couldn't load news — <a href="#" onclick="renderCalendarView();return false;" style="color:var(--accent)">tap to retry</a></div>`;
   }
 }
 
@@ -3348,14 +3485,29 @@ function refreshAccountCounts() {
 }
 
 function renderAccountView() {
-  if (!S.user) return;
   const contentEl = document.getElementById('accTabContent');
   const sub = S.accountSubTab;
+
+  // Settings (theme, autoplay, etc) are device-level, not account-bound —
+  // guests can use these freely without signing in.
+  if (sub === 'settings') { renderSettingsTab(contentEl); return; }
+
+  if (!S.user) {
+    contentEl.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:40px 20px">
+        <i class="fas fa-user-lock" style="font-size:32px;color:var(--text3);margin-bottom:14px;display:block"></i>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Sign in to see your ${esc(sub)}.</p>
+        <button class="btn btn-primary" onclick="document.getElementById('authLockOverlay').style.display='flex'">
+          <i class="fas fa-right-to-bracket"></i> Sign In
+        </button>
+      </div>
+    `;
+    return;
+  }
 
   refreshAccountCounts();
 
   if (sub === 'invite') { renderInviteTab(contentEl); return; }
-  if (sub === 'settings') { renderSettingsTab(contentEl); return; }
 
   let items = [];
   if (sub === 'history') items = Object.values(S.history || {}).reverse();
@@ -3559,6 +3711,12 @@ function renderSettingsTab(contentEl) {
         <i class="fas fa-circle-info" style="color:var(--accent)"></i>
         Settings are saved on this device. Sign in on another device to set them there too.
       </div>
+
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:6px;padding-top:14px;border-top:1px solid var(--border)">
+        <a href="/privacy-policy.html" target="_blank" style="font-size:11.5px;color:var(--text2);text-decoration:underline">Privacy Policy</a>
+        <span style="color:var(--text3)">•</span>
+        <a href="/terms-of-service.html" target="_blank" style="font-size:11.5px;color:var(--text2);text-decoration:underline">Terms of Service</a>
+      </div>
     </div>
   `;
 
@@ -3744,6 +3902,14 @@ auth.onAuthStateChanged(user => {
         name: uname,
         points: S.userStats.points || 0,
         watchCount: S.userStats.watchCount || 0
+      }).catch(err => {
+        // If this fails (most commonly: database.rules.json hasn't been
+        // published in Firebase Console yet, or an older ruleset is still
+        // active there), the leaderboard will only ever show whoever's
+        // write succeeds — logged clearly here since that's exactly the
+        // "leaderboard only shows my own entry" symptom, and a silent
+        // failure here was hard to diagnose from the UI alone.
+        console.error('[MINEXUS] Failed to sync leaderboard entry — check that database.rules.json is published in Firebase Console:', err);
       });
     });
 
@@ -3755,15 +3921,17 @@ auth.onAuthStateChanged(user => {
 
     processReferralCredit(user);
   } else {
-    // A shared link ("/?watch=ttXXXXXXX" or the /watch/:id redirect) should
-    // let a guest watch immediately — requiring login just to view a movie
-    // someone sent them defeats the whole point of sharing. Login stays
-    // mandatory for browsing the rest of the app (home, search, etc.);
-    // watchlist/likes/history simply won't save until they do sign in —
-    // toggleWatchlist/toggleLike already prompt for that at the right time.
-    const hasWatchParam = new URLSearchParams(window.location.search).has('watch');
-    lock.style.display = hasWatchParam ? 'none' : 'flex';
+    // Guests can browse and watch everything freely — login is no longer
+    // required just to open the app. Account-specific features (watchlist,
+    // likes, history sync, invite points) prompt for sign-in individually
+    // at the point of use (see toggleWatchlist/toggleLike/etc), which is a
+    // much better experience than a wall blocking the whole app up front.
+    lock.style.display = 'none';
     S.watchlist = {}; S.likes = {}; S.history = {};
+    document.getElementById('accAvatar').textContent = 'G';
+    document.getElementById('accName').textContent = 'Guest';
+    document.getElementById('desktopNavAvatar').textContent = 'G';
+    document.getElementById('desktopNavUname').textContent = 'Sign In';
   }
 });
 
@@ -3926,14 +4094,55 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('lockTabLogin').addEventListener('click', () => {
     document.getElementById('lockLoginForm').style.display = 'block';
     document.getElementById('lockSignupForm').style.display = 'none';
+    document.getElementById('lockForgotForm').style.display = 'none';
     document.getElementById('lockTabLogin').classList.add('active');
     document.getElementById('lockTabSignup').classList.remove('active');
   });
   document.getElementById('lockTabSignup').addEventListener('click', () => {
     document.getElementById('lockLoginForm').style.display = 'none';
     document.getElementById('lockSignupForm').style.display = 'block';
+    document.getElementById('lockForgotForm').style.display = 'none';
     document.getElementById('lockTabSignup').classList.add('active');
     document.getElementById('lockTabLogin').classList.remove('active');
+  });
+
+  // ---- Forgot Password ----
+  document.getElementById('lockForgotPasswordLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('lockLoginForm').style.display = 'none';
+    document.getElementById('lockSignupForm').style.display = 'none';
+    document.getElementById('lockForgotForm').style.display = 'block';
+    // Prefill with whatever email they'd already typed in the login form
+    const typedEmail = document.getElementById('lockEmail').value.trim();
+    if (typedEmail) document.getElementById('lockForgotEmail').value = typedEmail;
+  });
+  document.getElementById('lockBackToLoginLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('lockTabLogin').click();
+  });
+  document.getElementById('lockForgotSubmitBtn').addEventListener('click', async () => {
+    const email = document.getElementById('lockForgotEmail').value.trim();
+    if (!email) { toast('Please enter your email address', 'error'); return; }
+    const btn = document.getElementById('lockForgotSubmitBtn');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    try {
+      await auth.sendPasswordResetEmail(email);
+      toast('✅ Reset link sent! Check your email inbox (and spam folder).', 'success');
+      document.getElementById('lockTabLogin').click();
+    } catch (e) {
+      // Deliberately vague for unknown-email errors to avoid confirming
+      // which addresses have accounts — but surface genuinely useful
+      // errors like a malformed email address.
+      if (e.code === 'auth/invalid-email') {
+        toast('Please enter a valid email address', 'error');
+      } else {
+        toast('✅ If that email has an account, a reset link has been sent.', 'success');
+        document.getElementById('lockTabLogin').click();
+      }
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reset Link';
+    }
   });
 
   document.getElementById('lockLoginBtn').addEventListener('click', async () => {
@@ -3954,6 +4163,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('lockSignupBtn').addEventListener('click', async () => {
+    if (!document.getElementById('lockAcceptTerms').checked) {
+      toast('Please accept the Terms of Service and Privacy Policy to continue', 'error');
+      return;
+    }
     const btn = document.getElementById('lockSignupBtn');
     btn.disabled = true; btn.textContent = 'Creating...';
     try {
@@ -3985,6 +4198,10 @@ document.addEventListener('DOMContentLoaded', () => {
     auth.signInWithRedirect(googleProvider).catch(e => toast('❌ ' + e.message, 'error'));
   });
   document.getElementById('lockGoogleSignBtn').addEventListener('click', () => {
+    if (!document.getElementById('lockAcceptTerms').checked) {
+      toast('Please accept the Terms of Service and Privacy Policy to continue', 'error');
+      return;
+    }
     auth.signInWithRedirect(googleProvider).catch(e => toast('❌ ' + e.message, 'error'));
   });
   document.getElementById('accountLogoutBtn').addEventListener('click', () => {

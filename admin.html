@@ -692,7 +692,14 @@ tr:hover td{background:var(--bg-card-hover)}
         <div class="card-header">
           <h2 class="card-title"><i class="fas fa-users"></i> Registered App Users (<span id="userCountBadge">0</span>)</h2>
         </div>
-        <div class="table-wrap">
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.6">
+          The public Leaderboard only shows users who've signed in since the leaderboard sync was added — each
+          person's entry is written the moment they log in. If some existing users haven't opened the app since,
+          use this to backfill everyone's entry in one go (safe to run anytime, e.g. after adding new users).
+        </p>
+        <button class="btn btn-primary" id="syncLeaderboardBtn"><i class="fas fa-arrows-rotate"></i> Sync All Users to Leaderboard</button>
+        <span id="syncLeaderboardStatus" style="font-size:11px;color:var(--text-muted);margin-left:10px"></span>
+        <div class="table-wrap" style="margin-top:20px">
           <table>
             <thead>
               <tr>
@@ -734,9 +741,8 @@ const firebaseConfig = {
   measurementId: "G-CRYG4T0FDT"
 };
 firebase.initializeApp(firebaseConfig);
-
-const auth = firebase.auth();
 const db = firebase.database();
+const auth = firebase.auth();
 
 function toast(msg) {
   const t = document.createElement('div');
@@ -867,8 +873,11 @@ db.ref('custom_channels').on('value', snap => {
 });
 
 // Users & Leaderboard Realtime Listener
+let _allUsersCache = {};
+
 db.ref('users').on('value', snap => {
   const users = snap.val() || {};
+  _allUsersCache = users;
   const entries = Object.entries(users);
   document.getElementById('statTotalUsers').textContent = entries.length;
   document.getElementById('userCountBadge').textContent = entries.length;
@@ -923,6 +932,39 @@ function addBonusPoints(uid) {
   db.ref(`users/${uid}/stats/points`).transaction(p => (p || 0) + 50);
   toast('Added 50 Bonus Points to User!');
 }
+
+document.getElementById('syncLeaderboardBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('syncLeaderboardBtn');
+  const statusEl = document.getElementById('syncLeaderboardStatus');
+  const entries = Object.entries(_allUsersCache);
+  if (!entries.length) { toast('No users to sync yet'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+  statusEl.textContent = `0 / ${entries.length}`;
+
+  let done = 0;
+  try {
+    // Admin has read access to the full users/ tree (see database.rules.json)
+    // and write access to any leaderboard/{uid} entry — this backfills
+    // everyone's public leaderboard row in one pass, covering users who
+    // registered before the per-login leaderboard sync existed.
+    for (const [uid, u] of entries) {
+      const points = (u.stats && u.stats.points) || 0;
+      const watchCount = (u.stats && u.stats.watchCount) || (u.history ? Object.keys(u.history).length : 0);
+      const name = u.name || (u.email ? u.email.split('@')[0] : 'Member');
+      await db.ref(`leaderboard/${uid}`).set({ name, points, watchCount });
+      done++;
+      statusEl.textContent = `${done} / ${entries.length}`;
+    }
+    toast(`Synced ${done} users to the public leaderboard!`);
+  } catch (e) {
+    toast('Sync failed: ' + (e.message || 'unknown error'));
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-arrows-rotate"></i> Sync All Users to Leaderboard';
+  }
+});
 
 // Mirror of index.html's SERVERS list (names only — admin doesn't need the
 // buildUrl functions, just the picker) so the dropdown always matches what

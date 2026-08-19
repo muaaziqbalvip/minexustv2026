@@ -64,6 +64,17 @@
 
 `/admin-recover.html` پر جائیں، اپنا email ڈالیں — Firebase آپ کو password reset link بھیج دے گا۔
 
+عام صارفین (app کے اندر، admin نہیں) کے لیے بھی یہی سہولت موجود ہے — Login screen پر "Forgot your password?" لنک پر tap کریں۔
+
+## Leaderboard میں صرف اپنی entry نظر آ رہی ہے؟
+
+یہ 99% اس وجہ سے ہوتا ہے کہ **`database.rules.json` ابھی تک Firebase Console میں publish نہیں ہوئی** (یا پرانا version ابھی تک active ہے)۔ کیسے چیک کریں:
+
+1. اپنی website کھولیں، سائن ان کریں، browser کا **Console** کھولیں (F12 → Console tab)
+2. اگر وہاں یہ error نظر آئے: `Failed to sync leaderboard entry — check that database.rules.json is published...` تو یہ confirm ہے کہ rules publish نہیں ہوئیں
+3. Firebase Console → Realtime Database → **Rules** میں جائیں، اس repo کی `database.rules.json` کا پورا content دوبارہ paste کر کے **Publish** کریں
+4. Admin Panel → Registered Users tab → **"Sync All Users to Leaderboard"** پر click کریں — یہ پرانے/موجودہ سب users کو ایک ساتھ leaderboard میں شامل کر دے گا
+
 ## اہم نوٹ
 
 - یہ admin email/password کبھی بھی کسی اور کو نہ بتائیں
