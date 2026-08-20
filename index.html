@@ -272,7 +272,8 @@ input,select{font-family:inherit}
 
 /* ===== MAIN VIEWS ===== */
 .view{display:none;min-height:calc(100vh - var(--nav-h) - var(--bottom-h) - var(--footer-h));padding-top:var(--nav-h)}
-.view.active{display:block}
+.view.active{display:block;animation:viewFadeIn .22s ease}
+@keyframes viewFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
 /* ===== HERO SPOTLIGHT BANNER ===== */
 .hero{
@@ -500,6 +501,11 @@ input,select{font-family:inherit}
   position:absolute;top:6px;right:6px;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);
   border-radius:5px;padding:3px 7px;font-size:9.5px;font-weight:800;color:var(--gold);
 }
+.cal-card-soon{
+  position:absolute;bottom:34px;left:0;right:0;background:rgba(229,9,20,.85);
+  backdrop-filter:blur(4px);padding:3px 6px;font-size:9px;font-weight:800;
+  color:#fff;text-align:center;letter-spacing:.3px;
+}
 .cal-card-info{padding:8px}
 .cal-card-title{font-size:11.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
@@ -514,6 +520,7 @@ input,select{font-family:inherit}
 }
 .news-card:active{transform:scale(.98)}
 .news-card:hover{border-color:var(--border-active)}
+.news-card-soon{opacity:.75}
 .news-thumb{width:70px;height:100px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--bg4);-webkit-user-drag:none}
 .news-body{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
 .news-badge{
@@ -1024,6 +1031,19 @@ input,select{font-family:inherit}
   box-shadow:0 6px 20px rgba(0,0,0,.5);animation:toastIn .2s ease;pointer-events:auto;
 }
 @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ===== OFFLINE STATUS BANNER =====
+   Persistent (not auto-dismissing like toasts) since "no internet" is an
+   ongoing condition, not a one-off event — stays until connectivity
+   actually returns. Sits below the header so it doesn't cover navigation. */
+.offline-banner{
+  position:fixed;top:var(--nav-h);left:0;right:0;z-index:850;
+  background:#7a1f1f;color:#fff;font-size:11.5px;font-weight:700;
+  text-align:center;padding:8px 12px;display:flex;align-items:center;
+  justify-content:center;gap:7px;
+  animation:offlineSlideIn .25s ease;
+}
+@keyframes offlineSlideIn{from{transform:translateY(-100%)}to{transform:translateY(0)}}
 .toast.removing{opacity:0;transform:translateY(6px);transition:.2s}
 .toast.success i{color:#4ade80}
 .toast.error i{color:var(--accent)}
@@ -1180,6 +1200,12 @@ input,select{font-family:inherit}
       </div>
       <button class="btn btn-lock-submit" id="lockForgotSubmitBtn"><i class="fas fa-paper-plane"></i> Send Reset Link</button>
       <a href="#" id="lockBackToLoginLink" style="display:block;text-align:center;font-size:11.5px;color:var(--text2);margin-top:14px;text-decoration:underline">← Back to Sign In</a>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+      <a href="/privacy-policy.html" target="_blank" style="font-size:10.5px;color:var(--text3);text-decoration:underline">Privacy Policy</a>
+      <span style="color:var(--text3);font-size:10.5px">•</span>
+      <a href="/terms-of-service.html" target="_blank" style="font-size:10.5px;color:var(--text3);text-decoration:underline">Terms of Service</a>
     </div>
   </div>
 </div>
@@ -1675,8 +1701,8 @@ input,select{font-family:inherit}
   <button class="tab-btn" data-view="live">
     <i class="fas fa-broadcast-tower"></i><span>Live TV</span>
   </button>
-  <button class="tab-btn" data-view="leaderboard">
-    <i class="fas fa-trophy"></i><span>Ranks</span>
+  <button class="tab-btn" data-view="calendar">
+    <i class="fas fa-calendar-days"></i><span>Calendar</span>
   </button>
   <button class="tab-btn" data-view="account">
     <i class="fas fa-circle-user"></i><span>Account</span>
@@ -1689,6 +1715,11 @@ input,select{font-family:inherit}
 </footer>
 
 <div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ===== OFFLINE STATUS BANNER ===== -->
+<div class="offline-banner" id="offlineBanner" style="display:none">
+  <i class="fas fa-wifi" style="opacity:.5"></i> No internet connection — some content may not load
+</div>
 
 <!-- ===== FIREBASE SDK ===== -->
 <script>
@@ -1914,6 +1945,15 @@ async function _fetch(url, retries = 2, cacheMs = LIVE_CACHE_MS) {
       clearTimeout(timer);
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const d = await r.json();
+      // Cap in-memory cache size so long browsing sessions (movies, series,
+      // search, calendar, news all populate this same Map) don't grow
+      // memory usage unbounded — evict the oldest entry once the cap is
+      // hit, Map iteration order is insertion order so this is a cheap
+      // approximation of LRU that's good enough for a response cache.
+      if (_cache.size >= 300) {
+        const oldestKey = _cache.keys().next().value;
+        _cache.delete(oldestKey);
+      }
       _cache.set(url, { d, t: Date.now() });
       return d;
     } catch (e) {
@@ -1990,38 +2030,65 @@ const API = {
         _fetch(`${TMDB_BASE}/movie/upcoming?api_key=${TMDB_API_KEY}`, 1, 900000)
       ]);
 
+      // Trending/now-playing titles are already released and should be
+      // playable when tapped — resolve real IMDb ids for them. (Raw TMDB
+      // trending/now_playing/upcoming responses don't include imdb_id at
+      // all, so without this every news card's mapped item had a null id
+      // and tapping it opened a broken/empty player.)
+      const trendingList = (trending.results || []).slice(0, 5);
+      const nowPlayingList = (nowPlaying.results || []).slice(0, 5);
+      const upcomingList = (upcoming.results || []).slice(0, 5);
+
+      const [trendingWithIds, nowPlayingWithIds] = await Promise.all([
+        tmdbResolveImdbIds(trendingList, 'movie'),
+        tmdbResolveImdbIds(nowPlayingList, 'movie')
+      ]);
+      // Build lookup maps so headline order/rank is preserved even though
+      // some titles may have been dropped for lacking a resolvable id.
+      const trendingById = new Map(trendingWithIds.map(m => [m.id, m]));
+      const nowPlayingById = new Map(nowPlayingWithIds.map(m => [m.id, m]));
+
       const items = [];
-      (trending.results || []).slice(0, 5).forEach((m, i) => {
+      trendingList.forEach((m, i) => {
+        const resolved = trendingById.get(m.id);
+        if (!resolved) return; // couldn't resolve an IMDb id — skip rather than show a broken card
         items.push({
           badge: '🔥 Trending Now', tag: `#${i + 1} Trending Today`,
           headline: `${m.title} is #${i + 1} on today's trending chart`,
           summary: m.overview || 'No synopsis available.',
           poster: m.poster_path ? `${TMDB_IMG}/w342${m.poster_path}` : '',
           rating: m.vote_average ? m.vote_average.toFixed(1) : null,
-          tmdbId: m.id, tmdbType: 'movie', mapped: mapTmdb(m, 'movie'),
+          mapped: mapTmdb(resolved, 'movie'),
           sortTime: Date.now() - i * 60000
         });
       });
-      (nowPlaying.results || []).slice(0, 5).forEach((m, i) => {
+      nowPlayingList.forEach((m, i) => {
+        const resolved = nowPlayingById.get(m.id);
+        if (!resolved) return;
         items.push({
           badge: '🎬 In Theaters', tag: 'Now Playing',
           headline: `${m.title} is now playing in theaters`,
           summary: m.overview || 'No synopsis available.',
           poster: m.poster_path ? `${TMDB_IMG}/w342${m.poster_path}` : '',
           rating: m.vote_average ? m.vote_average.toFixed(1) : null,
-          tmdbId: m.id, tmdbType: 'movie', mapped: mapTmdb(m, 'movie'),
+          mapped: mapTmdb(resolved, 'movie'),
           sortTime: Date.now() - 300000 - i * 60000
         });
       });
-      (upcoming.results || []).slice(0, 5).forEach((m, i) => {
+      upcomingList.forEach((m, i) => {
         const date = m.release_date ? new Date(m.release_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) : 'soon';
+        // Unreleased — same as the Calendar tab, use a synthetic id since
+        // no IMDb id exists yet and these aren't meant to be playable.
+        const mapped = mapTmdb(m, 'movie');
+        mapped.id = `tmdb-${m.id}`;
+        mapped.notYetReleased = true;
         items.push({
           badge: '📅 Coming Soon', tag: `Releases ${date}`,
           headline: `${m.title} releases ${date}`,
           summary: m.overview || 'No synopsis available.',
           poster: m.poster_path ? `${TMDB_IMG}/w342${m.poster_path}` : '',
           rating: m.vote_average ? m.vote_average.toFixed(1) : null,
-          tmdbId: m.id, tmdbType: 'movie', mapped: mapTmdb(m, 'movie'),
+          mapped,
           sortTime: Date.now() - 600000 - i * 60000
         });
       });
@@ -2044,7 +2111,25 @@ const API = {
         ? `primary_release_date.gte=${today}&sort_by=primary_release_date.asc`
         : `primary_release_date.lte=${today}&sort_by=primary_release_date.desc`;
       const d = await _fetch(`${TMDB_BASE}/discover/movie?api_key=${TMDB_API_KEY}&${params}&vote_count.gte=${mode === 'upcoming' ? 0 : 5}`);
-      const withIds = await tmdbResolveImdbIds((d.results || []).slice(0, 24), 'movie');
+      const results = (d.results || []).slice(0, 24);
+
+      if (mode === 'upcoming') {
+        // Unreleased titles almost never have an IMDb id assigned yet (that
+        // only happens once a movie actually releases) — resolving one here
+        // would silently drop nearly every "Coming Soon" result. These are
+        // preview/announcement cards, not meant to be playable yet, so use
+        // the TMDB numeric id directly instead of requiring an IMDb id.
+        return results.map(m => {
+          const mapped = mapTmdb(m, 'movie');
+          mapped.id = `tmdb-${m.id}`; // synthetic id: valid for display, not for playback
+          mapped.notYetReleased = true;
+          return mapped;
+        });
+      }
+
+      // Already-released titles need a real IMDb id since tapping one opens
+      // the player, which requires it for the embed servers.
+      const withIds = await tmdbResolveImdbIds(results, 'movie');
       return withIds.map(m => mapTmdb(m, 'movie'));
     } catch (e) { return []; }
   },
@@ -2248,6 +2333,15 @@ let _registrySeq = 0;
 const _itemRegistry = new Map();
 function registerItem(item) {
   const key = 'r' + (_registrySeq++);
+  // Cap registry size for the same reason as the response cache — infinite
+  // scroll grids and repeated Calendar/News renders would otherwise let
+  // this grow unbounded over a long session. Evicting the oldest entries
+  // is safe: once a card scrolls out of the DOM (or a view is re-rendered),
+  // nothing references its old key anymore anyway.
+  if (_itemRegistry.size >= 500) {
+    const oldestKey = _itemRegistry.keys().next().value;
+    _itemRegistry.delete(oldestKey);
+  }
   _itemRegistry.set(key, item);
   return key;
 }
@@ -3344,6 +3438,7 @@ async function renderCalendarView() {
               <div class="cal-card" data-key="${key}" style="cursor:pointer">
                 <img class="cal-card-poster" src="${esc(item.poster || _fallbackPosterSvg)}" alt="${esc(item.title)}" loading="lazy" onerror="this.src='${_fallbackPosterSvg}'">
                 <div class="cal-card-date">${esc(dayLabel)}</div>
+                ${item.notYetReleased ? '<div class="cal-card-soon">Coming Soon</div>' : ''}
                 <div class="cal-card-info">
                   <div class="cal-card-title">${esc(item.title)}</div>
                 </div>
@@ -3354,11 +3449,17 @@ async function renderCalendarView() {
       </div>
     `).join('');
 
-    // Delegated click — open the player for whichever card was tapped.
+    // Delegated click — open the player for whichever card was tapped,
+    // unless it's a not-yet-released title (no stream exists for those yet).
     el.querySelectorAll('.cal-card[data-key]').forEach(card => {
       card.addEventListener('click', () => {
         const item = getRegisteredItem(card.dataset.key);
-        if (item) openPlayer(item);
+        if (!item) return;
+        if (item.notYetReleased) {
+          toast(`📅 "${item.title}" hasn't released yet — check back on its release date!`, 'info');
+          return;
+        }
+        openPlayer(item);
       });
     });
   } catch (e) {
@@ -3379,7 +3480,7 @@ async function renderNewsMode(el) {
     el.innerHTML = `<div class="news-list">${news.map(n => {
       const key = registerItem(n.mapped);
       return `
-        <div class="news-card" data-key="${key}">
+        <div class="news-card${n.mapped.notYetReleased ? ' news-card-soon' : ''}" data-key="${key}">
           <img class="news-thumb" src="${esc(n.poster || _fallbackPosterSvg)}" alt="" loading="lazy" onerror="this.src='${_fallbackPosterSvg}'">
           <div class="news-body">
             <div class="news-badge">${esc(n.badge)}</div>
@@ -3394,7 +3495,12 @@ async function renderNewsMode(el) {
     el.querySelectorAll('.news-card[data-key]').forEach(card => {
       card.addEventListener('click', () => {
         const item = getRegisteredItem(card.dataset.key);
-        if (item) openPlayer(item);
+        if (!item) return;
+        if (item.notYetReleased) {
+          toast(`📅 "${item.title}" hasn't released yet — check back on its release date!`, 'info');
+          return;
+        }
+        openPlayer(item);
       });
     });
   } catch (e) {
@@ -3941,6 +4047,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // Theme class was already applied pre-paint by the <head> script (to
   // avoid a flash); this just keeps document state consistent with S.settings.
   document.documentElement.classList.toggle('light-theme', S.settings.theme === 'light');
+
+  // ---- OFFLINE / ONLINE DETECTION ----
+  // Shows a persistent banner while the device has no internet connection,
+  // and a brief confirmation toast when it comes back. navigator.onLine can
+  // occasionally be wrong on some browsers/networks (e.g. connected to a
+  // Wi-Fi with no actual internet), but it's still a meaningful signal for
+  // the common case of "phone is in airplane mode" or "lost signal".
+  const offlineBanner = document.getElementById('offlineBanner');
+  function updateOnlineStatus() {
+    if (!navigator.onLine) {
+      if (offlineBanner) offlineBanner.style.display = 'flex';
+    } else {
+      if (offlineBanner && offlineBanner.style.display !== 'none') {
+        offlineBanner.style.display = 'none';
+        toast('✅ Back online', 'success');
+      }
+    }
+  }
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  updateOnlineStatus(); // check immediately in case the page loaded while already offline
 
   // Footer tap opens the Developer/About page.
   const footerEl = document.getElementById('siteFooter');
