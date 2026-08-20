@@ -819,6 +819,33 @@ input,select{font-family:inherit}
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* ---- LIVE TV: Next/Previous channel controls ---- */
+.live-chan-nav{
+  position:absolute;top:50%;transform:translateY(-50%);z-index:3;
+  width:42px;height:42px;border-radius:50%;
+  background:rgba(10,12,20,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.14);color:#fff;font-size:15px;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .25s ease,background .2s ease,transform .15s ease;
+}
+.player-frame-wrap:hover .live-chan-nav,
+.live-chan-nav:focus-visible{opacity:1}
+.live-chan-nav:active{transform:translateY(-50%) scale(.9)}
+.live-chan-nav:hover{background:linear-gradient(135deg,var(--accent),#c9101c);border-color:transparent}
+.live-chan-prev{left:12px}
+.live-chan-next{right:12px}
+@media(hover:none){ .live-chan-nav{opacity:1;background:rgba(10,12,20,.55)} }
+
+.live-chan-quickswitch{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.live-chan-pill{
+  display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:20px;
+  background:var(--bg4);color:var(--text2);font-size:11px;font-weight:700;border:1px solid var(--border);
+  transition:background .2s ease,color .2s ease,transform .12s ease;
+}
+.live-chan-pill:hover{background:linear-gradient(135deg,var(--accent),#c9101c);color:#fff;border-color:transparent}
+.live-chan-pill:active{transform:scale(.95)}
+.live-chan-counter{font-size:10.5px;color:var(--text3);font-weight:700;letter-spacing:.3px;white-space:nowrap}
+
 /* All Servers Bar */
 .server-section{padding:12px 14px 6px;flex-shrink:0}
 
@@ -974,6 +1001,9 @@ input,select{font-family:inherit}
   display:flex;align-items:center;gap:5px;flex-shrink:0;
 }
 .pwa-nudge-btn:active{transform:scale(.95)}
+.pwa-nudge-btn-waiting{opacity:.7;pointer-events:none}
+.pwa-nudge-btn-waiting i{animation:pwaSpin .7s linear infinite}
+@keyframes pwaSpin{to{transform:rotate(360deg)}}
 .pwa-nudge-close{color:var(--text3);font-size:13px;padding:4px;flex-shrink:0}
 .auth-toggle-row{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px}
 .auth-tbtn{flex:1;padding:10px;font-size:12px;font-weight:700;color:var(--text3);border-bottom:2px solid transparent}
@@ -1137,9 +1167,32 @@ input,select{font-family:inherit}
   <button class="pwa-nudge-close" id="pwaNudgeCloseBtn" aria-label="Dismiss"><i class="fas fa-times"></i></button>
 </div>
 <script>
-  if (!window.__MINEXUS_PWA_OK__ && !sessionStorage.getItem('pwaNudgeDismissed')) {
-    document.getElementById('pwaInstallNudge').style.display = 'flex';
-  }
+  /* Show the nudge immediately only on platforms that will NEVER fire
+     beforeinstallprompt (iOS Safari, or a browser lacking the API) — there
+     the click always falls back to manual instructions anyway, so there's
+     nothing to wait for. On Chrome/Edge/Android, where a REAL one-tap
+     install is possible, we hold off showing the button until either
+     beforeinstallprompt actually fires (handled later in the main script)
+     or a short grace period passes — otherwise the button renders before
+     Chrome has finished its installability check, deferredPrompt is still
+     null, and every tap silently falls back to "here's how to do it
+     manually" even when a real install was one tap away. This was the
+     "Install button only helps, never actually installs" bug. */
+  (function() {
+    if (window.__MINEXUS_PWA_OK__ || sessionStorage.getItem('pwaNudgeDismissed') || localStorage.getItem('minexus_pwa_installed')) return;
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+    if (isIOS) {
+      document.getElementById('pwaInstallNudge').style.display = 'flex';
+    } else {
+      window.__MINEXUS_PWA_WAIT__ = true; // main script reveals it on beforeinstallprompt, or after the grace timeout below
+      setTimeout(() => {
+        if (!window.__MINEXUS_PWA_OK__ && !sessionStorage.getItem('pwaNudgeDismissed') && !localStorage.getItem('minexus_pwa_installed')) {
+          document.getElementById('pwaInstallNudge').style.display = 'flex';
+        }
+      }, 3500);
+    }
+  })();
 </script>
 
 <!-- ===== MANDATORY AUTH LOCK SCREEN ===== -->
@@ -1673,17 +1726,31 @@ input,select{font-family:inherit}
     </div>
   </div>
 
-  <div class="player-frame-wrap">
+  <div class="player-frame-wrap" id="liveFrameWrap">
     <div class="player-loader" id="livePlayerLoader">
       <div class="spinner"></div>
       <span>Connecting to Live Stream...</span>
     </div>
     <video id="liveVideoPlayer" controls autoplay playsinline style="width:100%;height:100%;background:#000"></video>
+
+    <button class="live-chan-nav live-chan-prev" id="liveChPrevBtn" aria-label="Previous channel" title="Previous channel">
+      <i class="fas fa-chevron-left"></i>
+    </button>
+    <button class="live-chan-nav live-chan-next" id="liveChNextBtn" aria-label="Next channel" title="Next channel">
+      <i class="fas fa-chevron-right"></i>
+    </button>
   </div>
 
   <div style="padding:14px">
-    <div class="live-channel-meta" id="liveChMeta" style="display:flex;align-items:center;gap:10px;margin-bottom:8px"></div>
-    <p style="font-size:11px;color:var(--text3)">High quality encrypted HLS player stream for mobile and desktop.</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
+      <div class="live-channel-meta" id="liveChMeta" style="display:flex;align-items:center;gap:10px"></div>
+      <div class="live-chan-quickswitch">
+        <button class="live-chan-pill" id="liveChPrevPill"><i class="fas fa-backward-step"></i> Prev</button>
+        <span class="live-chan-counter" id="liveChCounter">— / —</span>
+        <button class="live-chan-pill" id="liveChNextPill">Next <i class="fas fa-forward-step"></i></button>
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--text3)">High quality encrypted HLS player stream for mobile and desktop. Swipe left/right on the video, or use Prev/Next to flip channels.</p>
   </div>
 </div>
 
@@ -1774,6 +1841,15 @@ window.addEventListener('beforeinstallprompt', e => {
   deferredPrompt = e;
   const pwaBanner = document.getElementById('pwaBanner');
   if (pwaBanner) pwaBanner.classList.add('show');
+  // A real one-tap install is now possible — reveal the nudge (if it was
+  // being held back waiting for this exact event) with a fully working button.
+  if (window.__MINEXUS_PWA_WAIT__) {
+    window.__MINEXUS_PWA_WAIT__ = false;
+    const nudge = document.getElementById('pwaInstallNudge');
+    if (nudge && nudge.style.display === 'none' && !sessionStorage.getItem('pwaNudgeDismissed') && !localStorage.getItem('minexus_pwa_installed')) {
+      nudge.style.display = 'flex';
+    }
+  }
 });
 
 document.getElementById('btnPwaInstall')?.addEventListener('click', async () => {
@@ -1791,13 +1867,40 @@ document.getElementById('btnPwaInstall')?.addEventListener('click', async () => 
    Browser tab usage is fully supported — this only offers a one-tap install
    for people who'd like the full-screen app experience. iOS has no
    programmatic install API, so on iOS the button instead explains the
-   manual Share → Add to Home Screen steps via a toast. */
+   manual Share → Add to Home Screen steps via a toast.
+
+   FIX (was reported as "Install button only helps, never actually
+   installs"): the button used to fire its manual-instructions toast
+   whenever `deferredPrompt` was still null at the moment of the click —
+   which was almost always, because the nudge banner rendered on page load,
+   before Chrome had finished its installability check and fired
+   `beforeinstallprompt`. Two changes fix that:
+   1. The banner itself is now held back (see the inline <script> right
+      after #pwaInstallNudge) until beforeinstallprompt actually fires, so
+      by the time the button is visible on Chrome/Edge/Android it's already
+      backed by a real deferredPrompt.
+   2. As a safety net, a click that still finds deferredPrompt empty now
+      waits briefly for a late-arriving event before giving up and showing
+      manual steps, instead of giving up instantly. */
 (function setupPwaNudge() {
   const ua = navigator.userAgent || '';
   const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
   const nudge = document.getElementById('pwaInstallNudge');
   const installBtn = document.getElementById('pwaNudgeInstallBtn');
   const closeBtn = document.getElementById('pwaNudgeCloseBtn');
+
+  function waitForDeferredPrompt(timeoutMs) {
+    if (deferredPrompt) return Promise.resolve(deferredPrompt);
+    return new Promise(resolve => {
+      const started = Date.now();
+      const iv = setInterval(() => {
+        if (deferredPrompt || Date.now() - started > timeoutMs) {
+          clearInterval(iv);
+          resolve(deferredPrompt);
+        }
+      }, 150);
+    });
+  }
 
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
@@ -1812,20 +1915,27 @@ document.getElementById('btnPwaInstall')?.addEventListener('click', async () => 
         toast('Tap the Share icon, then "Add to Home Screen"', 'info');
         return;
       }
+      if (!deferredPrompt) {
+        installBtn.classList.add('pwa-nudge-btn-waiting');
+        await waitForDeferredPrompt(1800);
+        installBtn.classList.remove('pwa-nudge-btn-waiting');
+      }
       if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
+        const promptRef = deferredPrompt;
         deferredPrompt = null;
+        promptRef.prompt();
+        const { outcome } = await promptRef.userChoice;
         if (outcome === 'accepted' && nudge) nudge.style.display = 'none';
       } else {
-        // beforeinstallprompt hasn't fired — either already installed, the
-        // browser doesn't support it, or Chrome hasn't finished its
-        // installability check yet. Give a precise fallback path instead of
-        // a vague message so the person can always get to Install manually.
+        // Genuinely unsupported here (or already installed) — give a
+        // precise fallback path instead of a vague message.
         const isChrome = /Chrome/.test(ua) && !/Edg|OPR|Brave/.test(ua);
         const isEdge = /Edg/.test(ua);
+        const isFirefox = /Firefox/.test(ua);
         if (isChrome || isEdge) {
           toast('Tap ⋮ (menu, top-right) → "Install app" or "Add to Home screen"', 'info');
+        } else if (isFirefox) {
+          toast('Tap ⋮ (menu) → "Install" (Firefox for Android 130+) or add via ⊕ in the address bar on desktop', 'info');
         } else {
           toast('Open your browser menu and look for "Install App" or "Add to Home Screen"', 'info');
         }
@@ -1836,6 +1946,7 @@ document.getElementById('btnPwaInstall')?.addEventListener('click', async () => 
   window.addEventListener('appinstalled', () => {
     toast('✅ App installed!', 'success');
     if (nudge) nudge.style.display = 'none';
+    try { localStorage.setItem('minexus_pwa_installed', '1'); } catch (e) {}
   });
 })();
 
@@ -2613,8 +2724,13 @@ async function loadLiveTV() {
       return;
     }
 
-    grid.innerHTML = channels.slice(0, 50).map(ch => {
+    // Kept for Next/Previous channel flipping in the live player — this is
+    // exactly the ordered set of channels actually visible in the grid.
+    S.currentLiveList = channels.slice(0, 50);
+
+    grid.innerHTML = S.currentLiveList.map(ch => {
       const key = registerItem(ch);
+      ch._key = key;
       return `
       <div class="channel-card" data-key="${key}">
         <div class="channel-logo-wrap">
@@ -2692,6 +2808,8 @@ function openLivePlayer(ch) {
   const loader = document.getElementById('livePlayerLoader');
   const video = document.getElementById('liveVideoPlayer');
   loader.style.display = 'flex';
+  loader.innerHTML = `<div class="spinner"></div><span>Connecting to Live Stream...</span>`;
+  updateLiveChannelNav(ch);
 
   if (S.hlsInstance) { S.hlsInstance.destroy(); S.hlsInstance = null; }
 
@@ -2735,6 +2853,31 @@ function openLivePlayer(ch) {
       <span style="font-size:10px;color:var(--text3)">${ch.country} • Live Stream</span>
     </div>
   `;
+}
+
+/* ---- LIVE TV: Next / Previous channel switching ----
+   Works off S.currentLiveList, the exact ordered set rendered in the Live
+   TV grid (set in loadLiveTV). Wraps around at both ends so Next/Prev never
+   dead-ends on the first/last channel. */
+function updateLiveChannelNav(ch) {
+  const list = S.currentLiveList || [];
+  const idx = list.findIndex(c => c === ch || c._key === ch._key);
+  S.currentLiveIndex = idx;
+  const counter = document.getElementById('liveChCounter');
+  const prevBtn = document.getElementById('liveChPrevBtn');
+  const nextBtn = document.getElementById('liveChNextBtn');
+  const prevPill = document.getElementById('liveChPrevPill');
+  const nextPill = document.getElementById('liveChNextPill');
+  const hasNav = idx > -1 && list.length > 1;
+  if (counter) counter.textContent = idx > -1 ? `${idx + 1} / ${list.length}` : '— / —';
+  [prevBtn, nextBtn, prevPill, nextPill].forEach(el => { if (el) el.style.display = hasNav ? '' : 'none'; });
+}
+
+function goToLiveChannel(delta) {
+  const list = S.currentLiveList || [];
+  if (!list.length || S.currentLiveIndex == null || S.currentLiveIndex < 0) return;
+  const nextIdx = (S.currentLiveIndex + delta + list.length) % list.length;
+  openLivePlayer(list[nextIdx]);
 }
 
 /* ---- ANTI-POPUP / ANTI-AD-REDIRECT GUARD ----
@@ -4106,6 +4249,46 @@ document.addEventListener('DOMContentLoaded', () => {
     switchView(prev);
   };
   document.getElementById('livePlayerBack').onclick = () => switchView('live');
+
+  // ---- Live TV: Next / Previous channel buttons (video overlay + pills) ----
+  document.getElementById('liveChPrevBtn')?.addEventListener('click', () => goToLiveChannel(-1));
+  document.getElementById('liveChNextBtn')?.addEventListener('click', () => goToLiveChannel(1));
+  document.getElementById('liveChPrevPill')?.addEventListener('click', () => goToLiveChannel(-1));
+  document.getElementById('liveChNextPill')?.addEventListener('click', () => goToLiveChannel(1));
+
+  // ---- Live TV: swipe left/right on the video to flip channels (mobile) ----
+  (function setupLiveSwipe() {
+    const wrap = document.getElementById('liveFrameWrap');
+    if (!wrap) return;
+    let touchStartX = 0, touchStartY = 0, touching = false;
+    wrap.addEventListener('touchstart', e => {
+      if (!e.touches[0]) return;
+      touching = true;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    wrap.addEventListener('touchend', e => {
+      if (!touching) return;
+      touching = false;
+      const t = e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - touchStartX;
+      const dy = t.clientY - touchStartY;
+      // Require a clearly horizontal swipe so vertical scroll/seek gestures aren't hijacked
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        goToLiveChannel(dx < 0 ? 1 : -1);
+      }
+    }, { passive: true });
+  })();
+
+  // ---- Live TV: ← / → arrow keys flip channels while the live player is open ----
+  document.addEventListener('keydown', e => {
+    if (S.view !== 'livePlayer') return;
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (e.key === 'ArrowRight') goToLiveChannel(1);
+    else if (e.key === 'ArrowLeft') goToLiveChannel(-1);
+  });
 
   // ---- Server Switch Buttons ----
   document.getElementById('serversRow').addEventListener('click', e => {
