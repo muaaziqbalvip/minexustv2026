@@ -574,10 +574,15 @@ input,select{font-family:inherit}
 .dev-partner-role{font-size:10.5px;color:var(--text3)}
 .dev-contact-links{display:flex;flex-direction:column;gap:8px}
 .dev-contact-link{
-  display:flex;align-items:center;gap:10px;padding:10px 12px;
+  display:flex;align-items:center;gap:10px;padding:10px 12px;width:100%;
   background:var(--bg4);border-radius:10px;font-size:12px;font-weight:600;color:var(--text);
+  border:1px solid transparent;cursor:pointer;text-align:left;transition:background .2s ease,border-color .2s ease;
 }
-.dev-contact-link i{color:var(--accent);width:16px;text-align:center}
+.dev-contact-link:hover{border-color:var(--accent)}
+.dev-contact-link:active{transform:scale(.98)}
+.dev-contact-link i{color:var(--accent);width:16px;text-align:center;flex-shrink:0}
+.dev-contact-link span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dev-contact-copy-icon{color:var(--text3)!important;font-size:11px!important;width:auto!important}
 .dev-footer-note{
   text-align:center;font-size:11px;color:var(--text3);padding:16px 0 4px;
 }
@@ -1961,33 +1966,51 @@ document.getElementById('btnPwaInstall')?.addEventListener('click', async () => 
    #2, everything else follows. Default server is still overridable from the
    Admin Panel (Live Servers tab) and synced live via Firebase — no code
    edits needed. If a server fails, the player shows a one-tap "Try Next
-   Server" so a single dead host never blocks playback. */
+   Server" so a single dead host never blocks playback.
+
+   ID TYPES: every buildUrl now receives an `ids` object — { imdb, tmdb } —
+   instead of a single id, because different embed providers key off
+   different ID systems (older VidSrc-family mirrors use the IMDb "tt..."
+   id; several newer providers — ShuttleTV, MeowTV, CineJoy, VidKing — key
+   off the plain numeric TMDB id instead). Each server picks whichever one
+   it actually needs. This also means the Admin Panel's custom-server form
+   now has an "ID Type" selector so Muaaz can add a server that needs either
+   kind without touching code. */
 const SERVERS = {
-  server1:  { name: 'Kriss424 (Default)', buildUrl: (id, t, s, e) => t === 'series' ? `https://kriss424did.com/play/${id}/${s}/${e}` : `https://kriss424did.com/play/${id}` },
-  server2:  { name: 'MultiEmbed',      buildUrl: (id, t, s, e) => t === 'series' ? `https://multiembed.mov/?video_id=${id}&s=${s}&e=${e}` : `https://multiembed.mov/?video_id=${id}` },
-  server3:  { name: 'VidSrc.cc',       buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}` : `https://vidsrc.cc/v2/embed/movie/${id}` },
-  server4:  { name: 'VidSrc2.ru',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc2.ru/embed/tv/${id}/${s}/${e}` : `https://vidsrc2.ru/embed/movie/${id}` },
-  server5:  { name: 'VidSrc-Embed.su', buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc-embed.su/embed/tv/${id}/${s}/${e}` : `https://vidsrc-embed.su/embed/movie/${id}` },
-  server6:  { name: 'AutoEmbed',       buildUrl: (id, t, s, e) => t === 'series' ? `https://player.autoembed.cc/embed/tv/${id}/${s}/${e}` : `https://player.autoembed.cc/embed/movie/${id}` },
-  server7:  { name: 'VidLink Pro',     buildUrl: (id, t, s, e) => t === 'series' ? `https://vidlink.pro/tv/${id}/${s}/${e}` : `https://vidlink.pro/movie/${id}` },
-  server8:  { name: 'Embed.su',        buildUrl: (id, t, s, e) => t === 'series' ? `https://embed.su/embed/tv/${id}/${s}/${e}` : `https://embed.su/embed/movie/${id}` },
-  server9:  { name: '2Embed.cc',       buildUrl: (id, t, s, e) => t === 'series' ? `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}` : `https://www.2embed.cc/embed/${id}` },
-  server10: { name: 'SmashyStream',    buildUrl: (id, t, s, e) => t === 'series' ? `https://player.smashystream.com/tv/${id}?s=${s}&e=${e}` : `https://player.smashystream.com/movie/${id}` },
-  server11: { name: 'GoMo',            buildUrl: (id, t, s, e) => t === 'series' ? `https://gomo.to/embed/tv/${id}/${s}/${e}` : `https://gomo.to/embed/movie/${id}` },
-  server12: { name: 'SuperEmbed',      buildUrl: (id, t, s, e) => t === 'series' ? `https://www.superembed.stream/embed/tv?video_id=${id}&s=${s}&e=${e}` : `https://www.superembed.stream/embed/movie?video_id=${id}` },
-  server13: { name: 'VidFast',         buildUrl: (id, t, s, e) => t === 'series' ? `https://vidfast.pro/tv/${id}/${s}/${e}` : `https://vidfast.pro/movie/${id}` },
-  server14: { name: 'Videasy',         buildUrl: (id, t, s, e) => t === 'series' ? `https://player.videasy.net/tv/${id}/${s}/${e}` : `https://player.videasy.net/movie/${id}` },
-  server15: { name: 'MoviesAPI.club',  buildUrl: (id, t, s, e) => t === 'series' ? `https://moviesapi.club/tv/${id}-${s}-${e}` : `https://moviesapi.club/movie/${id}` },
-  server16: { name: 'VidSrc.rip',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.rip/embed/tv/${id}/${s}/${e}` : `https://vidsrc.rip/embed/movie/${id}` },
-  server17: { name: 'VidSrc.pro',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.pro/embed/tv/${id}/${s}/${e}` : `https://vidsrc.pro/embed/movie/${id}` },
-  server18: { name: 'VidSrc.icu',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.icu/embed/tv/${id}/${s}/${e}` : `https://vidsrc.icu/embed/movie/${id}` },
-  server19: { name: 'VidSrc.fyi',      buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.fyi/embed/tv/${id}/${s}/${e}` : `https://vidsrc.fyi/embed/movie/${id}` },
-  server20: { name: 'VidSrc.hair',     buildUrl: (id, t, s, e) => t === 'series' ? `https://vidsrc.hair/embed/tv/${id}/${s}/${e}` : `https://vidsrc.hair/embed/movie/${id}` },
-  server21: { name: 'Vid-Src.top',     buildUrl: (id, t, s, e) => t === 'series' ? `https://vid-src.top/embed/tv/${id}/${s}/${e}` : `https://vid-src.top/embed/movie/${id}` },
-  server22: { name: 'AutoEmbed.cc',    buildUrl: (id, t, s, e) => t === 'series' ? `https://autoembed.cc/embed/tv/${id}/${s}/${e}` : `https://autoembed.cc/embed/movie/${id}` },
-  server23: { name: 'Rive Stream',     buildUrl: (id, t, s, e) => t === 'series' ? `https://rivestream.live/embed?type=tv&id=${id}&season=${s}&episode=${e}` : `https://rivestream.live/embed?type=movie&id=${id}` },
-  server24: { name: 'CinemaOS',        buildUrl: (id, t, s, e) => t === 'series' ? `https://cinemaos-v2.vercel.app/embed?type=tv&id=${id}&season=${s}&episode=${e}` : `https://cinemaos-v2.vercel.app/embed?type=movie&id=${id}` },
-  server25: { name: 'Nunflix',         buildUrl: (id, t, s, e) => t === 'series' ? `https://nunflix.org/embed/tv/${id}/${s}/${e}` : `https://nunflix.org/embed/movie/${id}` }
+  server1:  { name: 'Kriss424 (Default)', buildUrl: (ids, t, s, e) => t === 'series' ? `https://kriss424did.com/play/${ids.imdb}/${s}/${e}` : `https://kriss424did.com/play/${ids.imdb}` },
+  server2:  { name: 'MultiEmbed',      buildUrl: (ids, t, s, e) => t === 'series' ? `https://multiembed.mov/?video_id=${ids.imdb}&s=${s}&e=${e}` : `https://multiembed.mov/?video_id=${ids.imdb}` },
+  server3:  { name: 'VidSrc.cc',       buildUrl: (ids, t, s, e) => t === 'series' ? `https://vidsrc.cc/v2/embed/tv/${ids.imdb}/${s}/${e}` : `https://vidsrc.cc/v2/embed/movie/${ids.imdb}` },
+  server4:  { name: 'VidSrc2.ru',      buildUrl: (ids, t, s, e) => t === 'series' ? `https://vidsrc2.ru/embed/tv/${ids.imdb}/${s}/${e}` : `https://vidsrc2.ru/embed/movie/${ids.imdb}` },
+  server5:  { name: 'VidSrc-Embed.su', buildUrl: (ids, t, s, e) => t === 'series' ? `https://vidsrc-embed.su/embed/tv/${ids.imdb}/${s}/${e}` : `https://vidsrc-embed.su/embed/movie/${ids.imdb}` },
+  server6:  { name: 'AutoEmbed',       buildUrl: (ids, t, s, e) => t === 'series' ? `https://player.autoembed.cc/embed/tv/${ids.imdb}/${s}/${e}` : `https://player.autoembed.cc/embed/movie/${ids.imdb}` },
+  server7:  { name: 'VidLink Pro',     buildUrl: (ids, t, s, e) => t === 'series' ? `https://vidlink.pro/tv/${ids.imdb}/${s}/${e}` : `https://vidlink.pro/movie/${ids.imdb}` },
+  server8:  { name: 'Embed.su',        buildUrl: (ids, t, s, e) => t === 'series' ? `https://embed.su/embed/tv/${ids.imdb}/${s}/${e}` : `https://embed.su/embed/movie/${ids.imdb}` },
+  server9:  { name: '2Embed.cc',       buildUrl: (ids, t, s, e) => t === 'series' ? `https://www.2embed.cc/embedtv/${ids.imdb}&s=${s}&e=${e}` : `https://www.2embed.cc/embed/${ids.imdb}` },
+  server10: { name: 'SmashyStream',    buildUrl: (ids, t, s, e) => t === 'series' ? `https://player.smashystream.com/tv/${ids.imdb}?s=${s}&e=${e}` : `https://player.smashystream.com/movie/${ids.imdb}` },
+  server11: { name: 'GoMo',            buildUrl: (ids, t, s, e) => t === 'series' ? `https://gomo.to/embed/tv/${ids.imdb}/${s}/${e}` : `https://gomo.to/embed/movie/${ids.imdb}` },
+  server12: { name: 'SuperEmbed',      buildUrl: (ids, t, s, e) => t === 'series' ? `https://www.superembed.stream/embed/tv?video_id=${ids.imdb}&s=${s}&e=${e}` : `https://www.superembed.stream/embed/movie?video_id=${ids.imdb}` },
+  server13: { name: 'VidFast',         buildUrl: (ids, t, s, e) => t === 'series' ? `https://vidfast.pro/tv/${ids.imdb}/${s}/${e}` : `https://vidfast.pro/movie/${ids.imdb}` },
+  server14: { name: 'Videasy',         buildUrl: (ids, t, s, e) => t === 'series' ? `https://player.videasy.net/tv/${ids.imdb}/${s}/${e}` : `https://player.videasy.net/movie/${ids.imdb}` },
+  server15: { name: 'MoviesAPI.club',  buildUrl: (ids, t, s, e) => t === 'series' ? `https://moviesapi.club/tv/${ids.imdb}-${s}-${e}` : `https://moviesapi.club/movie/${ids.imdb}` },
+  server16: { name: 'VidSrc.rip',      buildUrl: (ids, t, s, e) => t === 'series' ? `https://vidsrc.rip/embed/tv/${ids.imdb}/${s}/${e}` : `https://vidsrc.rip/embed/movie/${ids.imdb}` },
+  server17: { name: 'VidSrc.pro',      buildUrl: (ids, t, s, e) => t === 'series' ? `https://vidsrc.pro/embed/tv/${ids.imdb}/${s}/${e}` : `https://vidsrc.pro/embed/movie/${ids.imdb}` },
+  server18: { name: 'VidSrc.icu',      buildUrl: (ids, t, s, e) => t === 'series' ? `https://vidsrc.icu/embed/tv/${ids.imdb}/${s}/${e}` : `https://vidsrc.icu/embed/movie/${ids.imdb}` },
+  server19: { name: 'VidSrc.fyi',      buildUrl: (ids, t, s, e) => t === 'series' ? `https://vidsrc.fyi/embed/tv/${ids.imdb}/${s}/${e}` : `https://vidsrc.fyi/embed/movie/${ids.imdb}` },
+  server20: { name: 'VidSrc.hair',     buildUrl: (ids, t, s, e) => t === 'series' ? `https://vidsrc.hair/embed/tv/${ids.imdb}/${s}/${e}` : `https://vidsrc.hair/embed/movie/${ids.imdb}` },
+  server21: { name: 'Vid-Src.top',     buildUrl: (ids, t, s, e) => t === 'series' ? `https://vid-src.top/embed/tv/${ids.imdb}/${s}/${e}` : `https://vid-src.top/embed/movie/${ids.imdb}` },
+  server22: { name: 'AutoEmbed.cc',    buildUrl: (ids, t, s, e) => t === 'series' ? `https://autoembed.cc/embed/tv/${ids.imdb}/${s}/${e}` : `https://autoembed.cc/embed/movie/${ids.imdb}` },
+  server23: { name: 'Rive Stream',     buildUrl: (ids, t, s, e) => t === 'series' ? `https://rivestream.live/embed?type=tv&id=${ids.imdb}&season=${s}&episode=${e}` : `https://rivestream.live/embed?type=movie&id=${ids.imdb}` },
+  server24: { name: 'CinemaOS',        buildUrl: (ids, t, s, e) => t === 'series' ? `https://cinemaos-v2.vercel.app/embed?type=tv&id=${ids.imdb}&season=${s}&episode=${e}` : `https://cinemaos-v2.vercel.app/embed?type=movie&id=${ids.imdb}` },
+  server25: { name: 'Nunflix',         buildUrl: (ids, t, s, e) => t === 'series' ? `https://nunflix.org/embed/tv/${ids.imdb}/${s}/${e}` : `https://nunflix.org/embed/movie/${ids.imdb}` },
+  // ---- Added per Muaaz's request (2026-08-21) — these 4 key off the plain
+  // numeric TMDB id, not "tt..." IMDb id. Series URL patterns follow each
+  // provider's documented/observed movie-pattern convention; if a mirror
+  // domain ever changes, re-add it here or (simpler) as an editable Custom
+  // Server from the Admin Panel with the matching "TMDB" ID Type selected.
+  server26: { name: 'ShuttleTV',       idType: 'tmdb', buildUrl: (ids, t, s, e) => t === 'series' ? `https://shuttletv.su/watch/${ids.tmdb}/${s}/${e}` : `https://shuttletv.su/watch/${ids.tmdb}` },
+  server27: { name: 'MeowTV',          idType: 'tmdb', buildUrl: (ids, t, s, e) => t === 'series' ? `https://meowtv.ru/play/tv/${ids.tmdb}/${s}/${e}` : `https://meowtv.ru/play/movie/${ids.tmdb}` },
+  server28: { name: 'CineJoy',         idType: 'tmdb', buildUrl: (ids, t, s, e) => t === 'series' ? `https://cinejoy.to/watch/tv/${ids.tmdb}/${s}/${e}` : `https://cinejoy.to/watch/movie/${ids.tmdb}` },
+  server29: { name: 'VidKing',         idType: 'tmdb', buildUrl: (ids, t, s, e) => t === 'series' ? `https://www.vidking.net/embed/tv/${ids.tmdb}/${s}/${e}` : `https://www.vidking.net/embed/movie/${ids.tmdb}` }
 };
 
 /* Removed from the previous list (confirmed dead/retiring per vidsrc.domains
@@ -1997,25 +2020,37 @@ const SERVERS = {
    .stream / CineScrape / WHVX / TheyAllSayFlix / MoviesAPI.to / SmashyStream
    API / Watch.AutoEmbed (no longer showing up in any actively-maintained
    2026 scraper/aggregator project, a reliable signal they've gone stale). */
-const SERVER_FALLBACK_ORDER = ['server1','server2','server3','server4','server6','server7','server8','server9','server13','server14'];
+const SERVER_FALLBACK_ORDER = ['server1','server2','server3','server4','server6','server7','server8','server9','server13','server14','server29','server26'];
 
 /* Custom servers added from the Admin Panel (Live Servers → "Add / Manage
    Custom Servers") sync in from Firebase `custom_servers/{key}` and get
    merged directly into SERVERS here, so they behave identically to the
    built-in list everywhere else in the app (server picker, fallback order,
    default-server selection). See the db.ref('custom_servers') listener
-   further down for where this actually gets called. */
+   further down for where this actually gets called.
+
+   Each custom server can now also carry:
+   - idType: 'imdb' (default) or 'tmdb' — which ID gets substituted for
+     {id} in the URL pattern. Set from the Admin Panel per-server, so a
+     provider that needs a TMDB id (like ShuttleTV/MeowTV/CineJoy/VidKing)
+     and one that needs an IMDb id can both live in the same list correctly.
+   - order: a sort number used to render/try servers in the order Muaaz
+     picked in the Admin Panel (drag-free — just Up/Down buttons there). */
 function mergeCustomServers(customServersObj) {
   // Remove any previously-merged custom servers first (in case one was
   // deleted from admin — Firebase 'value' events always send the full set).
   Object.keys(SERVERS).forEach(k => { if (k.startsWith('custom')) delete SERVERS[k]; });
-  Object.entries(customServersObj || {}).forEach(([key, s]) => {
+  const entries = Object.entries(customServersObj || {}).sort((a, b) => (a[1].order ?? 0) - (b[1].order ?? 0));
+  entries.forEach(([key, s]) => {
     if (!s || !s.name || !s.movieUrl || !s.seriesUrl) return;
+    const idType = s.idType === 'tmdb' ? 'tmdb' : 'imdb';
     SERVERS[key] = {
       name: s.name,
-      buildUrl: (id, t, se, ep) => {
+      idType,
+      buildUrl: (ids, t, se, ep) => {
+        const chosenId = idType === 'tmdb' ? ids.tmdb : ids.imdb;
         const pattern = t === 'series' ? s.seriesUrl : s.movieUrl;
-        return pattern.replace(/\{id\}/g, id).replace(/\{s\}/g, se).replace(/\{e\}/g, ep);
+        return pattern.replace(/\{id\}/g, chosenId).replace(/\{s\}/g, se).replace(/\{e\}/g, ep);
       }
     };
   });
@@ -2037,6 +2072,81 @@ let TMDB_API_KEY = ''; // synced live from Firebase app_config/tmdb_api_key — 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMG = 'https://image.tmdb.org/t/p';
 function tmdbEnabled() { return !!TMDB_API_KEY; }
+
+/* ---- AI-POWERED SEARCH (Groq) ----
+   Key + model synced live from Firebase app_config/groq_api_key +
+   groq_model (Admin Panel → AI-Powered Search). When a plain title search
+   comes up empty or looks like a description rather than a title ("best
+   world movie ever", "movie jisme banda time travel karta ho"), we ask
+   Groq's LLM to name the actual real movies/shows being described, then
+   look each suggested title up for real via the normal TMDB/Cinemeta path
+   above — so what actually plays is always a real, verified catalog entry,
+   never something hallucinated straight into the UI. */
+let GROQ_API_KEY = '';
+let GROQ_MODEL = 'openai/gpt-oss-120b';
+function groqEnabled() { return !!GROQ_API_KEY; }
+
+async function aiSuggestTitles(q) {
+  if (!groqEnabled()) return [];
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 9000);
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [
+          { role: 'system', content: 'You are a movie/TV search assistant for a streaming app. Given a user query (which may be vague, descriptive, misspelled, or in Roman Urdu/Hindi/English), reply with ONLY a JSON array (no prose, no markdown fences) of up to 6 objects: {"title": "...", "year": 2020, "type": "movie"|"series"}. Titles must be real, actually-released movies or TV shows that best match what the user is describing. If the query already looks like a specific title, just correct its spelling/casing.' },
+          { role: 'user', content: q }
+        ],
+        temperature: 0.3,
+        max_tokens: 400
+      })
+    });
+    clearTimeout(timer);
+    if (!res.ok) return [];
+    const data = await res.json();
+    let text = data?.choices?.[0]?.message?.content || '[]';
+    text = text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '');
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed.filter(x => x && x.title).slice(0, 6) : [];
+  } catch (e) {
+    return []; // AI search is a pure enhancement — any failure silently falls back to normal search
+  }
+}
+
+/* Look up each AI-suggested title for real via the existing search paths,
+   so results shown to the user are always genuine, playable catalog
+   entries — the AI only decides WHAT to look up, never what gets shown. */
+async function aiResolveSuggestions(suggestions) {
+  const out = { movies: [], series: [] };
+  await Promise.all(suggestions.map(async (s) => {
+    try {
+      const enc = encodeURIComponent(s.title);
+      if (tmdbEnabled()) {
+        const endpoint = s.type === 'series' ? 'tv' : 'movie';
+        const r = await _fetch(`${TMDB_BASE}/search/${endpoint}?api_key=${TMDB_API_KEY}&query=${enc}&include_adult=false${s.year ? `&year=${s.year}` : ''}`, 1, 30000).catch(() => ({ results: [] }));
+        const top = (r.results || [])[0];
+        if (top) {
+          const withIds = await tmdbResolveImdbIds([top], endpoint);
+          if (withIds[0]) {
+            const mapped = mapTmdb(withIds[0], s.type === 'series' ? 'series' : 'movie');
+            if (mapped.id) (s.type === 'series' ? out.series : out.movies).push(mapped);
+            return;
+          }
+        }
+      }
+      // Cinemeta fallback if TMDB is off or found nothing for this title
+      const type = s.type === 'series' ? 'series' : 'movie';
+      const r2 = await _fetch(`${CBASE}/catalog/${type}/top/search=${enc}.json`, 1, 30000).catch(() => ({ metas: [] }));
+      const top2 = (r2.metas || [])[0];
+      if (top2) (type === 'series' ? out.series : out.movies).push(mapMeta(top2, type));
+    } catch (e) { /* skip this suggestion, others still resolve */ }
+  }));
+  return out;
+}
 
 const CBASE = 'https://v3-cinemeta.strem.io';
 const IMGB = 'https://images.metahub.space';
@@ -2370,6 +2480,19 @@ const API = {
     };
     let movies = dedupe(tmdbRes.movies, cinemetaRes.movies);
     let series = dedupe(tmdbRes.series, cinemetaRes.series);
+
+    // AI fallback: only kicks in when normal title-matching came up thin
+    // (few/no results) — most searches never touch Groq at all, keeping
+    // search fast and free-tier-friendly. This is what makes "best world
+    // movie ever" or a vaguely-described plot actually return something.
+    if (groqEnabled() && (movies.length + series.length) < 3) {
+      const suggestions = await aiSuggestTitles(q.trim());
+      if (suggestions.length) {
+        const aiRes = await aiResolveSuggestions(suggestions);
+        movies = dedupe(movies, aiRes.movies).map(m => movies.some(x => x.id === m.id) ? m : { ...m, aiSuggested: true });
+        series = dedupe(series, aiRes.series).map(m => series.some(x => x.id === m.id) ? m : { ...m, aiSuggested: true });
+      }
+    }
 
     // Relevance sort: exact title match first, then "starts with", then
     // "contains" — a plain merge left better matches buried under noise.
@@ -3243,7 +3366,17 @@ function playStream(isAutoFallback) {
   if (!item) return;
   const srv = SERVERS[S.activeServer];
   if (!srv) return;
-  const url = srv.buildUrl(item.id, item.type, S.activeSeason, S.activeEpisode);
+  const ids = { imdb: item.id, tmdb: item.tmdbId };
+  const neededId = srv.idType === 'tmdb' ? ids.tmdb : ids.imdb;
+  if (!neededId) {
+    // This particular server needs an ID type we don't have for this title
+    // (e.g. a TMDB-only server but TMDB data isn't resolved/available) —
+    // skip straight to the next server instead of loading a broken URL.
+    toast(`${srv.name} needs data we don't have for this title — trying next server`, 'info');
+    tryNextServer();
+    return;
+  }
+  const url = srv.buildUrl(ids, item.type, S.activeSeason, S.activeEpisode);
 
   const frame = document.getElementById('cinemaFrame');
   const loader = document.getElementById('playerLoader');
@@ -3373,7 +3506,7 @@ function handleLiveSearch(q, dropdownEl) {
         <div class="sdrop-item" data-key="${key}" data-close-dropdown="1">
           <img class="sdrop-poster" src="${esc(i.poster)}" alt="" onerror="this.style.display='none'">
           <div class="sdrop-info">
-            <div class="sdrop-title">${esc(i.title)}</div>
+            <div class="sdrop-title">${esc(i.title)} ${i.aiSuggested ? '<span style="font-size:9px;font-weight:800;color:#000;background:linear-gradient(135deg,var(--gold),#ffe27a);border-radius:5px;padding:1px 5px;margin-left:4px;vertical-align:middle">AI</span>' : ''}</div>
             <div class="sdrop-meta">${esc(i.year)} • ${i.type === 'series' ? 'TV' : 'Movie'}</div>
           </div>
         </div>
@@ -3516,6 +3649,11 @@ function renderDeveloperPage() {
 
   // Contact links (email, website, socials) — optional, defaults to nothing
   // shown rather than fake/placeholder links.
+  //
+  // Per request: these no longer navigate away (no target=_blank redirect).
+  // Tapping a contact now copies it to the clipboard so the person can
+  // paste it into WhatsApp/email/etc themselves — safer (no accidental
+  // app-switch away from MINEXUS TV) and works the same on every platform.
   const contacts = cfg.contacts || [];
   const iconFor = (type) => ({
     email: 'fa-envelope', website: 'fa-globe', whatsapp: 'fa-brands fa-whatsapp',
@@ -3524,12 +3662,43 @@ function renderDeveloperPage() {
   }[type] || 'fa-link');
 
   document.getElementById('devContactLinks').innerHTML = contacts.length
-    ? contacts.map(c => `
-        <a class="dev-contact-link" href="${esc(c.url || '#')}" target="_blank" rel="noopener noreferrer">
-          <i class="fas ${iconFor(c.type)}"></i> ${esc(c.label || c.url || '')}
-        </a>
+    ? contacts.map((c, i) => `
+        <button type="button" class="dev-contact-link" data-copy-idx="${i}" title="Tap to copy">
+          <i class="fas ${iconFor(c.type)}"></i> <span>${esc(c.label || c.url || '')}</span>
+          <i class="fas fa-copy dev-contact-copy-icon"></i>
+        </button>
       `).join('')
     : '<div style="font-size:12px;color:var(--text3)">No contact info added yet.</div>';
+
+  document.querySelectorAll('#devContactLinks [data-copy-idx]').forEach(btn => {
+    btn.onclick = () => {
+      const c = contacts[+btn.dataset.copyIdx];
+      const value = (c.url || c.label || '').replace(/^mailto:/, '').replace(/^tel:/, '');
+      copyToClipboard(value);
+      toast(`Copied: ${value}`, 'success');
+    };
+  });
+}
+
+/* Small clipboard helper with a fallback for browsers/contexts where the
+   modern Clipboard API is unavailable (older WebViews, non-HTTPS previews). */
+function copyToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).catch(() => legacyCopy(text));
+  } else {
+    legacyCopy(text);
+  }
+}
+function legacyCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
 }
 
 /* ---- RELEASE CALENDAR ---- */
@@ -4055,6 +4224,10 @@ db.ref('app_config').on('value', snap => {
     if (S.view === 'movies') loadMoviesGrid();
     if (S.view === 'series') loadSeriesGrid();
   }
+
+  // Live-sync Groq AI-search key/model from admin panel.
+  GROQ_API_KEY = (cfg && cfg.groq_api_key) || '';
+  GROQ_MODEL = (cfg && cfg.groq_model) || 'openai/gpt-oss-120b';
 
   if (S.view === 'developer') renderDeveloperPage();
 });

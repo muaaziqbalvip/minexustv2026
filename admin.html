@@ -442,6 +442,35 @@ tr:hover td{background:var(--bg-card-hover)}
         </form>
       </div>
 
+      <!-- AI SEARCH (GROQ) -->
+      <div class="card" style="margin-top:20px">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-brain" style="color:var(--gold)"></i> AI-Powered Search (Groq)</h2>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.6">
+          When a visitor's search doesn't match a title directly — e.g. "best world movie ever", "wo film jisme banda
+          time travel karta he", or a misspelled title — the app asks Groq's AI to figure out the actual movie/show
+          titles being described, then looks each one up on TMDB for real, playable results. Get a free key at
+          <a href="https://console.groq.com/keys" target="_blank" style="color:var(--gold)">console.groq.com/keys</a>.
+          Without a key, search still works normally (direct title matching only) — this is a pure enhancement.
+        </p>
+        <form id="groqForm" class="form-grid">
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Groq API Key</label>
+            <input type="text" class="form-control" id="groqApiKey" placeholder="gsk_...">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Groq Model</label>
+            <input type="text" class="form-control" id="groqModel" placeholder="openai/gpt-oss-120b">
+            <span style="font-size:10.5px;color:var(--text-muted)">Default: openai/gpt-oss-120b (fast + high daily limits on Groq's free tier). Change only if Groq deprecates/renames it — check console.groq.com/docs/models.</span>
+          </div>
+          <div style="grid-column:1/-1">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Save Groq Settings</button>
+            <span id="groqStatus" style="font-size:11px;color:var(--text-muted);margin-left:10px"></span>
+          </div>
+        </form>
+      </div>
+
       <!-- DEFAULT STREAMING SERVER -->
       <div class="card" style="margin-top:20px">
         <div class="card-header">
@@ -471,13 +500,22 @@ tr:hover td{background:var(--bg-card-hover)}
         </div>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.6">
           Found a new working embed provider? Add it here — it syncs live to every visitor's server list, no code
-          or redeploy needed. Use <code>{id}</code> for the IMDb/TMDB ID, and for TV shows also
-          <code>{s}</code> (season) and <code>{e}</code> (episode) in the URL pattern.
+          or redeploy needed. Use <code>{id}</code> for the ID (pick which kind below), and for TV shows also
+          <code>{s}</code> (season) and <code>{e}</code> (episode) in the URL pattern. Use the ↑ / ↓ buttons in the
+          list to control the order servers are tried in (top = tried first).
         </p>
         <form id="customServerForm" class="form-grid">
+          <input type="hidden" id="csEditKey" value="">
           <div class="form-group">
             <label>Display Name</label>
             <input type="text" class="form-control" id="csName" placeholder="e.g. MyStream Pro" required>
+          </div>
+          <div class="form-group">
+            <label>ID Type</label>
+            <select class="form-control" id="csIdType">
+              <option value="imdb">IMDb ID (tt1234567) — most providers</option>
+              <option value="tmdb">TMDB ID (numeric) — e.g. ShuttleTV, VidKing, CineJoy, MeowTV</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Movie URL Pattern</label>
@@ -487,11 +525,21 @@ tr:hover td{background:var(--bg-card-hover)}
             <label>TV/Series URL Pattern</label>
             <input type="text" class="form-control" id="csSeriesUrl" placeholder="https://example.com/embed/tv/{id}/{s}/{e}" required>
           </div>
-          <div style="grid-column:1/-1">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> Add Server</button>
+          <div style="grid-column:1/-1;display:flex;gap:10px;align-items:center">
+            <button type="submit" class="btn btn-primary" id="csSubmitBtn"><i class="fas fa-plus"></i> Add Server</button>
+            <button type="button" class="btn" id="csCancelEditBtn" style="display:none;background:var(--bg3)" onclick="cancelServerEdit()">Cancel Edit</button>
           </div>
         </form>
         <div id="customServerList" style="display:flex;flex-direction:column;gap:8px;margin-top:16px"></div>
+
+        <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--text-muted)">Quick-add the 4 requested TMDB servers</div>
+          <button type="button" class="btn" style="background:var(--bg3);margin-right:6px;margin-bottom:6px" onclick="quickAddServer('ShuttleTV','tmdb','https://shuttletv.su/watch/{id}','https://shuttletv.su/watch/{id}/{s}/{e}')">+ ShuttleTV</button>
+          <button type="button" class="btn" style="background:var(--bg3);margin-right:6px;margin-bottom:6px" onclick="quickAddServer('MeowTV','tmdb','https://meowtv.ru/play/movie/{id}','https://meowtv.ru/play/tv/{id}/{s}/{e}')">+ MeowTV</button>
+          <button type="button" class="btn" style="background:var(--bg3);margin-right:6px;margin-bottom:6px" onclick="quickAddServer('CineJoy','tmdb','https://cinejoy.to/watch/movie/{id}','https://cinejoy.to/watch/tv/{id}/{s}/{e}')">+ CineJoy</button>
+          <button type="button" class="btn" style="background:var(--bg3);margin-bottom:6px" onclick="quickAddServer('VidKing','tmdb','https://www.vidking.net/embed/movie/{id}','https://www.vidking.net/embed/tv/{id}/{s}/{e}')">+ VidKing</button>
+          <p style="font-size:10.5px;color:var(--text-muted);margin-top:6px">These 4 already ship built-in (server26–29) — use this only if you want an editable/reorderable copy instead.</p>
+        </div>
       </div>
     </div>
 
@@ -976,7 +1024,8 @@ const SERVER_NAMES = {
   server13: 'VidFast', server14: 'Videasy', server15: 'MoviesAPI.club', server16: 'VidSrc.rip',
   server17: 'VidSrc.pro', server18: 'VidSrc.icu', server19: 'VidSrc.fyi', server20: 'VidSrc.hair',
   server21: 'Vid-Src.top', server22: 'AutoEmbed.cc', server23: 'Rive Stream', server24: 'CinemaOS',
-  server25: 'Nunflix'
+  server25: 'Nunflix', server26: 'ShuttleTV (TMDB)', server27: 'MeowTV (TMDB)', server28: 'CineJoy (TMDB)',
+  server29: 'VidKing (TMDB)'
 };
 
 // Version
@@ -988,6 +1037,9 @@ db.ref('app_config').on('value', snap => {
   document.getElementById('appForceUpdate').value = cfg.force_update ? 'true' : 'false';
   document.getElementById('tmdbApiKey').value = cfg.tmdb_api_key || '';
   document.getElementById('tmdbStatus').textContent = cfg.tmdb_api_key ? '✅ Live TMDB data active' : '⚠️ Not set — using Cinemeta fallback';
+  document.getElementById('groqApiKey').value = cfg.groq_api_key || '';
+  document.getElementById('groqModel').value = cfg.groq_model || 'openai/gpt-oss-120b';
+  document.getElementById('groqStatus').textContent = cfg.groq_api_key ? '✅ AI search active' : '⚠️ Not set — search uses direct title matching only';
   document.getElementById('defaultServerSelect').value = cfg.default_server || 'server1';
   const dsLabel = SERVER_NAMES[cfg.default_server] || (_customServersCache[cfg.default_server] && _customServersCache[cfg.default_server].name) || SERVER_NAMES.server1;
   document.getElementById('defaultServerStatus').textContent = `Currently: ${dsLabel}`;
@@ -1010,6 +1062,14 @@ document.getElementById('tmdbForm').onsubmit = async (e) => {
   const key = document.getElementById('tmdbApiKey').value.trim();
   await db.ref('app_config').update({ tmdb_api_key: key });
   toast(key ? 'TMDB API Key Saved — Live data is now active!' : 'TMDB API Key Cleared — using Cinemeta fallback');
+};
+
+document.getElementById('groqForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const key = document.getElementById('groqApiKey').value.trim();
+  const model = document.getElementById('groqModel').value.trim() || 'openai/gpt-oss-120b';
+  await db.ref('app_config').update({ groq_api_key: key, groq_model: model });
+  toast(key ? 'Groq AI Search Enabled!' : 'Groq API Key Cleared — AI search disabled');
 };
 
 document.getElementById('defaultServerForm').onsubmit = async (e) => {
@@ -1038,18 +1098,79 @@ function rebuildDefaultServerOptions() {
 document.getElementById('customServerForm').onsubmit = async (e) => {
   e.preventDefault();
   const name = document.getElementById('csName').value.trim();
+  const idType = document.getElementById('csIdType').value === 'tmdb' ? 'tmdb' : 'imdb';
   const movieUrl = document.getElementById('csMovieUrl').value.trim();
   const seriesUrl = document.getElementById('csSeriesUrl').value.trim();
+  const editKey = document.getElementById('csEditKey').value;
   if (!name || !movieUrl || !seriesUrl) return;
   if (!movieUrl.includes('{id}') || !seriesUrl.includes('{id}')) {
     toast('URL pattern must include {id}', 'error');
     return;
   }
-  const key = 'custom' + Date.now();
-  await db.ref(`custom_servers/${key}`).set({ name, movieUrl, seriesUrl, addedAt: firebase.database.ServerValue.TIMESTAMP });
-  document.getElementById('customServerForm').reset();
-  toast(`Server "${name}" added!`);
+  if (editKey) {
+    const existing = _customServersCache[editKey] || {};
+    await db.ref(`custom_servers/${editKey}`).update({ name, idType, movieUrl, seriesUrl });
+    cancelServerEdit();
+    toast(`Server "${name}" updated!`);
+  } else {
+    const key = 'custom' + Date.now();
+    const maxOrder = Object.values(_customServersCache).reduce((m, s) => Math.max(m, s.order ?? 0), 0);
+    await db.ref(`custom_servers/${key}`).set({ name, idType, movieUrl, seriesUrl, order: maxOrder + 1, addedAt: firebase.database.ServerValue.TIMESTAMP });
+    document.getElementById('customServerForm').reset();
+    toast(`Server "${name}" added!`);
+  }
 };
+
+function quickAddServer(name, idType, movieUrl, seriesUrl) {
+  document.getElementById('csEditKey').value = '';
+  document.getElementById('csName').value = name;
+  document.getElementById('csIdType').value = idType;
+  document.getElementById('csMovieUrl').value = movieUrl;
+  document.getElementById('csSeriesUrl').value = seriesUrl;
+  document.getElementById('csSubmitBtn').innerHTML = '<i class="fas fa-plus"></i> Add Server';
+  document.getElementById('csCancelEditBtn').style.display = 'none';
+  document.getElementById('customServerForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  toast(`Pre-filled ${name} — review and click "Add Server"`, 'info');
+}
+window.quickAddServer = quickAddServer;
+
+function editCustomServer(key) {
+  const s = _customServersCache[key];
+  if (!s) return;
+  document.getElementById('csEditKey').value = key;
+  document.getElementById('csName').value = s.name || '';
+  document.getElementById('csIdType').value = s.idType === 'tmdb' ? 'tmdb' : 'imdb';
+  document.getElementById('csMovieUrl').value = s.movieUrl || '';
+  document.getElementById('csSeriesUrl').value = s.seriesUrl || '';
+  document.getElementById('csSubmitBtn').innerHTML = '<i class="fas fa-check"></i> Save Changes';
+  document.getElementById('csCancelEditBtn').style.display = 'inline-flex';
+  document.getElementById('customServerForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+window.editCustomServer = editCustomServer;
+
+function cancelServerEdit() {
+  document.getElementById('customServerForm').reset();
+  document.getElementById('csEditKey').value = '';
+  document.getElementById('csSubmitBtn').innerHTML = '<i class="fas fa-plus"></i> Add Server';
+  document.getElementById('csCancelEditBtn').style.display = 'none';
+}
+window.cancelServerEdit = cancelServerEdit;
+
+async function moveCustomServer(key, dir) {
+  const entries = Object.entries(_customServersCache).sort((a, b) => (a[1].order ?? 0) - (b[1].order ?? 0));
+  const idx = entries.findIndex(([k]) => k === key);
+  const swapIdx = idx + dir;
+  if (idx === -1 || swapIdx < 0 || swapIdx >= entries.length) return;
+  const [keyA, sA] = entries[idx];
+  const [keyB, sB] = entries[swapIdx];
+  const orderA = sA.order ?? idx;
+  const orderB = sB.order ?? swapIdx;
+  await Promise.all([
+    db.ref(`custom_servers/${keyA}/order`).set(orderB),
+    db.ref(`custom_servers/${keyB}/order`).set(orderA)
+  ]);
+}
+window.moveCustomServer = moveCustomServer;
 
 async function deleteCustomServer(key) {
   if (!confirm('Remove this custom server? Visitors currently defaulted to it will fall back to server1.')) return;
@@ -1060,17 +1181,22 @@ window.deleteCustomServer = deleteCustomServer;
 
 function renderCustomServerList() {
   const el = document.getElementById('customServerList');
-  const entries = Object.entries(_customServersCache);
+  const entries = Object.entries(_customServersCache).sort((a, b) => (a[1].order ?? 0) - (b[1].order ?? 0));
   if (!entries.length) {
     el.innerHTML = '<div style="text-align:center;padding:14px;color:var(--text-muted);font-size:12px">No custom servers added yet.</div>';
     return;
   }
-  el.innerHTML = entries.map(([key, s]) => `
+  el.innerHTML = entries.map(([key, s], i) => `
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px">
-      <div style="min-width:0">
-        <div style="font-weight:700;font-size:13px">${escapeHtml(s.name)}</div>
+      <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
+        <button class="btn" style="padding:2px 7px;background:var(--bg2)" ${i === 0 ? 'disabled' : ''} onclick="moveCustomServer('${key}',-1)"><i class="fas fa-chevron-up"></i></button>
+        <button class="btn" style="padding:2px 7px;background:var(--bg2)" ${i === entries.length - 1 ? 'disabled' : ''} onclick="moveCustomServer('${key}',1)"><i class="fas fa-chevron-down"></i></button>
+      </div>
+      <div style="min-width:0;flex:1">
+        <div style="font-weight:700;font-size:13px">${escapeHtml(s.name)} <span style="font-size:9.5px;font-weight:700;color:var(--gold);border:1px solid var(--gold);border-radius:5px;padding:1px 5px;margin-left:4px">${(s.idType === 'tmdb' ? 'TMDB' : 'IMDb')} ID</span></div>
         <div style="font-size:10.5px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(s.movieUrl)}</div>
       </div>
+      <button class="btn" style="padding:6px 10px;background:rgba(0,210,255,.12);color:var(--cyan);flex-shrink:0" onclick="editCustomServer('${key}')"><i class="fas fa-pen"></i></button>
       <button class="btn" style="padding:6px 10px;background:rgba(255,71,87,.12);color:#ff4757;flex-shrink:0" onclick="deleteCustomServer('${key}')"><i class="fas fa-trash"></i></button>
     </div>
   `).join('');
