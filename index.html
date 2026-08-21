@@ -265,6 +265,11 @@ input,select{font-family:inherit}
 .tab-btn i{font-size:16px;transition:.2s}
 .tab-btn.active{color:var(--accent)}
 .tab-btn.active i{transform:scale(1.1)}
+@media(max-width:400px){
+  /* 7 tabs is tight on small phones — shrink further before anything wraps */
+  .tab-btn{font-size:8.5px;padding:5px 0}
+  .tab-btn i{font-size:14px}
+}
 .tab-btn.active::after{
   content:'';position:absolute;top:0;left:26%;right:26%;
   height:2.5px;border-radius:0 0 4px 4px;background:var(--accent);
@@ -1803,6 +1808,7 @@ input,select{font-family:inherit}
         <button class="live-chan-pill" id="liveChPrevPill"><i class="fas fa-backward-step"></i> Prev</button>
         <span class="live-chan-counter" id="liveChCounter">— / —</span>
         <button class="live-chan-pill" id="liveChNextPill">Next <i class="fas fa-forward-step"></i></button>
+        <button class="live-chan-pill" id="liveChShareBtn" title="Share this channel"><i class="fas fa-share-nodes"></i></button>
       </div>
     </div>
     <p style="font-size:11px;color:var(--text3)">High quality encrypted HLS player stream for mobile and desktop. Swipe left/right on the video, or use Prev/Next to flip channels.</p>
@@ -1862,6 +1868,9 @@ input,select{font-family:inherit}
   </button>
   <button class="tab-btn" data-view="music">
     <i class="fas fa-music"></i><span>Music</span>
+  </button>
+  <button class="tab-btn" data-view="calendar">
+    <i class="fas fa-calendar-days"></i><span>Calendar</span>
   </button>
   <button class="tab-btn" data-view="account">
     <i class="fas fa-circle-user"></i><span>Account</span>
@@ -2174,12 +2183,16 @@ let GROQ_MODEL = 'openai/gpt-oss-120b';
 function groqEnabled() { return !!GROQ_API_KEY; }
 
 /* ---- MUSIC (JioSaavn unofficial API) ----
-   Base URL synced live from Firebase app_config/music_api_base (Admin Panel
-   → Music section), same pattern as everything else configurable in this
-   app — if the current public mirror ever goes down, Muaaz can switch to a
-   replacement instantly with no redeploy. Defaults to the commonly-used
-   public REST wrapper; endpoints used: GET {base}/search/songs?query=... and
-   GET {base}/songs?query=... (trending fallback). */
+   Upstream base URL synced live from Firebase app_config/music_api_base
+   (Admin Panel → Music section) — defaults to a public REST wrapper.
+   IMPORTANT: the browser never calls that upstream URL directly. Most of
+   these unofficial third-party music APIs don't send back the CORS header
+   a browser requires, so a direct fetch() gets silently blocked (no songs
+   ever show, with no visible error) — that was the entire cause of the
+   Music tab showing nothing. Instead every request goes through our own
+   /api/music serverless proxy (see api/music.js), which fetches the
+   upstream server-to-server (no CORS restriction applies there) and hands
+   the JSON back with our own CORS header attached. */
 let MUSIC_API_BASE = 'https://saavn.dev/api';
 
 async function aiSuggestTitles(q) {
@@ -3075,6 +3088,21 @@ function openLivePlayer(ch) {
       <span style="font-size:10px;color:var(--text3)">${ch.country} • Live Stream</span>
     </div>
   `;
+  S.activeLiveChannel = ch;
+}
+
+async function shareLiveChannel(ch) {
+  if (!ch) return;
+  const url = `${window.location.origin}/?live=${encodeURIComponent(ch.name)}&country=${encodeURIComponent(ch.country || '')}`;
+  const text = `📡 ${ch.name} — Watch Live on MINEXUS TV 👇`;
+  try {
+    if (navigator.share) { await navigator.share({ title: ch.name, text, url }); return; }
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    toast('🔗 Channel link copied!', 'success');
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+    try { await navigator.clipboard.writeText(`${text}\n${url}`); toast('🔗 Channel link copied!', 'success'); } catch (e2) { toast('Could not share', 'error'); }
+  }
 }
 
 /* ---- LIVE TV: Next / Previous channel switching ----
@@ -3090,9 +3118,11 @@ function updateLiveChannelNav(ch) {
   const nextBtn = document.getElementById('liveChNextBtn');
   const prevPill = document.getElementById('liveChPrevPill');
   const nextPill = document.getElementById('liveChNextPill');
+  const shareBtn = document.getElementById('liveChShareBtn');
   const hasNav = idx > -1 && list.length > 1;
   if (counter) counter.textContent = idx > -1 ? `${idx + 1} / ${list.length}` : '— / —';
   [prevBtn, nextBtn, prevPill, nextPill].forEach(el => { if (el) el.style.display = hasNav ? '' : 'none'; });
+  if (shareBtn) shareBtn.style.display = ''; // sharing works regardless of whether Prev/Next nav is available
 }
 
 function goToLiveChannel(delta) {
@@ -3587,7 +3617,16 @@ function normalizeSong(raw) {
 }
 
 async function musicApiGet(path) {
-  const res = await _fetch(`${MUSIC_API_BASE}${path}`, 1, 15000);
+  // Everything routes through our own /api/music proxy (see api/music.js)
+  // to avoid the browser CORS block that made every direct upstream call
+  // fail silently. `path` here is always a /search/songs?query=... style
+  // call, so pull the query/limit back out and forward them + the
+  // admin-configured upstream base to our proxy.
+  const params = new URLSearchParams(path.split('?')[1] || '');
+  const query = params.get('query') || '';
+  const limit = params.get('limit') || '20';
+  const proxyUrl = `/api/music?query=${encodeURIComponent(query)}&limit=${encodeURIComponent(limit)}&base=${encodeURIComponent(MUSIC_API_BASE)}`;
+  const res = await _fetch(proxyUrl, 1, 120000);
   return res;
 }
 
@@ -4767,6 +4806,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('liveChNextBtn')?.addEventListener('click', () => goToLiveChannel(1));
   document.getElementById('liveChPrevPill')?.addEventListener('click', () => goToLiveChannel(-1));
   document.getElementById('liveChNextPill')?.addEventListener('click', () => goToLiveChannel(1));
+  document.getElementById('liveChShareBtn')?.addEventListener('click', () => shareLiveChannel(S.activeLiveChannel));
 
   // ---- Live TV: swipe left/right on the video to flip channels (mobile) ----
   (function setupLiveSwipe() {
