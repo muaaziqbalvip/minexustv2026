@@ -746,6 +746,54 @@ input,select{font-family:inherit}
   transform:translateY(-3px);border-color:var(--border-active);
   background:var(--bg4);box-shadow:0 8px 20px rgba(0,0,0,0.5);
 }
+
+/* ---- MUSIC ---- */
+.music-list{display:flex;flex-direction:column;gap:8px}
+.music-item{
+  display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:12px;
+  background:var(--bg3);border:1px solid var(--border);cursor:pointer;transition:.2s;
+}
+.music-item:hover{background:var(--bg4);border-color:var(--border-active)}
+.music-item.playing{border-color:var(--cyan);background:rgba(0,210,255,.08)}
+.music-item-art{width:48px;height:48px;border-radius:9px;object-fit:cover;flex-shrink:0;background:var(--bg4)}
+.music-item-info{flex:1;min-width:0}
+.music-item-title{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.music-item-artist{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.music-item-playbtn{
+  width:34px;height:34px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  background:var(--bg4);color:var(--text2);font-size:12px;transition:.2s;
+}
+.music-item.playing .music-item-playbtn{background:linear-gradient(135deg,var(--cyan),#0091b3);color:#fff}
+.music-item-share{
+  width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  background:transparent;color:var(--text3);font-size:12px;
+}
+.music-item-share:hover{color:var(--cyan)}
+
+.mini-player{
+  position:fixed;left:0;right:0;bottom:var(--footer-h,58px);z-index:60;
+  background:rgba(14,16,24,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-top:1px solid var(--border);box-shadow:0 -6px 24px rgba(0,0,0,.45);
+}
+@media(min-width:769px){ .mini-player{bottom:0} }
+.mini-player-progress{width:100%;height:2.5px;background:var(--bg4)}
+.mini-player-progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--accent));transition:width .2s linear}
+.mini-player-body{display:flex;align-items:center;gap:8px;padding:7px 10px}
+.mini-player-art{width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--bg4)}
+.mini-player-info{flex:1;min-width:0;cursor:pointer}
+.mini-player-title{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-player-artist{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini-player-btn{
+  width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  color:var(--text2);font-size:12px;transition:.15s;
+}
+.mini-player-btn:hover{background:var(--bg4);color:#fff}
+.mini-player-btn:active{transform:scale(.9)}
+.mini-player-btn-play{
+  width:36px;height:36px;background:linear-gradient(135deg,var(--cyan),#0091b3);color:#fff;font-size:14px;
+}
+.mini-player-btn-play:hover{background:linear-gradient(135deg,var(--cyan),#0091b3);opacity:.9}
+@media(max-width:480px){ .mini-player-btn-share, .mini-player-btn#miniPlayerShareBtn{display:none} }
 .channel-logo-wrap{
   width:100%;height:100px;background:#090b12;
   position:relative;display:flex;align-items:center;justify-content:center;
@@ -888,6 +936,7 @@ input,select{font-family:inherit}
 .srv-btn.active{
   background:rgba(229,9,20,.15);color:var(--accent);border-color:rgba(229,9,20,.5);
 }
+.srv-btn-limited{opacity:.55}
 
 .episodes-section{padding:0 14px 10px;flex-shrink:0}
 .season-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
@@ -1303,6 +1352,7 @@ input,select{font-family:inherit}
         <button class="nav-tab" data-view="movies"><i class="fas fa-film"></i>Movies</button>
         <button class="nav-tab" data-view="series"><i class="fas fa-tv"></i>Series</button>
         <button class="nav-tab" data-view="live"><i class="fas fa-circle" style="color:#ff3d3d;font-size:8px"></i>Live TV</button>
+        <button class="nav-tab" data-view="music"><i class="fas fa-music" style="color:var(--cyan)"></i>Music</button>
         <button class="nav-tab" data-view="calendar"><i class="fas fa-calendar-days" style="color:var(--gold)"></i>Calendar &amp; News</button>
         <button class="nav-tab" data-view="leaderboard"><i class="fas fa-trophy" style="color:var(--gold)"></i>Leaderboard</button>
       </nav>
@@ -1759,6 +1809,43 @@ input,select{font-family:inherit}
   </div>
 </div>
 
+<!-- ===== MUSIC VIEW ===== -->
+<div class="view" id="viewMusic">
+  <div class="live-header">
+    <div class="live-title"><i class="fas fa-music" style="color:var(--cyan)"></i> MINEXUS Music</div>
+    <p class="live-sub">World music, Bollywood, Pakistani & Punjabi — search any song</p>
+  </div>
+  <div style="padding:0 14px 14px">
+    <div class="search-box-container">
+      <i class="fas fa-search search-box-icon"></i>
+      <input type="text" class="search-box-input" id="musicSearchInput" placeholder="Search any song, artist, or album..." autocomplete="off">
+      <button class="search-box-clear" id="musicSearchClear"><i class="fas fa-times"></i></button>
+    </div>
+  </div>
+  <div style="padding:0 14px 90px">
+    <h3 class="section-title" id="musicResultsTitle" style="margin-bottom:10px">Trending Songs</h3>
+    <div class="music-list" id="musicResultsList"></div>
+  </div>
+</div>
+
+<!-- ===== MINI MUSIC PLAYER (persistent, floats above bottom bar) ===== -->
+<div class="mini-player" id="miniPlayer" style="display:none">
+  <div class="mini-player-progress"><div class="mini-player-progress-fill" id="miniPlayerProgressFill"></div></div>
+  <div class="mini-player-body">
+    <img class="mini-player-art" id="miniPlayerArt" src="" alt="">
+    <div class="mini-player-info" id="miniPlayerInfo">
+      <div class="mini-player-title" id="miniPlayerTitle">—</div>
+      <div class="mini-player-artist" id="miniPlayerArtist">—</div>
+    </div>
+    <button class="mini-player-btn" id="miniPlayerPrevBtn" aria-label="Previous song"><i class="fas fa-backward-step"></i></button>
+    <button class="mini-player-btn mini-player-btn-play" id="miniPlayerPlayBtn" aria-label="Play/Pause"><i class="fas fa-play"></i></button>
+    <button class="mini-player-btn" id="miniPlayerNextBtn" aria-label="Next song"><i class="fas fa-forward-step"></i></button>
+    <button class="mini-player-btn" id="miniPlayerShareBtn" aria-label="Share song"><i class="fas fa-share-nodes"></i></button>
+    <button class="mini-player-btn" id="miniPlayerCloseBtn" aria-label="Close player"><i class="fas fa-xmark"></i></button>
+  </div>
+</div>
+<audio id="musicAudio" preload="metadata"></audio>
+
 <!-- ===== BOTTOM TAB BAR (MOBILE) ===== -->
 <nav class="bottom-bar" id="bottomBar">
   <button class="tab-btn active" data-view="home">
@@ -1773,8 +1860,8 @@ input,select{font-family:inherit}
   <button class="tab-btn" data-view="live">
     <i class="fas fa-broadcast-tower"></i><span>Live TV</span>
   </button>
-  <button class="tab-btn" data-view="calendar">
-    <i class="fas fa-calendar-days"></i><span>Calendar</span>
+  <button class="tab-btn" data-view="music">
+    <i class="fas fa-music"></i><span>Music</span>
   </button>
   <button class="tab-btn" data-view="account">
     <i class="fas fa-circle-user"></i><span>Account</span>
@@ -2085,6 +2172,15 @@ function tmdbEnabled() { return !!TMDB_API_KEY; }
 let GROQ_API_KEY = '';
 let GROQ_MODEL = 'openai/gpt-oss-120b';
 function groqEnabled() { return !!GROQ_API_KEY; }
+
+/* ---- MUSIC (JioSaavn unofficial API) ----
+   Base URL synced live from Firebase app_config/music_api_base (Admin Panel
+   → Music section), same pattern as everything else configurable in this
+   app — if the current public mirror ever goes down, Muaaz can switch to a
+   replacement instantly with no redeploy. Defaults to the commonly-used
+   public REST wrapper; endpoints used: GET {base}/search/songs?query=... and
+   GET {base}/songs?query=... (trending fallback). */
+let MUSIC_API_BASE = 'https://saavn.dev/api';
 
 async function aiSuggestTitles(q) {
   if (!groqEnabled()) return [];
@@ -2590,6 +2686,8 @@ function switchView(name) {
 
   if (name === 'player' || name === 'livePlayer') {
     document.body.classList.add('in-player');
+    // Don't let background music clash with movie/live-TV audio.
+    pauseMusic();
   } else {
     document.body.classList.remove('in-player');
     const liveVid = document.getElementById('liveVideoPlayer');
@@ -2619,6 +2717,7 @@ function switchView(name) {
   if (name === 'movies' && S.moviesSkip === 0) loadMoviesGrid();
   if (name === 'series' && S.seriesSkip === 0) loadSeriesGrid();
   if (name === 'live') loadLiveTV();
+  if (name === 'music') initMusicView();
   if (name === 'leaderboard') renderLeaderboard();
   if (name === 'account') renderAccountView();
   if (name === 'developer') renderDeveloperPage();
@@ -3249,11 +3348,14 @@ function initServerButtons() {
   if (!row) return;
   const keys = Object.keys(SERVERS);
   countEl.textContent = `(${keys.length} sources)`;
-  row.innerHTML = keys.map(k => `
-    <button class="srv-btn${k === S.activeServer ? ' active' : ''}" data-server="${k}">
-      <i class="fas ${k === S.defaultServer ? 'fa-star' : 'fa-server'}"></i> ${esc(SERVERS[k].name)}${k === S.defaultServer ? ' (Default)' : ''}
+  row.innerHTML = keys.map(k => {
+    const needsTmdbButOff = SERVERS[k].idType === 'tmdb' && !tmdbEnabled();
+    return `
+    <button class="srv-btn${k === S.activeServer ? ' active' : ''}${needsTmdbButOff ? ' srv-btn-limited' : ''}" data-server="${k}" ${needsTmdbButOff ? 'title="Needs a TMDB API key set in Admin Panel"' : ''}>
+      <i class="fas ${k === S.defaultServer ? 'fa-star' : 'fa-server'}"></i> ${esc(SERVERS[k].name)}${k === S.defaultServer ? ' (Default)' : ''}${needsTmdbButOff ? ' <i class="fas fa-triangle-exclamation" style="font-size:9px;color:#ffb648"></i>' : ''}
     </button>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function buildPlayerUI() {
@@ -3361,25 +3463,60 @@ function syncFullscreenIcon() {
 document.addEventListener('fullscreenchange', syncFullscreenIcon);
 document.addEventListener('webkitfullscreenchange', syncFullscreenIcon);
 
-function playStream(isAutoFallback) {
+/* Some servers need a TMDB id, others need an IMDb id — but a title's data
+   might currently only carry one of the two (e.g. it came from Cinemeta,
+   or from a TMDB search result before external_ids were resolved). Instead
+   of just giving up and skipping the server, try a quick one-time lookup
+   to convert between the two IDs via TMDB (only possible when TMDB is
+   enabled) — this is what actually fixes "TMDB/IMDb ids not loading
+   correctly" for servers like ShuttleTV/VidKing/CineJoy/MeowTV. Result is
+   cached back onto the item object so it's instant on every subsequent
+   server switch for the same title. */
+async function ensureIdForServer(item, srv) {
+  const needsTmdb = srv.idType === 'tmdb';
+  if (needsTmdb && !item.tmdbId && item.id && tmdbEnabled()) {
+    try {
+      const type = item.type === 'series' ? 'tv' : 'movie';
+      const find = await _fetch(`${TMDB_BASE}/find/${item.id}?api_key=${TMDB_API_KEY}&external_source=imdb_id`, 1, 3600000);
+      const hit = (type === 'tv' ? find.tv_results : find.movie_results)?.[0];
+      if (hit) item.tmdbId = hit.id;
+    } catch (e) { /* leave unresolved — caller falls back to next server */ }
+  } else if (!needsTmdb && !item.id && item.tmdbId && tmdbEnabled()) {
+    try {
+      const type = item.type === 'series' ? 'tv' : 'movie';
+      const ext = await _fetch(`${TMDB_BASE}/${type}/${item.tmdbId}/external_ids?api_key=${TMDB_API_KEY}`, 1, 3600000);
+      if (ext && ext.imdb_id) item.id = ext.imdb_id;
+    } catch (e) { /* leave unresolved — caller falls back to next server */ }
+  }
+}
+
+async function playStream(isAutoFallback) {
   const item = S.activeItem;
   if (!item) return;
   const srv = SERVERS[S.activeServer];
   if (!srv) return;
+
+  await ensureIdForServer(item, srv);
+  if (S.activeItem !== item) return; // user navigated away while the ID lookup was in flight
+
   const ids = { imdb: item.id, tmdb: item.tmdbId };
   const neededId = srv.idType === 'tmdb' ? ids.tmdb : ids.imdb;
-  if (!neededId) {
-    // This particular server needs an ID type we don't have for this title
-    // (e.g. a TMDB-only server but TMDB data isn't resolved/available) —
-    // skip straight to the next server instead of loading a broken URL.
-    toast(`${srv.name} needs data we don't have for this title — trying next server`, 'info');
-    tryNextServer();
-    return;
-  }
-  const url = srv.buildUrl(ids, item.type, S.activeSeason, S.activeEpisode);
-
   const frame = document.getElementById('cinemaFrame');
   const loader = document.getElementById('playerLoader');
+
+  if (!neededId) {
+    // Genuinely can't build a URL for this server + title combo (e.g. a
+    // TMDB-only server with no TMDB API key configured in Admin, so there's
+    // no way to resolve the id at all). Show this clearly instead of
+    // silently jumping to another server — a manual server pick should
+    // never quietly turn into a *different* server playing without saying so.
+    loader.style.display = 'flex';
+    loader.innerHTML = `<span style="color:#ffb648">${esc(srv.name)} needs a ${srv.idType === 'tmdb' ? 'TMDB' : 'IMDb'} ID we don't have for this title${srv.idType === 'tmdb' && !tmdbEnabled() ? ' (set a TMDB API key in Admin Panel to enable this server)' : ''}.</span>
+      <button class="filter-pill" style="margin-top:10px" onclick="tryNextServer()"><i class="fas fa-forward"></i> Try Next Server</button>`;
+    return;
+  }
+
+  const url = srv.buildUrl(ids, item.type, S.activeSeason, S.activeEpisode);
 
   // Bump a token so a stale/slow previous load can't hide the loader for the new one
   const token = (S.playToken = (S.playToken || 0) + 1);
@@ -3413,9 +3550,208 @@ function tryNextServer() {
   const idx = keys.indexOf(S.activeServer);
   const next = keys[(idx + 1) % keys.length];
   S.activeServer = next;
+  document.querySelectorAll('.srv-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.server === S.activeServer);
+  });
   toast(`🔀 Switched to ${SERVERS[next].name}`, 'info');
   playStream(true);
 }
+
+/* ==================== MUSIC ENGINE ====================
+   Search + playback for the Music tab. Uses MUSIC_API_BASE (Admin Panel →
+   Music → API Base URL, live-synced) to talk to a JioSaavn-style unofficial
+   REST wrapper. All network calls are defensive — any failure shows a
+   normal "couldn't load" state rather than a blank screen, since this is a
+   third-party public API that can occasionally rate-limit or go down. */
+let musicSearchTimer;
+const musicState = {
+  queue: [],       // current list of songs (search results or trending)
+  index: -1,       // index into queue of the currently loaded song
+  playing: false
+};
+
+function normalizeSong(raw) {
+  // The API returns image/downloadUrl as arrays of {quality, url} — always
+  // grab the highest-quality entry (last in the array).
+  const pickBest = (arr) => (Array.isArray(arr) && arr.length) ? arr[arr.length - 1].url : (typeof arr === 'string' ? arr : '');
+  const artists = raw.artists?.primary?.map(a => a.name).join(', ')
+    || raw.primaryArtists || raw.singers || raw.subtitle || 'Unknown Artist';
+  return {
+    id: raw.id || raw.songid || String(Math.random()),
+    title: (raw.name || raw.song || raw.title || 'Untitled').replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
+    artist: artists,
+    image: pickBest(raw.image) || raw.image_url || '',
+    audioUrl: pickBest(raw.downloadUrl) || raw.media_url || raw.media_preview_url || '',
+    permaUrl: raw.url || raw.perma_url || ''
+  };
+}
+
+async function musicApiGet(path) {
+  const res = await _fetch(`${MUSIC_API_BASE}${path}`, 1, 15000);
+  return res;
+}
+
+async function initMusicView() {
+  if (musicState.queue.length) return; // don't reload trending every time the tab is revisited
+  loadTrendingSongs();
+}
+
+async function loadTrendingSongs() {
+  const list = document.getElementById('musicResultsList');
+  document.getElementById('musicResultsTitle').textContent = 'Trending Songs';
+  list.innerHTML = `<div style="text-align:center;padding:24px"><div class="spinner" style="margin:0 auto"></div></div>`;
+  try {
+    // A handful of always-popular searches stand in for a "trending" feed
+    // since the public API has no dedicated trending endpoint.
+    const seeds = ['Bollywood hits 2026', 'Punjabi hits', 'Pakistani hits'];
+    const seed = seeds[Math.floor(Math.random() * seeds.length)];
+    const data = await musicApiGet(`/search/songs?query=${encodeURIComponent(seed)}&limit=20`);
+    const results = data?.data?.results || data?.results || [];
+    if (!results.length) throw new Error('empty');
+    musicState.queue = results.map(normalizeSong).filter(s => s.audioUrl);
+    renderMusicList(musicState.queue);
+  } catch (e) {
+    list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text3);font-size:12px">
+      Couldn't load music right now. Try searching above, or check the Music API setting in Admin Panel.
+    </div>`;
+  }
+}
+
+function handleMusicSearch(q) {
+  clearTimeout(musicSearchTimer);
+  if (!q.trim()) { loadTrendingSongs(); return; }
+  const list = document.getElementById('musicResultsList');
+  document.getElementById('musicResultsTitle').textContent = `Results for "${q}"`;
+  list.innerHTML = `<div style="text-align:center;padding:24px"><div class="spinner" style="margin:0 auto"></div></div>`;
+  musicSearchTimer = setTimeout(async () => {
+    try {
+      const data = await musicApiGet(`/search/songs?query=${encodeURIComponent(q.trim())}&limit=30`);
+      const results = data?.data?.results || data?.results || [];
+      musicState.queue = results.map(normalizeSong).filter(s => s.audioUrl);
+      if (!musicState.queue.length) {
+        list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text3);font-size:12px">No songs found for "${esc(q)}"</div>`;
+        return;
+      }
+      renderMusicList(musicState.queue);
+    } catch (e) {
+      list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text3);font-size:12px">Search failed — the music service may be temporarily down.</div>`;
+    }
+  }, 400);
+}
+
+function renderMusicList(songs) {
+  const list = document.getElementById('musicResultsList');
+  list.innerHTML = songs.map((s, i) => `
+    <div class="music-item${musicState.index === i && musicState.playing ? ' playing' : ''}" data-idx="${i}">
+      <img class="music-item-art" src="${esc(s.image)}" alt="" onerror="this.style.opacity=0">
+      <div class="music-item-info">
+        <div class="music-item-title">${esc(s.title)}</div>
+        <div class="music-item-artist">${esc(s.artist)}</div>
+      </div>
+      <button class="music-item-share" data-share-idx="${i}" title="Share"><i class="fas fa-share-nodes"></i></button>
+      <div class="music-item-playbtn"><i class="fas ${musicState.index === i && musicState.playing ? 'fa-pause' : 'fa-play'}"></i></div>
+    </div>
+  `).join('');
+}
+
+function playMusicAt(idx) {
+  const song = musicState.queue[idx];
+  if (!song) return;
+  musicState.index = idx;
+  musicState.playing = true;
+  const audio = document.getElementById('musicAudio');
+  audio.src = song.audioUrl;
+  audio.play().catch(() => {}); // autoplay can be blocked until a user gesture — the click that got us here counts
+  document.getElementById('miniPlayer').style.display = 'block';
+  document.getElementById('miniPlayerArt').src = song.image;
+  document.getElementById('miniPlayerTitle').textContent = song.title;
+  document.getElementById('miniPlayerArtist').textContent = song.artist;
+  syncMiniPlayerPlayIcon();
+  renderMusicList(musicState.queue);
+}
+
+function toggleMusicPlayPause() {
+  const audio = document.getElementById('musicAudio');
+  if (!audio.src) return;
+  if (audio.paused) { audio.play().catch(() => {}); musicState.playing = true; }
+  else { audio.pause(); musicState.playing = false; }
+  syncMiniPlayerPlayIcon();
+  renderMusicList(musicState.queue);
+}
+
+function pauseMusic() {
+  const audio = document.getElementById('musicAudio');
+  if (audio && !audio.paused) audio.pause();
+  musicState.playing = false;
+  syncMiniPlayerPlayIcon();
+}
+
+function musicNext() {
+  if (!musicState.queue.length) return;
+  playMusicAt((musicState.index + 1) % musicState.queue.length);
+}
+function musicPrev() {
+  if (!musicState.queue.length) return;
+  playMusicAt((musicState.index - 1 + musicState.queue.length) % musicState.queue.length);
+}
+
+function syncMiniPlayerPlayIcon() {
+  const btn = document.getElementById('miniPlayerPlayBtn');
+  if (btn) btn.innerHTML = `<i class="fas ${musicState.playing ? 'fa-pause' : 'fa-play'}"></i>`;
+}
+
+async function shareSong(song) {
+  const text = `🎵 ${song.title} — ${song.artist}\nListen on MINEXUS Music 👇`;
+  const url = song.permaUrl || window.location.origin;
+  try {
+    if (navigator.share) { await navigator.share({ title: song.title, text, url }); return; }
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    toast('🔗 Song link copied!', 'success');
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+    try { await navigator.clipboard.writeText(`${text}\n${url}`); toast('🔗 Song link copied!', 'success'); } catch (e2) { toast('Could not share', 'error'); }
+  }
+}
+
+(function setupMusicUI() {
+  const input = document.getElementById('musicSearchInput');
+  const clearBtn = document.getElementById('musicSearchClear');
+  input?.addEventListener('input', () => {
+    clearBtn.style.display = input.value ? 'flex' : 'none';
+    handleMusicSearch(input.value);
+  });
+  clearBtn?.addEventListener('click', () => { input.value = ''; clearBtn.style.display = 'none'; loadTrendingSongs(); });
+
+  document.getElementById('musicResultsList')?.addEventListener('click', (e) => {
+    const shareBtn = e.target.closest('[data-share-idx]');
+    if (shareBtn) { shareSong(musicState.queue[+shareBtn.dataset.shareIdx]); return; }
+    const item = e.target.closest('.music-item[data-idx]');
+    if (!item) return;
+    const idx = +item.dataset.idx;
+    if (idx === musicState.index) toggleMusicPlayPause();
+    else playMusicAt(idx);
+  });
+
+  const audio = document.getElementById('musicAudio');
+  audio.addEventListener('ended', musicNext);
+  audio.addEventListener('timeupdate', () => {
+    const fill = document.getElementById('miniPlayerProgressFill');
+    if (fill && audio.duration) fill.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
+  });
+
+  document.getElementById('miniPlayerPlayBtn')?.addEventListener('click', toggleMusicPlayPause);
+  document.getElementById('miniPlayerNextBtn')?.addEventListener('click', musicNext);
+  document.getElementById('miniPlayerPrevBtn')?.addEventListener('click', musicPrev);
+  document.getElementById('miniPlayerShareBtn')?.addEventListener('click', () => shareSong(musicState.queue[musicState.index]));
+  document.getElementById('miniPlayerCloseBtn')?.addEventListener('click', () => {
+    pauseMusic();
+    audio.src = '';
+    musicState.index = -1;
+    document.getElementById('miniPlayer').style.display = 'none';
+    renderMusicList(musicState.queue);
+  });
+  document.getElementById('miniPlayerInfo')?.addEventListener('click', () => switchView('music'));
+})();
 
 function buildEpisodes() {
   const meta = S.seriesMeta;
@@ -4228,6 +4564,9 @@ db.ref('app_config').on('value', snap => {
   // Live-sync Groq AI-search key/model from admin panel.
   GROQ_API_KEY = (cfg && cfg.groq_api_key) || '';
   GROQ_MODEL = (cfg && cfg.groq_model) || 'openai/gpt-oss-120b';
+
+  // Live-sync Music API base URL from admin panel.
+  MUSIC_API_BASE = (cfg && cfg.music_api_base) || 'https://saavn.dev/api';
 
   if (S.view === 'developer') renderDeveloperPage();
 });

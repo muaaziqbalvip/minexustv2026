@@ -166,9 +166,60 @@ tr:hover td{background:var(--bg-card-hover)}
 
 .toast-box{position:fixed;bottom:24px;right:24px;z-index:1000;display:flex;flex-direction:column;gap:8px}
 .toast{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 18px;font-size:13px;font-weight:600}
+
+/* ===== MOBILE / APP VIEW =====
+   The admin panel was desktop-only (no media queries at all) — on a phone
+   the fixed 260px sidebar squeezed the content into a tiny sliver, and
+   several cards/sections effectively rendered off-screen below the fold
+   with no way to reach them. Below ~900px the sidebar becomes a slide-in
+   drawer (opened via a hamburger button in the top bar) instead of sitting
+   permanently alongside the content. */
+.hamburger-btn{display:none}
+.sidebar-overlay{display:none}
+@media(max-width:900px){
+  body{display:block}
+  .hamburger-btn{
+    display:flex;align-items:center;justify-content:center;
+    width:36px;height:36px;border-radius:9px;background:var(--bg-card);
+    border:1px solid var(--border);font-size:15px;flex-shrink:0;
+  }
+  .sidebar{
+    position:fixed;top:0;left:0;bottom:0;z-index:200;
+    transform:translateX(-100%);transition:transform .25s ease;
+    width:260px;max-width:82vw;box-shadow:8px 0 30px rgba(0,0,0,.5);
+  }
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-overlay{
+    display:block;position:fixed;inset:0;z-index:190;background:rgba(0,0,0,.55);
+    opacity:0;pointer-events:none;transition:opacity .25s ease;
+  }
+  .sidebar-overlay.show{opacity:1;pointer-events:auto}
+  .main-wrap{width:100%;height:auto;min-height:100vh}
+  .top-bar{padding:12px 14px;gap:10px}
+  .page-title{font-size:16px}
+  .live-status-pill span{display:none}
+  .content-body{padding:14px;max-width:100%}
+  .stats-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px}
+  .stat-card{padding:14px;gap:10px}
+  .stat-icon{width:38px;height:38px;font-size:16px}
+  .stat-val{font-size:18px}
+  .stat-label{font-size:10.5px}
+  .card{padding:16px;border-radius:10px;margin-bottom:16px}
+  .card-header{margin-bottom:14px;padding-bottom:10px;flex-wrap:wrap;gap:8px}
+  .card-title{font-size:14px}
+  .form-grid{grid-template-columns:1fr;gap:12px}
+  .btn{padding:10px 16px;font-size:12.5px}
+  th,td{padding:9px 10px;font-size:12px}
+}
+@media(max-width:480px){
+  .content-body{padding:10px}
+  .card{padding:12px}
+}
 </style>
 </head>
 <body>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <!-- ===== ADMIN LOGIN SCREEN ===== -->
 <div class="admin-login-overlay" id="adminLoginOverlay">
@@ -233,8 +284,11 @@ tr:hover td{background:var(--bg-card-hover)}
 
 <main class="main-wrap">
   <div class="top-bar">
-    <h1 class="page-title" id="pageTitle">Dashboard Overview</h1>
-    <div class="live-status-pill"><div class="status-dot"></div> Firebase Database Online</div>
+    <div style="display:flex;align-items:center;gap:12px;min-width:0">
+      <button class="hamburger-btn" id="sidebarToggleBtn" aria-label="Menu"><i class="fas fa-bars"></i></button>
+      <h1 class="page-title" id="pageTitle">Dashboard Overview</h1>
+    </div>
+    <div class="live-status-pill"><div class="status-dot"></div> <span>Firebase Database Online</span></div>
   </div>
 
   <div class="content-body">
@@ -467,6 +521,29 @@ tr:hover td{background:var(--bg-card-hover)}
           <div style="grid-column:1/-1">
             <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Save Groq Settings</button>
             <span id="groqStatus" style="font-size:11px;color:var(--text-muted);margin-left:10px"></span>
+          </div>
+        </form>
+      </div>
+
+      <!-- MUSIC API SETTINGS -->
+      <div class="card" style="margin-top:20px">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-music" style="color:var(--cyan)"></i> Music (Songs) API</h2>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px;line-height:1.6">
+          Powers the Music tab — search &amp; stream full songs (Bollywood, Pakistani, Punjabi, world music).
+          Uses a public unofficial JioSaavn-style REST API. If the current mirror ever goes down, paste a
+          replacement base URL here — no code changes needed, it syncs to every visitor live.
+        </p>
+        <form id="musicApiForm" class="form-grid">
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Music API Base URL</label>
+            <input type="text" class="form-control" id="musicApiBase" placeholder="https://saavn.dev/api">
+            <span style="font-size:10.5px;color:var(--text-muted)">Default: https://saavn.dev/api — expects /search/songs?query=... to return JSON results.</span>
+          </div>
+          <div style="grid-column:1/-1">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Save Music API Setting</button>
+            <span id="musicApiStatus" style="font-size:11px;color:var(--text-muted);margin-left:10px"></span>
           </div>
         </form>
       </div>
@@ -805,8 +882,21 @@ document.querySelectorAll('.nav-item[data-tab]').forEach(btn => {
     document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b === btn));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${btn.dataset.tab}`));
     document.getElementById('pageTitle').textContent = btn.innerText;
+    closeSidebar(); // tapping a section on mobile should navigate AND close the drawer
   };
 });
+
+// ---- Mobile drawer (sidebar) open/close ----
+function openSidebar() {
+  document.querySelector('.sidebar')?.classList.add('open');
+  document.getElementById('sidebarOverlay')?.classList.add('show');
+}
+function closeSidebar() {
+  document.querySelector('.sidebar')?.classList.remove('open');
+  document.getElementById('sidebarOverlay')?.classList.remove('show');
+}
+document.getElementById('sidebarToggleBtn')?.addEventListener('click', openSidebar);
+document.getElementById('sidebarOverlay')?.addEventListener('click', closeSidebar);
 
 // Single Channel
 document.getElementById('addChannelForm').onsubmit = async (e) => {
@@ -1040,6 +1130,8 @@ db.ref('app_config').on('value', snap => {
   document.getElementById('groqApiKey').value = cfg.groq_api_key || '';
   document.getElementById('groqModel').value = cfg.groq_model || 'openai/gpt-oss-120b';
   document.getElementById('groqStatus').textContent = cfg.groq_api_key ? '✅ AI search active' : '⚠️ Not set — search uses direct title matching only';
+  document.getElementById('musicApiBase').value = cfg.music_api_base || 'https://saavn.dev/api';
+  document.getElementById('musicApiStatus').textContent = cfg.music_api_base ? '✅ Custom mirror active' : 'Using default mirror';
   document.getElementById('defaultServerSelect').value = cfg.default_server || 'server1';
   const dsLabel = SERVER_NAMES[cfg.default_server] || (_customServersCache[cfg.default_server] && _customServersCache[cfg.default_server].name) || SERVER_NAMES.server1;
   document.getElementById('defaultServerStatus').textContent = `Currently: ${dsLabel}`;
@@ -1070,6 +1162,13 @@ document.getElementById('groqForm').onsubmit = async (e) => {
   const model = document.getElementById('groqModel').value.trim() || 'openai/gpt-oss-120b';
   await db.ref('app_config').update({ groq_api_key: key, groq_model: model });
   toast(key ? 'Groq AI Search Enabled!' : 'Groq API Key Cleared — AI search disabled');
+};
+
+document.getElementById('musicApiForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const base = document.getElementById('musicApiBase').value.trim().replace(/\/$/, '') || 'https://saavn.dev/api';
+  await db.ref('app_config').update({ music_api_base: base });
+  toast('Music API setting saved!');
 };
 
 document.getElementById('defaultServerForm').onsubmit = async (e) => {
