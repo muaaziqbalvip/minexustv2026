@@ -3758,13 +3758,27 @@ function normalizeSong(raw) {
   // grab the highest-quality entry (last in the array).
   const pickBest = (arr) => (Array.isArray(arr) && arr.length) ? arr[arr.length - 1].url : (typeof arr === 'string' ? arr : '');
   const artists = raw.artists?.primary?.map(a => a.name).join(', ')
-    || raw.primaryArtists || raw.singers || raw.subtitle || 'Unknown Artist';
+    || raw.primaryArtists || raw.singers || raw.subtitle
+    || raw.more_info?.primary_artists || raw.more_info?.singers || 'Unknown Artist';
+
+  // JioSaavn's own autocomplete.get / search shape (confirmed reachable
+  // directly, e.g. jiosaavn.com/api.php?__call=autocomplete.get) nests
+  // everything under more_info instead of top-level, and only ever
+  // provides a 30-second preview clip URL (more_info.vlink) rather than a
+  // full downloadUrl array — so it's used here only as a last-resort
+  // fallback after every other shape has been checked, since a 30s preview
+  // is still better than nothing if no full-length source is available.
+  const audioUrl = pickBest(raw.downloadUrl)
+    || raw.media_url || raw.media_preview_url
+    || raw.more_info?.vlink || '';
+
   return {
     id: raw.id || raw.songid || String(Math.random()),
-    title: (raw.name || raw.song || raw.title || 'Untitled').replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
+    title: (raw.name || raw.song || raw.title || 'Untitled').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#039;/g, "'"),
     artist: artists,
     image: pickBest(raw.image) || raw.image_url || '',
-    audioUrl: pickBest(raw.downloadUrl) || raw.media_url || raw.media_preview_url || '',
+    audioUrl,
+    isPreviewOnly: !pickBest(raw.downloadUrl) && !raw.media_url && !!raw.more_info?.vlink,
     permaUrl: raw.url || raw.perma_url || ''
   };
 }
@@ -3837,7 +3851,7 @@ function renderMusicList(songs) {
     <div class="music-item${musicState.index === i && musicState.playing ? ' playing' : ''}" data-idx="${i}">
       <img class="music-item-art" src="${esc(s.image)}" alt="" onerror="this.style.opacity=0">
       <div class="music-item-info">
-        <div class="music-item-title">${esc(s.title)}</div>
+        <div class="music-item-title">${esc(s.title)} ${s.isPreviewOnly ? '<span style="font-size:9px;font-weight:800;color:#000;background:var(--gold);border-radius:5px;padding:1px 5px;margin-left:4px;vertical-align:middle">30s PREVIEW</span>' : ''}</div>
         <div class="music-item-artist">${esc(s.artist)}</div>
       </div>
       <button class="music-item-share" data-share-idx="${i}" title="Share"><i class="fas fa-share-nodes"></i></button>
