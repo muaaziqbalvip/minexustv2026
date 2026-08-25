@@ -1909,6 +1909,125 @@ const googleProvider = new firebase.auth.GoogleAuthProvider();
 <script>
 'use strict';
 
+/* ================= PUBLIC ANALYTICS (v4) =================
+   Lightweight, privacy-respecting usage tracking so the Admin Panel's
+   Analytics tab can show real traffic: visits, unique visitors, clicks,
+   what people watch, search terms, and where visitors came from.
+
+   HOW IT WORKS:
+   - Every visitor (signed in OR guest) is silently signed in anonymously
+     via Firebase Auth the moment the app loads. This gives every visitor a
+     stable uid for THIS DEVICE/BROWSER without ever asking them to log in
+     or collecting any personal info — it's purely so writes are allowed
+     under database.rules.json (anonymous auth still requires `auth !== null`)
+     and so a "unique visitor" can be counted without cookies/fingerprinting.
+   - Events are WRITE-ONLY from the browser's perspective (database.rules.json
+     allows any authenticated — including anonymous — user to push into
+     /analytics/events, but nobody except an admin can READ that data back).
+     This means a malicious user could spam fake events but could never see
+     real traffic data, and can't read anyone else's data either.
+   - Events are batched into date-bucketed nodes (analytics/daily/YYYY-MM-DD)
+     so the Admin dashboard can query a specific day/week/month range
+     cheaply instead of scanning every event ever logged.
+   - This never blocks or slows down the UI: every call is fire-and-forget
+     (.catch(()=>{}) swallows failures silently) since analytics must never
+     be able to break the actual app experience. */
+const ANALYTICS_SESSION_ID = (() => {
+  try {
+    let sid = sessionStorage.getItem('mtv_sid');
+    if (!sid) {
+      sid = 'S' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      sessionStorage.setItem('mtv_sid', sid);
+    }
+    return sid;
+  } catch (e) { return 'S' + Date.now().toString(36); }
+})();
+
+function _dayKey(d) {
+  d = d || new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function _detectDeviceType() {
+  const ua = navigator.userAgent || '';
+  if (/Mobi|Android|iPhone|iPod/i.test(ua)) return 'mobile';
+  if (/iPad|Tablet/i.test(ua)) return 'tablet';
+  return 'desktop';
+}
+
+function _detectTrafficSource() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('ref')) return 'referral';
+    const ref = document.referrer || '';
+    if (!ref) return 'direct';
+    if (/whatsapp/i.test(ref)) return 'whatsapp';
+    if (/facebook|fb\.com/i.test(ref)) return 'facebook';
+    if (/instagram/i.test(ref)) return 'instagram';
+    if (/t\.me|telegram/i.test(ref)) return 'telegram';
+    if (/twitter|x\.com/i.test(ref)) return 'twitter';
+    if (/google\./i.test(ref)) return 'google';
+    return 'other-referrer';
+  } catch (e) { return 'direct'; }
+}
+
+/* Fire-and-forget event logger. `type` groups events in the dashboard
+   (page_view, click, watch_start, live_watch, search, music_play, share).
+   `data` is any small flat object of extra details for that event type. */
+function logAnalyticsEvent(type, data) {
+  try {
+    const day = _dayKey();
+    const uid = (S.user && S.user.uid) || (S.anonUid) || 'unknown';
+    const ref = db.ref(`analytics/daily/${day}/events`).push();
+    ref.set({
+      type,
+      uid,
+      signedIn: !!S.user,
+      sid: ANALYTICS_SESSION_ID,
+      device: _detectDeviceType(),
+      ts: firebase.database.ServerValue.TIMESTAMP,
+      ...((data && typeof data === 'object') ? data : {})
+    }).catch(() => {});
+  } catch (e) { /* analytics must never break the app */ }
+}
+
+/* Counts a session exactly once per tab-session, and records the traffic
+   source + device for that visit — this is what powers "how many people
+   came" and "where did they come from" in the Admin dashboard. */
+let _sessionLogged = false;
+function logSessionStart() {
+  if (_sessionLogged) return;
+  _sessionLogged = true;
+  const day = _dayKey();
+  const source = _detectTrafficSource();
+  const device = _detectDeviceType();
+  logAnalyticsEvent('session_start', { source, device, path: window.location.pathname });
+  // Increment simple rollup counters used for fast dashboard totals without
+  // needing to scan the full events list every time the admin opens it.
+  db.ref(`analytics/daily/${day}/summary/visits`).transaction(c => (c || 0) + 1).catch(() => {});
+  db.ref(`analytics/daily/${day}/summary/bySource/${source}`).transaction(c => (c || 0) + 1).catch(() => {});
+  db.ref(`analytics/daily/${day}/summary/byDevice/${device}`).transaction(c => (c || 0) + 1).catch(() => {});
+  db.ref(`analytics/totals/visits`).transaction(c => (c || 0) + 1).catch(() => {});
+}
+
+/* Anonymous sign-in so guests get a stable uid to attach analytics to,
+   without ever prompting them or requiring any personal info. If the
+   person later signs in for real (Google/email), their real uid takes
+   over for tracking going forward — this anonymous session is just a
+   bridge for guest-browsing analytics. */
+function ensureAnalyticsIdentity() {
+  if (auth.currentUser) {
+    S.anonUid = auth.currentUser.uid;
+    logSessionStart();
+    return;
+  }
+  auth.signInAnonymously().catch(() => {
+    // If anonymous auth isn't enabled in Firebase Console yet, analytics
+    // writes will simply fail silently under database.rules.json (which
+    // requires `auth !== null`) — the app itself is completely unaffected.
+  });
+}
+
 /* ---- PWA SERVICE WORKER REGISTRATION & INSTALL PROMPT ---- */
 let deferredPrompt = null;
 if ('serviceWorker' in navigator) {
@@ -2734,6 +2853,13 @@ function switchView(name) {
   if (name === 'account') renderAccountView();
   if (name === 'developer') renderDeveloperPage();
   if (name === 'calendar') renderCalendarView();
+
+  // Track which section people actually open — powers the "most visited
+  // tab" breakdown in Admin → Analytics. Excludes player/livePlayer since
+  // those are logged with richer detail by openPlayer()/openLiveChannel().
+  if (name !== 'player' && name !== 'livePlayer') {
+    logAnalyticsEvent('tab_click', { tab: name });
+  }
 }
 
 /* ---- CONTENT CARDS ---- */
@@ -3088,6 +3214,10 @@ function openLivePlayer(ch) {
     </div>
   `;
   S.activeLiveChannel = ch;
+
+  // Track which live channels people actually watch — powers the Live TV
+  // breakdown in Admin → Analytics.
+  logAnalyticsEvent('live_watch', { channel: ch.name || '', country: ch.country || '' });
 }
 
 async function shareLiveChannel(ch) {
@@ -3190,6 +3320,16 @@ function openPlayer(item, forceRestart) {
   if (S.resumedFromHistory) {
     toast(`▶️ Resuming ${item.type === 'series' ? `S${S.activeSeason}:E${S.activeEpisode}` : ''}`, 'info');
   }
+
+  // Track what's actually being watched — powers "most watched movies/
+  // series" and the daily watch-count charts in Admin → Analytics.
+  logAnalyticsEvent('watch_start', {
+    itemId: item.id, title: item.title || '', mediaType: item.type || 'movie'
+  });
+  const day = _dayKey();
+  db.ref(`analytics/daily/${day}/summary/topWatched/${(item.id || 'unknown').replace(/[.#$/\[\]]/g, '_')}`)
+    .transaction(v => ({ count: ((v && v.count) || 0) + 1, title: item.title || '', type: item.type || 'movie' }))
+    .catch(() => {});
 }
 
 /* ---- AUTO-ROTATE ----
@@ -3295,7 +3435,18 @@ function buildShareUrl(item) {
   // static <head> — this is what caused every shared link to show the same
   // wrong poster regardless of which movie was actually shared.
   const type = item.type === 'series' ? 'series' : 'movie';
-  return `${window.location.origin}/watch/${encodeURIComponent(item.id)}?type=${type}`;
+  let url = `${window.location.origin}/watch/${encodeURIComponent(item.id)}?type=${type}`;
+
+  // If the sharer is signed in, tack their referral code onto the SAME
+  // rich-poster link — so sharing a movie/series still credits them if a
+  // friend signs up through it, instead of forcing a choice between "share
+  // this movie with its poster" and "share my invite link" as two separate
+  // actions. api/watch.js forwards this straight through to the final
+  // redirect URL, and processReferralCredit() already reads ?ref= from
+  // wherever it ends up in the address bar.
+  if (S.user) url += `&ref=${encodeURIComponent(S.user.uid.slice(0, 8))}`;
+
+  return url;
 }
 
 async function copyShareLink(item) {
@@ -3314,16 +3465,19 @@ async function copyShareLink(item) {
   try {
     if (navigator.share) {
       await navigator.share({ title: item.title, text: shareText, url });
+      logAnalyticsEvent('share', { itemId: item.id, title: item.title || '', channel: 'native' });
       return;
     }
     await navigator.clipboard.writeText(`${shareText}\n${url}`);
     toast('🔗 Link copied! Share it anywhere', 'success');
+    logAnalyticsEvent('share', { itemId: item.id, title: item.title || '', channel: 'copy' });
   } catch (e) {
     // navigator.share throws if user cancels the native sheet — not an error
     if (e && e.name === 'AbortError') return;
     try {
       await navigator.clipboard.writeText(`${shareText}\n${url}`);
       toast('🔗 Link copied! Share it anywhere', 'success');
+      logAnalyticsEvent('share', { itemId: item.id, title: item.title || '', channel: 'copy' });
     } catch (e2) {
       toast('Could not copy link', 'error');
     }
@@ -3706,6 +3860,10 @@ function playMusicAt(idx) {
   document.getElementById('miniPlayerArtist').textContent = song.artist;
   syncMiniPlayerPlayIcon();
   renderMusicList(musicState.queue);
+
+  // Track song plays — powers the "Top Songs Played" breakdown in
+  // Admin → Analytics.
+  logAnalyticsEvent('music_play', { title: song.title || '', artist: song.artist || '' });
 }
 
 function toggleMusicPlayPause() {
@@ -3889,6 +4047,9 @@ function handleLiveSearch(q, dropdownEl) {
 
       if (S.user && q.length > 2) {
         db.ref(`users/${S.user.uid}/searches`).push({ query: q, time: firebase.database.ServerValue.TIMESTAMP });
+      }
+      if (q.length > 2) {
+        logAnalyticsEvent('search', { query: q.slice(0, 80), resultCount: list.length });
       }
     } catch (e) {
       dropdownEl.innerHTML = `<div style="padding:14px;text-align:center;font-size:11px;color:var(--text3)">Search failed — check your connection</div>`;
@@ -4354,9 +4515,30 @@ async function processReferralCredit(user) {
   } catch (e) { /* referral is a nice-to-have, never block sign-in on failure */ }
 }
 
-/* Registers this user's own invite code in the lookup index (idempotent —
-   safe to call every time the Invite tab is opened) so a friend's
-   processReferralCredit call above can resolve who invited them. */
+/* ---- INVITE FRIENDS ----
+   Each signed-in user gets a stable invite code (their uid, shortened) and
+   a link that opens the app with ?ref=CODE. When someone signs up through
+   that link, both the inviter and the new user get a points bonus — see
+   the referral-crediting logic above.
+
+   MOVIE-POSTER INVITE LINKS (v4): if the person most recently watched (or
+   is currently watching) something, the Invite tab offers that title's
+   real /watch/:id link (with ?ref= attached) instead of the plain root
+   link — so when they share it, WhatsApp/Facebook shows the actual movie
+   poster as the link preview (via api/watch.js) instead of just the app
+   logo, while still crediting the referral exactly the same way. The
+   plain app-logo link is always still available underneath as a fallback
+   for a general "come join the app" share with no specific title. */
+function buildMoviePosterInviteLink(code) {
+  const item = S.activeItem || (S.history && Object.values(S.history).sort((a, b) => (b.watchedAt || 0) - (a.watchedAt || 0))[0]);
+  if (!item || !item.id) return null;
+  const type = item.type === 'series' ? 'series' : 'movie';
+  return {
+    url: `${window.location.origin}/watch/${encodeURIComponent(item.id)}?type=${type}&ref=${encodeURIComponent(code)}`,
+    title: item.title || ''
+  };
+}
+
 async function ensureInviteCodeRegistered(user) {
   const code = user.uid.slice(0, 8);
   try {
@@ -4364,18 +4546,13 @@ async function ensureInviteCodeRegistered(user) {
     if (!snap.exists()) await db.ref(`inviteCodes/${code}`).set(user.uid);
   } catch (e) {}
 }
-
-/* ---- INVITE FRIENDS ----
-   Each signed-in user gets a stable invite code (their uid, shortened) and
-   a link that opens the app with ?ref=CODE. When someone signs up through
-   that link, both the inviter and the new user get a points bonus — see
-   the referral-crediting logic above. */
 function renderInviteTab(contentEl) {
   ensureInviteCodeRegistered(S.user);
   const code = S.user.uid.slice(0, 8);
   const link = `${window.location.origin}/?ref=${code}`;
   const referralCount = (S.userStats && S.userStats.referralCount) || 0;
   const referralPoints = referralCount * 50;
+  const movieInvite = buildMoviePosterInviteLink(code);
 
   contentEl.innerHTML = `
     <div style="grid-column:1/-1">
@@ -4398,12 +4575,26 @@ function renderInviteTab(contentEl) {
         </div>
       </div>
 
+      ${movieInvite ? `
+      <div style="background:linear-gradient(135deg,rgba(255,64,64,.1),var(--bg3));border:1px solid var(--border-active);border-radius:12px;padding:14px;margin-bottom:12px">
+        <div style="font-size:11.5px;color:var(--text2);margin-bottom:8px"><i class="fas fa-clapperboard" style="color:var(--gold)"></i> Share <b>"${esc(movieInvite.title)}"</b> with your invite link — friends see the movie poster too!</div>
+        <div style="display:flex;gap:10px;margin-bottom:8px">
+          <code style="flex:1;font-size:10.5px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--bg4);border-radius:8px;padding:8px 10px">${esc(movieInvite.url)}</code>
+          <button class="btn" style="padding:8px 12px;background:var(--bg4);flex-shrink:0" onclick="copyInviteLink('${esc(movieInvite.url)}')"><i class="fas fa-copy"></i></button>
+        </div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="shareInviteLink('${esc(movieInvite.url)}')">
+          <i class="fas fa-share-nodes"></i> Share "${esc(movieInvite.title)}" + Invite
+        </button>
+      </div>
+      ` : ''}
+
+      <div style="font-size:10.5px;color:var(--text3);margin-bottom:8px">${movieInvite ? 'Or share the plain app link:' : 'Your invite link:'}</div>
       <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px">
         <code style="flex:1;font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(link)}</code>
         <button class="btn" style="padding:8px 12px;background:var(--bg4);flex-shrink:0" onclick="copyInviteLink('${esc(link)}')"><i class="fas fa-copy"></i></button>
       </div>
 
-      <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="shareInviteLink('${esc(link)}')">
+      <button class="btn ${movieInvite ? '' : 'btn-primary'}" style="width:100%;justify-content:center" onclick="shareInviteLink('${esc(link)}')">
         <i class="fas fa-share-nodes"></i> Share Invite Link
       </button>
     </div>
@@ -4421,6 +4612,7 @@ async function copyInviteLink(link) {
 
 async function shareInviteLink(link) {
   const text = `🎬 Join me on MINEXUS TV — free 4K movies, series & live TV!`;
+  logAnalyticsEvent('invite_share', { link });
   try {
     if (navigator.share) {
       await navigator.share({ title: 'MINEXUS TV', text, url: link });
@@ -4653,10 +4845,20 @@ db.ref('app_config/ad_slots').on('value', snap => {
 
 /* ---- AUTH STATE ---- */
 auth.onAuthStateChanged(user => {
-  S.user = user || null;
+  // Anonymous users (see ensureAnalyticsIdentity) also fire this callback
+  // with user.isAnonymous === true. We only treat REAL accounts (Google/
+  // email) as "signed in" for app purposes — anonymous auth is invisible
+  // to the rest of the app and exists purely to authorize analytics writes.
+  S.user = (user && !user.isAnonymous) ? user : null;
   const lock = document.getElementById('authLockOverlay');
 
   if (user) {
+    S.anonUid = user.uid;
+    logSessionStart();
+  }
+
+  if (S.user) {
+    user = S.user;
     lock.style.display = 'none';
     const init = (user.displayName || user.email || 'M').charAt(0).toUpperCase();
     const uname = user.displayName || user.email?.split('@')[0] || 'Member';
@@ -4740,6 +4942,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Theme class was already applied pre-paint by the <head> script (to
   // avoid a flash); this just keeps document state consistent with S.settings.
   document.documentElement.classList.toggle('light-theme', S.settings.theme === 'light');
+
+  // Start the analytics identity/session immediately on load, for every
+  // visitor (signed in or guest) — see ensureAnalyticsIdentity() above.
+  ensureAnalyticsIdentity();
 
   // ---- OFFLINE / ONLINE DETECTION ----
   // Shows a persistent banner while the device has no internet connection,

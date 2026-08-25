@@ -50,9 +50,16 @@
 3. اگر نہیں ہے تو **Add domain** پر click کر کے شامل کریں
 4. یہ بھی چیک کریں: Authentication → **Sign-in method** میں **Google** provider **Enabled** ہونا چاہیے (بند ہو تو on کریں)
 
----
+## Step 5: Analytics کے لیے Anonymous Sign-In Enable کریں (نیا — v4)
 
-## کیسے پتا چلے گا کہ سب کام کر گیا؟
+Public Analytics (Admin Panel → Analytics tab میں traffic, clicks, graphs) کام کرنے کے لیے یہ ضروری ہے:
+
+1. Firebase Console → **Authentication** → **Sign-in method** کھولیں
+2. **Anonymous** provider تلاش کریں اور اسے **Enable** کریں
+3. یہ ہر visitor (چاہے وہ login نہ کرے) کو ایک silent, بغیر پاسورڈ کے, بغیر کسی ذاتی معلومات کے session دیتا ہے — صرف اس لیے کہ analytics events لکھے جا سکیں (database.rules.json میں `auth !== null` درکار ہے)
+4. یہ enable نہ کیا تو باقی app بالکل نارمل چلے گی، صرف Analytics tab میں کوئی traffic نظر نہیں آئے گا
+
+---
 
 1. `/admin` کھولیں — اب ایک login screen نظر آئے گی (پہلے سیدھا dashboard کھلتا تھا)
 2. Step 1 والا email/password ڈال کر sign in کریں

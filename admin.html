@@ -13,6 +13,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -130,6 +131,15 @@ input,select,textarea{font-family:inherit;border:none;outline:none}
 }
 .stat-val{font-size:24px;font-weight:900;margin-bottom:2px}
 .stat-label{font-size:12px;color:var(--text-muted);font-weight:600}
+
+.analytics-range-btn{
+  background:transparent;border:none;color:var(--text-muted);font-size:12px;font-weight:700;
+  padding:7px 14px;border-radius:7px;cursor:pointer;transition:.15s;
+}
+.analytics-range-btn:hover{color:var(--text)}
+.analytics-range-btn.active{background:var(--accent);color:#fff}
+.analytics-grid-2{grid-template-columns:1fr 1fr}
+@media (max-width:900px){.analytics-grid-2{grid-template-columns:1fr}}
 
 .card{
   background:var(--bg-card);border:1px solid var(--border);
@@ -285,6 +295,7 @@ tr:hover td{background:var(--bg-card-hover)}
 
   <nav class="nav-menu">
     <button class="nav-item active" data-tab="dashboard"><i class="fas fa-chart-pie"></i> Overview</button>
+    <button class="nav-item" data-tab="analytics"><i class="fas fa-chart-line" style="color:var(--green)"></i> Public Analytics</button>
     <button class="nav-item" data-tab="leaderboard"><i class="fas fa-trophy" style="color:var(--gold)"></i> User Leaderboard</button>
     <button class="nav-item" data-tab="channels"><i class="fas fa-tv"></i> Live TV Channels & M3U</button>
     <button class="nav-item" data-tab="version"><i class="fas fa-code-branch"></i> App Version & Update</button>
@@ -310,7 +321,7 @@ tr:hover td{background:var(--bg-card-hover)}
      "More" opens that same drawer for every other section. -->
 <nav class="admin-bottom-bar" id="adminBottomBar">
   <button class="admin-tab-btn active" data-tab="dashboard"><i class="fas fa-chart-pie"></i><span>Overview</span></button>
-  <button class="admin-tab-btn" data-tab="channels"><i class="fas fa-tv"></i><span>Servers</span></button>
+  <button class="admin-tab-btn" data-tab="analytics"><i class="fas fa-chart-line"></i><span>Analytics</span></button>
   <button class="admin-tab-btn" data-tab="users"><i class="fas fa-users"></i><span>Users</span></button>
   <button class="admin-tab-btn" data-tab="notifications"><i class="fas fa-bullhorn"></i><span>Alerts</span></button>
   <button class="admin-tab-btn" id="adminMoreBtn"><i class="fas fa-ellipsis"></i><span>More</span></button>
@@ -357,6 +368,104 @@ tr:hover td{background:var(--bg-card-hover)}
             <div class="stat-val" id="statNotifications">0</div>
             <div class="stat-label">Broadcast Alerts</div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1.5 PUBLIC ANALYTICS (v4) -->
+    <div class="tab-content" id="tab-analytics">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+        <div style="display:flex;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:4px;gap:4px">
+          <button class="analytics-range-btn active" data-range="7">7 Days</button>
+          <button class="analytics-range-btn" data-range="30">30 Days</button>
+          <button class="analytics-range-btn" data-range="90">90 Days</button>
+        </div>
+        <span id="analyticsLiveNote" style="font-size:11px;color:var(--text-muted)"><i class="fas fa-circle" style="color:var(--green);font-size:7px"></i> Live from Firebase — every visit, click & watch is tracked automatically</span>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon" style="color:var(--cyan)"><i class="fas fa-eye"></i></div>
+          <div><div class="stat-val" id="anStatVisits">0</div><div class="stat-label">Total Visits (range)</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color:var(--accent)"><i class="fas fa-user-check"></i></div>
+          <div><div class="stat-val" id="anStatUnique">0</div><div class="stat-label">Unique Visitors (range)</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color:var(--gold)"><i class="fas fa-hand-pointer"></i></div>
+          <div><div class="stat-val" id="anStatClicks">0</div><div class="stat-label">Total Clicks/Events</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color:var(--green)"><i class="fas fa-play"></i></div>
+          <div><div class="stat-val" id="anStatWatches">0</div><div class="stat-label">Movie/Series Watches</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color:#ff6b6b"><i class="fas fa-satellite-dish"></i></div>
+          <div><div class="stat-val" id="anStatLive">0</div><div class="stat-label">Live TV Watches</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color:#a78bfa"><i class="fas fa-magnifying-glass"></i></div>
+          <div><div class="stat-val" id="anStatSearches">0</div><div class="stat-label">Searches Made</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color:#f472b6"><i class="fas fa-share-nodes"></i></div>
+          <div><div class="stat-val" id="anStatShares">0</div><div class="stat-label">Shares (movie + invite)</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="color:var(--cyan)"><i class="fas fa-circle-dot"></i></div>
+          <div><div class="stat-val" id="anStatOnlineNow">0</div><div class="stat-label">Online in Last 5 Min</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:6px">
+        <div class="card-header"><h2 class="card-title"><i class="fas fa-chart-line" style="color:var(--green)"></i> Visitors Over Time</h2></div>
+        <div style="padding:16px;height:280px"><canvas id="chartVisitsOverTime"></canvas></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px" class="analytics-grid-2">
+        <div class="card">
+          <div class="card-header"><h2 class="card-title"><i class="fas fa-tags" style="color:var(--gold)"></i> Traffic Sources</h2></div>
+          <div style="padding:16px;height:240px"><canvas id="chartTrafficSource"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h2 class="card-title"><i class="fas fa-mobile-screen" style="color:var(--cyan)"></i> Device Breakdown</h2></div>
+          <div style="padding:16px;height:240px"><canvas id="chartDevice"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h2 class="card-title"><i class="fas fa-list-ol"></i> What People Click / Visit (by section)</h2></div>
+        <div style="padding:16px;height:260px"><canvas id="chartTabClicks"></canvas></div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h2 class="card-title"><i class="fas fa-fire" style="color:#ff6b6b"></i> Most Watched Movies/Series</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Title</th><th>Type</th><th>Watch Count</th></tr></thead>
+            <tbody id="analyticsTopWatchedTable"><tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h2 class="card-title"><i class="fas fa-magnifying-glass" style="color:#a78bfa"></i> Top Search Terms</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Search Term</th><th>Times Searched</th></tr></thead>
+            <tbody id="analyticsTopSearchTable"><tr><td colspan="3" style="text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h2 class="card-title"><i class="fas fa-stream"></i> Recent Activity (live feed)</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Time</th><th>Event</th><th>Detail</th><th>Device</th></tr></thead>
+            <tbody id="analyticsRecentFeed"><tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1579,7 +1688,188 @@ db.ref('notifications').on('value', snap => {
   renderNotifHistory(sorted);
 });
 
+/* ================= PUBLIC ANALYTICS DASHBOARD (v4) =================
+   Reads from analytics/daily/{YYYY-MM-DD}/... written by every visitor's
+   browser (see logAnalyticsEvent/logSessionStart in index.html). Only an
+   authenticated admin can read this path (database.rules.json), so this
+   whole block only ever runs after the admin-access check above passes.
+
+   Design choice: rather than one giant always-on Firebase .on('value')
+   listener across the whole /analytics tree (which would download every
+   event ever logged, forever, on every admin page load), this fetches a
+   bounded date range with .once('value') per selected range (7/30/90
+   days) and re-fetches only when the admin changes the range or opens the
+   tab. A single .on('value') IS used for "today" so the dashboard still
+   feels live/real-time without re-querying everything constantly. */
+let _analyticsRangeDays = 7;
+let _analyticsCharts = {}; // Chart.js instances, destroyed/recreated on refresh
+let _analyticsLoaded = false;
+
+function _fmtDay(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function _lastNDays(n) {
+  const days = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(_fmtDay(d));
+  }
+  return days;
+}
+
+async function loadAnalyticsRange(days) {
+  _analyticsRangeDays = days;
+  document.querySelectorAll('.analytics-range-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.range) === days));
+
+  const dayKeys = _lastNDays(days);
+  const perDaySnaps = await Promise.all(dayKeys.map(k => db.ref(`analytics/daily/${k}`).once('value').then(s => s.val() || {}).catch(() => ({}))));
+
+  let totalVisits = 0, totalClicks = 0, totalWatches = 0, totalLive = 0, totalSearches = 0, totalShares = 0;
+  const uniqueUids = new Set();
+  const sourceCounts = {};
+  const deviceCounts = {};
+  const tabCounts = {};
+  const topWatchedMap = {};
+  const searchTermCounts = {};
+  const visitsPerDay = [];
+  const recentEvents = [];
+
+  dayKeys.forEach((key, idx) => {
+    const dayData = perDaySnaps[idx];
+    const summary = dayData.summary || {};
+    const events = dayData.events || {};
+
+    visitsPerDay.push(summary.visits || 0);
+    totalVisits += summary.visits || 0;
+
+    Object.entries(summary.bySource || {}).forEach(([src, c]) => { sourceCounts[src] = (sourceCounts[src] || 0) + c; });
+    Object.entries(summary.byDevice || {}).forEach(([dev, c]) => { deviceCounts[dev] = (deviceCounts[dev] || 0) + c; });
+    Object.entries(summary.topWatched || {}).forEach(([id, v]) => {
+      if (!topWatchedMap[id]) topWatchedMap[id] = { title: v.title || id, type: v.type || 'movie', count: 0 };
+      topWatchedMap[id].count += v.count || 0;
+    });
+
+    Object.entries(events).forEach(([eid, ev]) => {
+      totalClicks++;
+      if (ev.uid) uniqueUids.add(ev.uid);
+      if (ev.type === 'tab_click') tabCounts[ev.tab] = (tabCounts[ev.tab] || 0) + 1;
+      if (ev.type === 'watch_start') totalWatches++;
+      if (ev.type === 'live_watch') totalLive++;
+      if (ev.type === 'search') {
+        totalSearches++;
+        if (ev.query) {
+          const q = String(ev.query).toLowerCase().trim();
+          searchTermCounts[q] = (searchTermCounts[q] || 0) + 1;
+        }
+      }
+      if (ev.type === 'share' || ev.type === 'invite_share') totalShares++;
+      recentEvents.push(ev);
+    });
+  });
+
+  document.getElementById('anStatVisits').textContent = totalVisits.toLocaleString();
+  document.getElementById('anStatUnique').textContent = uniqueUids.size.toLocaleString();
+  document.getElementById('anStatClicks').textContent = totalClicks.toLocaleString();
+  document.getElementById('anStatWatches').textContent = totalWatches.toLocaleString();
+  document.getElementById('anStatLive').textContent = totalLive.toLocaleString();
+  document.getElementById('anStatSearches').textContent = totalSearches.toLocaleString();
+  document.getElementById('anStatShares').textContent = totalShares.toLocaleString();
+
+  // ---- Chart: Visitors Over Time ----
+  const dayLabels = dayKeys.map(k => { const [, m, d] = k.split('-'); return `${d}/${m}`; });
+  if (_analyticsCharts.visits) _analyticsCharts.visits.destroy();
+  _analyticsCharts.visits = new Chart(document.getElementById('chartVisitsOverTime'), {
+    type: 'line',
+    data: { labels: dayLabels, datasets: [{ label: 'Visits', data: visitsPerDay, borderColor: '#e50914', backgroundColor: 'rgba(229,9,20,.15)', fill: true, tension: 0.35, pointRadius: 3 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#8a8f9e' }, grid: { color: 'rgba(255,255,255,.05)' } }, x: { ticks: { color: '#8a8f9e' }, grid: { display: false } } } }
+  });
+
+  // ---- Chart: Traffic Sources ----
+  const srcLabels = Object.keys(sourceCounts);
+  if (_analyticsCharts.source) _analyticsCharts.source.destroy();
+  _analyticsCharts.source = new Chart(document.getElementById('chartTrafficSource'), {
+    type: 'doughnut',
+    data: { labels: srcLabels.length ? srcLabels : ['No data yet'], datasets: [{ data: srcLabels.length ? srcLabels.map(s => sourceCounts[s]) : [1], backgroundColor: ['#e50914', '#00e676', '#ffb648', '#00d9ff', '#a78bfa', '#f472b6', '#8a8f9e', '#ff6b6b'] }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#c8ccd6', boxWidth: 12, font: { size: 10.5 } } } } }
+  });
+
+  // ---- Chart: Device Breakdown ----
+  const devLabels = Object.keys(deviceCounts);
+  if (_analyticsCharts.device) _analyticsCharts.device.destroy();
+  _analyticsCharts.device = new Chart(document.getElementById('chartDevice'), {
+    type: 'pie',
+    data: { labels: devLabels.length ? devLabels : ['No data yet'], datasets: [{ data: devLabels.length ? devLabels.map(d => deviceCounts[d]) : [1], backgroundColor: ['#00d9ff', '#e50914', '#ffb648'] }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#c8ccd6', boxWidth: 12, font: { size: 10.5 } } } } }
+  });
+
+  // ---- Chart: Section/Tab Clicks ----
+  const tabLabels = Object.keys(tabCounts).sort((a, b) => tabCounts[b] - tabCounts[a]);
+  if (_analyticsCharts.tabs) _analyticsCharts.tabs.destroy();
+  _analyticsCharts.tabs = new Chart(document.getElementById('chartTabClicks'), {
+    type: 'bar',
+    data: { labels: tabLabels.length ? tabLabels : ['No data yet'], datasets: [{ label: 'Clicks', data: tabLabels.length ? tabLabels.map(t => tabCounts[t]) : [0], backgroundColor: '#e50914', borderRadius: 6 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#8a8f9e' }, grid: { color: 'rgba(255,255,255,.05)' } }, x: { ticks: { color: '#8a8f9e' }, grid: { display: false } } } }
+  });
+
+  // ---- Table: Most Watched ----
+  const topWatched = Object.values(topWatchedMap).sort((a, b) => b.count - a.count).slice(0, 15);
+  document.getElementById('analyticsTopWatchedTable').innerHTML = topWatched.length
+    ? topWatched.map((w, i) => `<tr><td>${i + 1}</td><td><strong>${escapeHtml(w.title)}</strong></td><td><span class="admin-badge">${w.type}</span></td><td>${w.count.toLocaleString()}</td></tr>`).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No watch data in this range yet</td></tr>';
+
+  // ---- Table: Top Search Terms ----
+  const topSearches = Object.entries(searchTermCounts).sort((a, b) => b[1] - a[1]).slice(0, 15);
+  document.getElementById('analyticsTopSearchTable').innerHTML = topSearches.length
+    ? topSearches.map(([term, count], i) => `<tr><td>${i + 1}</td><td><strong>${escapeHtml(term)}</strong></td><td>${count.toLocaleString()}</td></tr>`).join('')
+    : '<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">No searches in this range yet</td></tr>';
+
+  // ---- Table: Recent Activity Feed (most recent 25) ----
+  const recent = recentEvents.filter(e => e.ts).sort((a, b) => b.ts - a.ts).slice(0, 25);
+  document.getElementById('analyticsRecentFeed').innerHTML = recent.length
+    ? recent.map(ev => {
+        const time = new Date(ev.ts).toLocaleString();
+        const detailMap = {
+          tab_click: ev.tab, watch_start: ev.title, live_watch: ev.channel, search: ev.query,
+          share: ev.title, invite_share: 'invite link', music_play: `${ev.title || ''} — ${ev.artist || ''}`,
+          session_start: `via ${ev.source || 'direct'}`
+        };
+        return `<tr><td style="font-size:11px;color:var(--text-muted)">${time}</td><td><span class="admin-badge">${escapeHtml(ev.type || '')}</span></td><td>${escapeHtml(detailMap[ev.type] || '—')}</td><td>${escapeHtml(ev.device || '')}</td></tr>`;
+      }).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No activity logged yet — analytics start recording as soon as visitors use the app</td></tr>';
+
+  _analyticsLoaded = true;
+}
+
+// "Online now" — approximated as unique uids with a session_start or any
+// event logged in the last 5 minutes, from TODAY's live event stream.
+db.ref(`analytics/daily/${_fmtDay(new Date())}/events`).limitToLast(200).on('value', snap => {
+  const events = snap.val() || {};
+  const cutoff = Date.now() - 5 * 60 * 1000;
+  const recentUids = new Set();
+  Object.values(events).forEach(ev => { if (ev.ts && ev.ts > cutoff && ev.uid) recentUids.add(ev.uid); });
+  const el = document.getElementById('anStatOnlineNow');
+  if (el) el.textContent = recentUids.size.toLocaleString();
+  // Also refresh the full range view live so new events show up without
+  // needing a manual refresh, but only if the Analytics tab has already
+  // been opened once (avoids doing this work for admins who never visit it).
+  if (_analyticsLoaded) loadAnalyticsRange(_analyticsRangeDays);
+});
+
+document.querySelectorAll('.analytics-range-btn').forEach(btn => {
+  btn.addEventListener('click', () => loadAnalyticsRange(Number(btn.dataset.range)));
+});
+
+// Load analytics the first time the admin actually opens that tab (not on
+// dashboard load) — keeps initial admin panel load fast.
+const _origActivateAdminTab = window.activateAdminTab;
+window.activateAdminTab = function (tabKey, label) {
+  _origActivateAdminTab(tabKey, label);
+  if (tabKey === 'analytics' && !_analyticsLoaded) loadAnalyticsRange(_analyticsRangeDays);
+};
+
 } // end initAdminListeners()
+
 
 /* ---- ADMIN LOGIN / ACCESS CONTROL ----
    The real security boundary is the Firebase Database Rules (see
