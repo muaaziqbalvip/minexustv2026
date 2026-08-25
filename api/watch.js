@@ -50,6 +50,7 @@ export default async function handler(request) {
   const parts = url.pathname.split('/').filter(Boolean); // ['watch', 'tt1234567']
   const id = parts[1] || url.searchParams.get('id');
   let type = url.searchParams.get('type') === 'series' ? 'series' : 'movie';
+  const ref = url.searchParams.get('ref') || '';
 
   if (!id || !/^tt\d+$/.test(id)) {
     return Response.redirect(SITE + '/', 302);
@@ -82,7 +83,11 @@ export default async function handler(request) {
   // card in WhatsApp/Telegram/Instagram, matching real movie-poster style
   // shares instead of a cropped landscape thumbnail.
   const image = meta ? (meta.poster || meta.background || `${IMGB}/poster/medium/${id}/img`) : `${IMGB}/poster/medium/${id}/img`;
-  const destUrl = `${SITE}/?watch=${encodeURIComponent(id)}&type=${type}`;
+  // Forward the referral code (if the sharer was signed in) straight into
+  // the destination URL, so a friend who taps a shared movie link still
+  // gets matched to whoever shared it — same referral-crediting logic that
+  // already runs for plain invite links, just riding along on a movie link.
+  const destUrl = `${SITE}/?watch=${encodeURIComponent(id)}&type=${type}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
