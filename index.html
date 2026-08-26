@@ -3291,9 +3291,11 @@ window.addEventListener('blur', () => {
 });
 
 /* ---- MULTI-SERVER CINEMA PLAYER (MULTISEMBED DEFAULT) ---- */
-function openPlayer(item, forceRestart) {
+async function openPlayer(item, forceRestart) {
   S.activeItem = item;
-  S.activeServer = S.defaultServer; // Admin-configured default (Firebase app_config/default_server)
+  S.activeServer = S.defaultServer; // Admin-configured default (Firebase app_config/default_server) — used as the very first paint before the smart pick below resolves
+  S._triedServers = new Set(); // fresh auto-failover cascade for this title
+  S._autoCascadeActive = false;
 
   // Resume from where the user left off: if this title is already in their
   // watch history with a saved season/episode, pick up there instead of
@@ -3310,6 +3312,20 @@ function openPlayer(item, forceRestart) {
   loadPlayerMeta(item);
   updateShareableUrl(item);
   applyAutoRotate(true);
+
+  // Smart auto-failover (see chooseStartingServer above): once we know
+  // which server most recently worked for THIS title, switch to it if it's
+  // different from the default — this only ever changes anything if
+  // playStream()'s own first attempt (already in flight above) hasn't
+  // already succeeded, since playStream() no-ops when the item/token has
+  // moved on. Kept async/non-blocking so playback always starts
+  // immediately on the configured default rather than waiting on a
+  // network round-trip first.
+  const smartServer = await chooseStartingServer(item);
+  if (S.activeItem === item && smartServer !== S.activeServer) {
+    S.activeServer = smartServer;
+    playStream();
+  }
 
   if (S.user) {
     saveWatchProgress(item);
@@ -3541,6 +3557,58 @@ function initServerButtons() {
   }).join('');
 }
 
+/* ---- SMART AUTO-FAILOVER (v4.2) ----
+   Previously, when the active embed server was slow/dead, the player just
+   showed a "this server is slow" message with a manual "Try Next Server"
+   button after 6 seconds — someone had to notice and tap it themselves.
+   For a service meant to serve a large, simultaneous audience across many
+   different embed providers (each with its own independent uptime), that
+   manual step meant a good number of plays would just look "broken" to
+   people who didn't know to tap through servers.
+
+   This replaces that with a fully automatic, on-demand cascade:
+   - No background health-checking of all servers ever runs — nothing is
+     probed until an actual person actually presses play. This keeps the
+     approach cheap at any audience size: load stays proportional to real
+     concurrent viewers, never to the total server list, however large it
+     grows.
+   - The FIRST attempt is always whichever server is most likely to work
+     for THIS exact title, based on other viewers' most recent successful
+     plays of it (see chooseStartingServer) — not a fixed global order.
+   - If that attempt doesn't confirm a load within the timeout, it silently
+     advances to the next server in the list and tries again — same
+     mechanism, just automatic instead of requiring a tap — continuing
+     until one works or every server has been tried.
+   - The instant an iframe actually loads, that title+server pairing is
+     recorded (see recordServerSuccess) so the NEXT viewer of that same
+     title starts on a server already known to be working right now,
+     rather than everyone re-discovering the same dead server one at a time. */
+const AUTO_FAILOVER_TIMEOUT_MS = 6000;
+
+/* Reads which server most recently worked for this exact title (if any
+   viewer has successfully loaded it before) so a fresh viewer's very first
+   attempt already skips straight to a server that's currently confirmed
+   live for that title, instead of starting from a fixed order every time. */
+async function chooseStartingServer(item) {
+  try {
+    const snap = await db.ref(`serverHealth/${item.id}/lastGood`).get();
+    const val = snap.val();
+    if (val && SERVERS[val]) return val;
+  } catch (e) { /* no record yet, or offline — fall back to configured default */ }
+  return S.defaultServer;
+}
+
+/* Records that `serverKey` just successfully loaded `item` — a lightweight
+   write, not a scan, and only ever triggered by a real viewer's real
+   successful play, matching the "live per-request, not a periodic scan"
+   design. Read-heavy/write-light by nature: every viewer of a title reads
+   this once, but only writes it when their own load actually confirms. */
+function recordServerSuccess(item, serverKey) {
+  if (!item || !item.id) return;
+  db.ref(`serverHealth/${item.id}/lastGood`).set(serverKey).catch(() => {});
+  db.ref(`serverHealth/${item.id}/lastGoodAt`).set(firebase.database.ServerValue.TIMESTAMP).catch(() => {});
+}
+
 function buildPlayerUI() {
   const item = S.activeItem;
   if (!item) return;
@@ -3690,9 +3758,14 @@ async function playStream(isAutoFallback) {
   if (!neededId) {
     // Genuinely can't build a URL for this server + title combo (e.g. a
     // TMDB-only server with no TMDB API key configured in Admin, so there's
-    // no way to resolve the id at all). Show this clearly instead of
-    // silently jumping to another server — a manual server pick should
-    // never quietly turn into a *different* server playing without saying so.
+    // no way to resolve the id at all) — auto-advance past it exactly like
+    // a load timeout, since from the viewer's perspective this server is
+    // just as unusable as a dead one, and manual servers picked from the
+    // dropdown still get an explicit message rather than silently jumping.
+    if (isAutoFallback || S._autoCascadeActive) {
+      autoAdvanceServer(item, `${srv.name} needs a ${srv.idType === 'tmdb' ? 'TMDB' : 'IMDb'} ID`);
+      return;
+    }
     loader.style.display = 'flex';
     loader.innerHTML = `<span style="color:#ffb648">${esc(srv.name)} needs a ${srv.idType === 'tmdb' ? 'TMDB' : 'IMDb'} ID we don't have for this title${srv.idType === 'tmdb' && !tmdbEnabled() ? ' (set a TMDB API key in Admin Panel to enable this server)' : ''}.</span>
       <button class="filter-pill" style="margin-top:10px" onclick="tryNextServer()"><i class="fas fa-forward"></i> Try Next Server</button>`;
@@ -3705,21 +3778,35 @@ async function playStream(isAutoFallback) {
   const token = (S.playToken = (S.playToken || 0) + 1);
 
   loader.style.display = 'flex';
-  loader.innerHTML = `<div class="spinner"></div><span>${isAutoFallback ? 'Trying next server...' : 'Connecting to Stream...'}</span>`;
+  loader.innerHTML = `<div class="spinner"></div><span>${isAutoFallback ? `Trying ${esc(srv.name)}...` : 'Connecting to Stream...'}</span>`;
   frame.src = 'about:blank';
 
   requestAnimationFrame(() => {
     frame.src = url;
-    frame.onload = () => { if (S.playToken === token) loader.style.display = 'none'; };
-    // If nothing loads within 6s, offer a one-tap switch to the next server —
-    // covers dead/slow embed hosts without the user having to know which
-    // server to pick manually.
+    frame.onload = () => {
+      if (S.playToken !== token) return;
+      loader.style.display = 'none';
+      S._autoCascadeActive = false;
+      // A real viewer's iframe just loaded on this server for this title —
+      // remember it so the NEXT person to open this same title starts
+      // here first instead of re-discovering server health from scratch.
+      // This is the only place server health is ever written: purely as a
+      // side effect of a genuine viewer's genuine successful play, never
+      // from a background probe.
+      recordServerSuccess(item, S.activeServer);
+    };
+    // AUTOMATIC cascade: if nothing confirms loaded within the timeout,
+    // silently advance to the next server ourselves — no tap required.
+    // This is what turns "some servers are down for some people" from a
+    // visible, per-person interruption into an invisible retry that
+    // resolves on its own almost every time, which is what matters once
+    // the audience is large enough that "someone's active server is down
+    // right now" is constantly true for a rotating subset of viewers.
     setTimeout(() => {
       if (S.playToken !== token) return;
       if (loader.style.display === 'none') return; // it loaded fine
-      loader.innerHTML = `<span style="color:#ffb648">This server is slow or unavailable.</span>
-        <button class="filter-pill" style="margin-top:10px" onclick="tryNextServer()"><i class="fas fa-forward"></i> Try Next Server</button>`;
-    }, 6000);
+      autoAdvanceServer(item, `${srv.name} is slow or unavailable`);
+    }, AUTO_FAILOVER_TIMEOUT_MS);
   });
 
   // Highlight active server button
@@ -3728,7 +3815,44 @@ async function playStream(isAutoFallback) {
   });
 }
 
+/* Advances to the next untried server for the CURRENT playback attempt and
+   retries automatically, keeping a per-attempt "already tried" set so the
+   cascade can't loop back to a server that already failed for this title
+   this session. Only after every server has been exhausted does the
+   viewer see an explicit message with a manual retry — at that point every
+   automatic option has genuinely been used up, so asking for the tap back
+   is honest rather than a shortcut. */
+function autoAdvanceServer(item, reason) {
+  if (S.activeItem !== item) return; // navigated away mid-cascade
+  S._autoCascadeActive = true;
+  S._triedServers = S._triedServers || new Set();
+  S._triedServers.add(S.activeServer);
+
+  const keys = Object.keys(SERVERS);
+  const untried = keys.find(k => !S._triedServers.has(k));
+
+  if (!untried) {
+    // Every server has been tried automatically and none worked — this is
+    // now a genuine "nothing available right now" state, not just one
+    // slow server, so a manual retry option (which resets the tried-set)
+    // is the honest thing to show.
+    const loader = document.getElementById('playerLoader');
+    S._triedServers = new Set();
+    S._autoCascadeActive = false;
+    loader.innerHTML = `<span style="color:#ffb648">All servers are currently slow or unavailable.</span>
+      <button class="filter-pill" style="margin-top:10px" onclick="tryNextServer()"><i class="fas fa-forward"></i> Retry</button>`;
+    return;
+  }
+
+  S.activeServer = untried;
+  playStream(true);
+}
+
 function tryNextServer() {
+  // Manual tap always resets the auto-cascade's tried-set — this is a
+  // fresh, deliberate retry, not a continuation of an exhausted cascade.
+  S._triedServers = new Set();
+  S._autoCascadeActive = false;
   const keys = Object.keys(SERVERS);
   const idx = keys.indexOf(S.activeServer);
   const next = keys[(idx + 1) % keys.length];
@@ -3768,16 +3892,42 @@ function normalizeSong(raw) {
   // full downloadUrl array — so it's used here only as a last-resort
   // fallback after every other shape has been checked, since a 30s preview
   // is still better than nothing if no full-length source is available.
-  const audioUrl = pickBest(raw.downloadUrl)
+  const rawAudioUrl = pickBest(raw.downloadUrl)
     || raw.media_url || raw.media_preview_url
     || raw.more_info?.vlink || '';
+  const rawImageUrl = pickBest(raw.image) || raw.image_url || '';
+
+  // Route JioSaavn CDN audio/image links through our own /api/stream proxy
+  // (see api/stream.js) instead of loading them directly from
+  // aac.saavncdn.com / c.saavncdn.com. Songs were showing up fine in
+  // search results (confirming the API itself worked) but silently
+  // failing to play, with album art silently failing to load and no
+  // visible error anywhere — consistent with that CDN's edge nodes
+  // applying inconsistent rate-limit/referer/hotlink handling to direct
+  // third-party embedding. Proxying makes every request come from our own
+  // Vercel domain instead, which sidesteps that entirely.
+  const viaProxy = (u) => u ? `/api/stream?url=${encodeURIComponent(u)}` : '';
+  const audioUrl = viaProxy(rawAudioUrl);
+  const image = viaProxy(rawImageUrl);
+
+  // Keep every OTHER quality URL (320kbps down to 12kbps) as fallbacks —
+  // JioSaavn's CDN edge nodes occasionally 403/timeout on one specific
+  // quality tier while the others on the SAME song work fine. Without
+  // this, a single flaky edge node made a song look completely broken;
+  // now playback retries the next-lower quality automatically instead of
+  // just failing (see attemptPlayback in playMusicAt). These also route
+  // through the proxy for the same reason as the primary audioUrl above.
+  const qualityFallbacks = Array.isArray(raw.downloadUrl)
+    ? raw.downloadUrl.map(q => q.url).filter(u => u && u !== rawAudioUrl).reverse().map(viaProxy)
+    : [];
 
   return {
     id: raw.id || raw.songid || String(Math.random()),
     title: (raw.name || raw.song || raw.title || 'Untitled').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#039;/g, "'"),
     artist: artists,
-    image: pickBest(raw.image) || raw.image_url || '',
+    image,
     audioUrl,
+    qualityFallbacks,
     isPreviewOnly: !pickBest(raw.downloadUrl) && !raw.media_url && !!raw.more_info?.vlink,
     permaUrl: raw.url || raw.perma_url || ''
   };
@@ -3866,10 +4016,20 @@ function playMusicAt(idx) {
   musicState.index = idx;
   musicState.playing = true;
   const audio = document.getElementById('musicAudio');
-  audio.src = song.audioUrl;
-  audio.play().catch(() => {}); // autoplay can be blocked until a user gesture — the click that got us here counts
+
+  // Some JioSaavn CDN edge nodes intermittently 403/redirect a specific
+  // quality URL even though the API returned it as valid — rather than
+  // silently failing (the old `.catch(() => {})` swallowed every error,
+  // which is why nothing appeared to happen when a song failed to play),
+  // this now listens for the actual media error and retries once against
+  // the same song's OTHER available qualities before giving up and
+  // telling the user exactly what went wrong.
+  attemptPlayback(audio, song, 0);
+
   document.getElementById('miniPlayer').style.display = 'block';
   document.getElementById('miniPlayerArt').src = song.image;
+  document.getElementById('miniPlayerArt').onerror = function () { this.style.opacity = '0'; };
+  document.getElementById('miniPlayerArt').onload = function () { this.style.opacity = '1'; };
   document.getElementById('miniPlayerTitle').textContent = song.title;
   document.getElementById('miniPlayerArtist').textContent = song.artist;
   syncMiniPlayerPlayIcon();
@@ -3879,6 +4039,43 @@ function playMusicAt(idx) {
   // Admin → Analytics.
   logAnalyticsEvent('music_play', { title: song.title || '', artist: song.artist || '' });
 }
+
+/* Tries to play `song.audioUrl`. If browser playback actually fails (wrong
+   format, dead CDN link, network error — NOT the routine "autoplay needs a
+   user gesture" rejection), this surfaces a real toast instead of the
+   previous silent no-op, and — if the raw API response had multiple
+   quality URLs stashed on the song object — retries the next one down
+   before finally giving up. This turns "songs just don't play, no error,
+   no explanation" into either a working fallback or a clear message. */
+function attemptPlayback(audio, song, retryCount) {
+  audio.src = song.audioUrl;
+  audio.load();
+
+  const onError = () => {
+    audio.removeEventListener('error', onError);
+    const nextUrl = (song.qualityFallbacks || [])[retryCount];
+    if (nextUrl) {
+      playSongUrl(audio, { ...song, audioUrl: nextUrl }, retryCount + 1);
+    } else {
+      toast(`⚠️ "${song.title}" couldn't be played — the source link may be down. Try another song.`, 'error');
+      musicState.playing = false;
+      syncMiniPlayerPlayIcon();
+    }
+  };
+  audio.addEventListener('error', onError, { once: true });
+
+  audio.play().catch(err => {
+    // NotAllowedError = browser blocked autoplay pending a user gesture —
+    // this is routine and not a real failure; the mini-player still shows
+    // paused and a tap on it will play fine. Any OTHER rejection reason
+    // (NotSupportedError, AbortError from a bad URL, etc.) is worth telling
+    // the user about since it means the song genuinely won't play here.
+    if (err && err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+      toast(`⚠️ Playback error: ${err.message || err.name}`, 'error');
+    }
+  });
+}
+function playSongUrl(audio, song, retryCount) { attemptPlayback(audio, song, retryCount); }
 
 function toggleMusicPlayPause() {
   const audio = document.getElementById('musicAudio');

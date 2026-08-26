@@ -49,6 +49,15 @@ self.addEventListener('fetch', e => {
   // Never touch non-GET, cross-origin API/stream/auth traffic
   if (req.method !== 'GET' || shouldBypass(url)) return;
 
+  // /api/stream (audio/image proxy — see api/stream.js) must never be
+  // intercepted by the "everything else: cache-first" static-asset logic
+  // below. That path handles large audio files with byte-range requests
+  // for seeking/scrubbing; caching or buffering it here would either break
+  // range support or bloat the cache with megabytes of song data per track
+  // played. Same-origin fetch() already bypasses HTTP caching correctly on
+  // its own without any help from this service worker.
+  if (url.includes('/api/stream')) return;
+
   // CRITICAL: only ever intercept same-origin requests. `req.mode ===
   // 'navigate'` is true for ANY top-level navigation, including clicking an
   // external link with target="_blank" (e.g. a WhatsApp/Instagram contact

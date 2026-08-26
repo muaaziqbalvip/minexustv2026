@@ -42,6 +42,7 @@
     { "source": "/icons/:file", "destination": "/icons/:file" },
     { "source": "/watch/:id", "destination": "/api/watch" },
     { "source": "/api/music", "destination": "/api/music" },
+    { "source": "/api/stream", "destination": "/api/stream" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
