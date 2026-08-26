@@ -374,6 +374,11 @@ tr:hover td{background:var(--bg-card-hover)}
 
     <!-- 1.5 PUBLIC ANALYTICS (v4) -->
     <div class="tab-content" id="tab-analytics">
+      <div id="analyticsDiagnosticBanner" style="display:none;background:linear-gradient(135deg,#3d1a1a,#2a1414);border:1px solid #e5091455;border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:12.5px;line-height:1.6;color:#ffb0b0">
+        <i class="fas fa-triangle-exclamation" style="color:#ff6b6b;margin-right:6px"></i>
+        <span id="analyticsDiagnosticText"></span>
+      </div>
+
       <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
         <div style="display:flex;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:4px;gap:4px">
           <button class="analytics-range-btn active" data-range="7">7 Days</button>
@@ -437,6 +442,17 @@ tr:hover td{background:var(--bg-card-hover)}
       <div class="card" style="margin-top:16px">
         <div class="card-header"><h2 class="card-title"><i class="fas fa-list-ol"></i> What People Click / Visit (by section)</h2></div>
         <div style="padding:16px;height:260px"><canvas id="chartTabClicks"></canvas></div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><h2 class="card-title"><i class="fas fa-server" style="color:var(--green)"></i> Most Reliable Movie/Series Servers</h2></div>
+        <p style="padding:0 16px;font-size:11.5px;color:var(--text-muted)">Ranked by real viewer success rate — every time a server actually loads a title for a real visitor it counts as a success; every automatic fail-over away from a server counts as a failure. This is what powers the app's own smart auto-failover, so it always starts new viewers on whichever server is working best right now.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Server</th><th>Successful Plays</th><th>Failures</th><th>Success Rate</th></tr></thead>
+            <tbody id="analyticsServerReliabilityTable"><tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+          </table>
+        </div>
       </div>
 
       <div class="card" style="margin-top:16px">
@@ -1718,9 +1734,59 @@ function _lastNDays(n) {
   return days;
 }
 
+async function runAnalyticsDiagnostic() {
+  const banner = document.getElementById('analyticsDiagnosticBanner');
+  const textEl = document.getElementById('analyticsDiagnosticText');
+  if (!banner || !textEl) return;
+
+  try {
+    // Step 1: is there ANY analytics data at all, ever, in the whole tree?
+    // A cheap, bounded check — just the single most recent event across
+    // all of history — rather than scanning every day.
+    const anyEventSnap = await db.ref('analytics/totals/visits').once('value');
+    const hasAnyData = anyEventSnap.exists() && anyEventSnap.val() > 0;
+
+    if (hasAnyData) {
+      banner.style.display = 'none';
+      return; // data exists — whatever the person is looking at, the pipeline itself works
+    }
+
+    // Step 2: no data anywhere yet. The single most common cause is that
+    // Anonymous sign-in isn't enabled in Firebase Console → Authentication
+    // → Sign-in method, which silently blocks EVERY visitor's analytics
+    // writes (database.rules.json requires auth !== null, and guests can
+    // only get an auth token via anonymous sign-in). Test this directly
+    // rather than guessing, using a throwaway secondary Firebase app
+    // instance so it doesn't disturb the admin's own logged-in session.
+    let anonymousAuthWorks = false;
+    try {
+      const probeApp = firebase.apps.find(a => a.name === 'analytics-probe')
+        || firebase.initializeApp(firebase.app().options, 'analytics-probe');
+      const probeAuth = firebase.auth(probeApp);
+      await probeAuth.signInAnonymously();
+      anonymousAuthWorks = true;
+      await probeAuth.signOut();
+    } catch (probeErr) {
+      anonymousAuthWorks = false;
+    }
+
+    if (!anonymousAuthWorks) {
+      banner.style.display = 'block';
+      textEl.innerHTML = `No analytics data yet, and Anonymous sign-in appears to be <strong>disabled</strong> in Firebase — this blocks every visitor's analytics from being recorded at all (guests need an anonymous auth token to write, per database.rules.json). Fix: Firebase Console → Authentication → Sign-in method → enable <strong>Anonymous</strong>. Data will start appearing within minutes of the next visit after that's turned on.`;
+    } else {
+      banner.style.display = 'block';
+      textEl.innerHTML = `No analytics data yet. Anonymous sign-in is enabled correctly, so this most likely just means <strong>the app hasn't had any visits since this feature was deployed</strong> — open the live site yourself and click around a few tabs, then refresh this page. If it's still empty after that, check that <code>database.rules.json</code> was published in Firebase Console → Realtime Database → Rules (the "analytics" section must be present).`;
+    }
+  } catch (e) {
+    // Diagnostic itself failed (e.g. admin's own read permission issue) —
+    // don't block the rest of the tab, just skip the banner silently.
+  }
+}
+
 async function loadAnalyticsRange(days) {
   _analyticsRangeDays = days;
   document.querySelectorAll('.analytics-range-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.range) === days));
+  runAnalyticsDiagnostic();
 
   const dayKeys = _lastNDays(days);
   const perDaySnaps = await Promise.all(dayKeys.map(k => db.ref(`analytics/daily/${k}`).once('value').then(s => s.val() || {}).catch(() => ({}))));
@@ -1839,6 +1905,41 @@ async function loadAnalyticsRange(days) {
     : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No activity logged yet — analytics start recording as soon as visitors use the app</td></tr>';
 
   _analyticsLoaded = true;
+  loadServerReliability();
+}
+
+/* Server reliability isn't time-ranged like the rest of Analytics — it's a
+   simple running success/failure tally per server (see recordServerSuccess
+   and autoAdvanceServer in index.html), read fresh every time the tab is
+   opened/refreshed. Servers admins haven't configured (SERVERS object in
+   index.html can change independently of what's been recorded here over
+   time) are simply skipped if they have zero recorded plays. */
+async function loadServerReliability() {
+  const tbody = document.getElementById('analyticsServerReliabilityTable');
+  if (!tbody) return;
+  try {
+    const snap = await db.ref('serverHealth/_globalStats').once('value');
+    const stats = snap.val() || {};
+    const rows = Object.entries(stats).map(([server, s]) => {
+      const success = s.successCount || 0;
+      const fail = s.failCount || 0;
+      const total = success + fail;
+      const rate = total ? Math.round((success / total) * 100) : 0;
+      return { server, success, fail, rate, total };
+    }).filter(r => r.total > 0).sort((a, b) => b.rate - a.rate || b.total - a.total);
+
+    tbody.innerHTML = rows.length ? rows.map((r, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td><strong>${escapeHtml(r.server)}</strong></td>
+        <td>${r.success.toLocaleString()}</td>
+        <td>${r.fail.toLocaleString()}</td>
+        <td><span style="color:${r.rate >= 80 ? 'var(--green)' : r.rate >= 50 ? 'var(--gold)' : '#ff6b6b'};font-weight:800">${r.rate}%</span></td>
+      </tr>
+    `).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No server data recorded yet — this fills in as real viewers watch movies/series</td></tr>';
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Couldn\'t load server data</td></tr>';
+  }
 }
 
 // "Online now" — approximated as unique uids with a session_start or any

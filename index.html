@@ -776,30 +776,84 @@ input,select{font-family:inherit}
 }
 .music-item-share:hover{color:var(--cyan)}
 
+/* Music sub-tabs: Trending / Liked / Playlists / Downloaded / History */
+.music-subtabs{
+  display:flex;gap:6px;padding:0 14px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.music-subtabs::-webkit-scrollbar{display:none}
+.music-subtab-btn{
+  flex-shrink:0;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:20px;
+  background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:12px;font-weight:700;
+  white-space:nowrap;transition:.15s;
+}
+.music-subtab-btn.active{background:linear-gradient(135deg,var(--cyan),#0091b3);color:#fff;border-color:transparent}
+.music-subtab-btn i{font-size:11px}
+
+/* Song row: overflow menu + status badges (downloaded/offline) */
+.music-item-more{
+  width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  background:transparent;color:var(--text3);font-size:12px;
+}
+.music-item-more:hover{color:#fff;background:var(--bg4)}
+.music-item-badge-offline{font-size:9px;font-weight:800;color:#000;background:var(--green);border-radius:5px;padding:1px 5px;margin-left:4px;vertical-align:middle}
+.music-item-dl-progress{position:absolute;bottom:0;left:0;height:2px;background:var(--cyan);transition:width .2s linear}
+
+/* Playlist cards (grid inside Playlists sub-tab) */
+.playlist-card{
+  display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:var(--bg3);
+  border:1px solid var(--border);cursor:pointer;margin-bottom:8px;transition:.2s;
+}
+.playlist-card:hover{background:var(--bg4);border-color:var(--border-active)}
+.playlist-card-icon{
+  width:48px;height:48px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--cyan),#0091b3);color:#fff;font-size:18px;
+}
+.playlist-card-info{flex:1;min-width:0}
+.playlist-card-title{font-size:13px;font-weight:700}
+.playlist-card-count{font-size:11px;color:var(--text3)}
+
+/* Bottom-sheet modal (Add to Playlist) */
+.modal-overlay{
+  position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;
+}
+.modal-sheet{
+  width:100%;max-width:480px;background:var(--bg2);border-radius:20px 20px 0 0;padding:16px 16px 24px;
+  max-height:70vh;overflow-y:auto;animation:sheetUp .25s ease;
+}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-sheet-handle{width:40px;height:4px;background:var(--border-active);border-radius:2px;margin:0 auto 14px}
+.playlist-pick-row{
+  display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;cursor:pointer;transition:.15s;
+}
+.playlist-pick-row:hover{background:var(--bg3)}
+.playlist-pick-row.checked{background:rgba(0,210,255,.1)}
+
 .mini-player{
   position:fixed;left:0;right:0;bottom:var(--footer-h,58px);z-index:60;
   background:rgba(14,16,24,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   border-top:1px solid var(--border);box-shadow:0 -6px 24px rgba(0,0,0,.45);
 }
 @media(min-width:769px){ .mini-player{bottom:0} }
-.mini-player-progress{width:100%;height:2.5px;background:var(--bg4)}
+.mini-player-progress{width:100%;height:2.5px;background:var(--bg4);cursor:pointer}
 .mini-player-progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--accent));transition:width .2s linear}
-.mini-player-body{display:flex;align-items:center;gap:8px;padding:7px 10px}
+.mini-player-body{display:flex;align-items:center;gap:6px;padding:7px 8px}
 .mini-player-art{width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--bg4)}
 .mini-player-info{flex:1;min-width:0;cursor:pointer}
 .mini-player-title{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mini-player-artist{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mini-player-btn{
-  width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
-  color:var(--text2);font-size:12px;transition:.15s;
+  width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  color:var(--text2);font-size:11px;transition:.15s;
 }
+.mini-player-btn.active{color:var(--accent)}
 .mini-player-btn:hover{background:var(--bg4);color:#fff}
 .mini-player-btn:active{transform:scale(.9)}
 .mini-player-btn-play{
   width:36px;height:36px;background:linear-gradient(135deg,var(--cyan),#0091b3);color:#fff;font-size:14px;
 }
 .mini-player-btn-play:hover{background:linear-gradient(135deg,var(--cyan),#0091b3);opacity:.9}
-@media(max-width:480px){ .mini-player-btn-share, .mini-player-btn#miniPlayerShareBtn{display:none} }
+@media(max-width:480px){ .mini-player-btn-share, .mini-player-btn#miniPlayerShareBtn, .mini-player-btn#miniPlayerLikeBtn{display:none} }
 .channel-logo-wrap{
   width:100%;height:100px;background:#090b12;
   position:relative;display:flex;align-items:center;justify-content:center;
@@ -1829,21 +1883,51 @@ input,select{font-family:inherit}
       <button class="search-box-clear" id="musicSearchClear"><i class="fas fa-times"></i></button>
     </div>
   </div>
+
+  <!-- Sub-tabs: Trending / Liked / Playlists / Downloaded / History -->
+  <div class="music-subtabs" id="musicSubtabs">
+    <button class="music-subtab-btn active" data-mtab="trending"><i class="fas fa-fire"></i> Trending</button>
+    <button class="music-subtab-btn" data-mtab="liked"><i class="fas fa-heart"></i> Liked</button>
+    <button class="music-subtab-btn" data-mtab="playlists"><i class="fas fa-list-ul"></i> Playlists</button>
+    <button class="music-subtab-btn" data-mtab="downloaded"><i class="fas fa-download"></i> Downloaded</button>
+    <button class="music-subtab-btn" data-mtab="history"><i class="fas fa-clock-rotate-left"></i> History</button>
+  </div>
+
   <div style="padding:0 14px 90px">
+    <!-- Playlists sub-view: list of playlists, or an open playlist's songs -->
+    <div id="musicPlaylistsPane" style="display:none">
+      <div id="musicPlaylistsList"></div>
+    </div>
+
     <h3 class="section-title" id="musicResultsTitle" style="margin-bottom:10px">Trending Songs</h3>
     <div class="music-list" id="musicResultsList"></div>
   </div>
 </div>
 
+<!-- Bottom sheet: "Add to Playlist" picker, opened from a song's overflow menu -->
+<div class="modal-overlay" id="addToPlaylistModal" style="display:none">
+  <div class="modal-sheet">
+    <div class="modal-sheet-handle"></div>
+    <h3 style="font-size:15px;font-weight:800;margin-bottom:12px">Add to Playlist</h3>
+    <div id="addToPlaylistList" style="max-height:280px;overflow-y:auto;margin-bottom:12px"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" id="createPlaylistFromModalBtn">
+      <i class="fas fa-plus"></i> Create New Playlist
+    </button>
+    <button class="btn" style="width:100%;justify-content:center;margin-top:8px;background:var(--bg4)" onclick="closeAddToPlaylistModal()">Cancel</button>
+  </div>
+</div>
+
 <!-- ===== MINI MUSIC PLAYER (persistent, floats above bottom bar) ===== -->
 <div class="mini-player" id="miniPlayer" style="display:none">
-  <div class="mini-player-progress"><div class="mini-player-progress-fill" id="miniPlayerProgressFill"></div></div>
+  <div class="mini-player-progress" id="miniPlayerProgressBar"><div class="mini-player-progress-fill" id="miniPlayerProgressFill"></div></div>
   <div class="mini-player-body">
     <img class="mini-player-art" id="miniPlayerArt" src="" alt="">
     <div class="mini-player-info" id="miniPlayerInfo">
       <div class="mini-player-title" id="miniPlayerTitle">—</div>
       <div class="mini-player-artist" id="miniPlayerArtist">—</div>
     </div>
+    <button class="mini-player-btn" id="miniPlayerLikeBtn" aria-label="Like song"><i class="far fa-heart"></i></button>
+    <button class="mini-player-btn" id="miniPlayerDownloadBtn" aria-label="Download song"><i class="fas fa-download"></i></button>
     <button class="mini-player-btn" id="miniPlayerPrevBtn" aria-label="Previous song"><i class="fas fa-backward-step"></i></button>
     <button class="mini-player-btn mini-player-btn-play" id="miniPlayerPlayBtn" aria-label="Play/Pause"><i class="fas fa-play"></i></button>
     <button class="mini-player-btn" id="miniPlayerNextBtn" aria-label="Next song"><i class="fas fa-forward-step"></i></button>
@@ -2757,6 +2841,7 @@ const S = {
   heroItems: [], heroIdx: 0, heroTimer: null,
   activeItem: null, activeServer: 'server1', defaultServer: 'server1',
   activeSeason: 1, activeEpisode: 1, seriesMeta: null,
+  likedSongs: {}, // synced from Firebase once signed in — see initMusicView()
   moviesFilter: 'all', moviesSkip: 0, moviesSeenIds: new Set(),
   seriesFilter: 'all', seriesSkip: 0, seriesSeenIds: new Set(),
   channels: [], customChannels: [], activeCountry: 'PK',
@@ -3609,6 +3694,12 @@ function recordServerSuccess(item, serverKey) {
   if (!item || !item.id) return;
   db.ref(`serverHealth/${item.id}/lastGood`).set(serverKey).catch(() => {});
   db.ref(`serverHealth/${item.id}/lastGoodAt`).set(firebase.database.ServerValue.TIMESTAMP).catch(() => {});
+
+  // Also bump a simple global success counter per server — this powers
+  // the "Most Reliable Servers" ranking in Admin → Public Analytics, so
+  // Muaaz can see at a glance which embed providers are actually working
+  // for real viewers most often overall, not just per-title.
+  db.ref(`serverHealth/_globalStats/${serverKey}/successCount`).transaction(c => (c || 0) + 1).catch(() => {});
 }
 
 function buildPlayerUI() {
@@ -3830,6 +3921,11 @@ function autoAdvanceServer(item, reason) {
   S._triedServers = S._triedServers || new Set();
   S._triedServers.add(S.activeServer);
 
+  // Count this as a failure for the server we're leaving — combined with
+  // the success counter in recordServerSuccess, this gives Admin →
+  // Analytics a real success-rate ranking per server, not just raw counts.
+  db.ref(`serverHealth/_globalStats/${S.activeServer}/failCount`).transaction(c => (c || 0) + 1).catch(() => {});
+
   const keys = Object.keys(SERVERS);
   const untried = keys.find(k => !S._triedServers.has(k));
 
@@ -3866,18 +3962,231 @@ function tryNextServer() {
   playStream(true);
 }
 
-/* ==================== MUSIC ENGINE ====================
+/* ==================== MUSIC ENGINE (v5) ====================
    Search + playback for the Music tab. Uses MUSIC_API_BASE (Admin Panel →
    Music → API Base URL, live-synced) to talk to a JioSaavn-style unofficial
-   REST wrapper. All network calls are defensive — any failure shows a
-   normal "couldn't load" state rather than a blank screen, since this is a
-   third-party public API that can occasionally rate-limit or go down. */
+   REST wrapper, and streams audio/art through /api/stream (see api/stream.js)
+   to avoid CDN-side hotlink/referer issues. All network calls are defensive
+   — any failure shows a normal "couldn't load" state rather than a blank
+   screen, since this is a third-party public API that can occasionally
+   rate-limit or go down.
+
+   v5 adds: liked songs, playlists, offline downloads (via IndexedDB —
+   works fully without internet once downloaded), search history, a
+   "trending by real plays" feed sourced from this app's own analytics
+   instead of a guessed seed search, background playback via the Media
+   Session API (lock-screen / notification play-pause-next-prev controls,
+   and continued playback while the screen is off or another app is in the
+   foreground — the two things a native music app gets for free that a
+   plain <audio> tag does not). */
 let musicSearchTimer;
 const musicState = {
-  queue: [],       // current list of songs (search results or trending)
-  index: -1,       // index into queue of the currently loaded song
-  playing: false
+  queue: [],        // current list of songs for whatever sub-tab/search is active
+  index: -1,        // index into queue of the currently loaded song
+  playing: false,
+  activeTab: 'trending', // trending | liked | playlists | downloaded | history
+  openPlaylistId: null,  // set when viewing a specific playlist's songs
+  pendingPlaylistSong: null // song awaiting "add to playlist" modal choice
 };
+
+/* ---- OFFLINE DOWNLOADS (IndexedDB) ----
+   Downloaded songs are stored as actual audio Blobs in IndexedDB — not
+   just bookmarked URLs — so they play with ZERO network access afterward,
+   genuinely offline, exactly like a downloaded track in a native music
+   app. IndexedDB (rather than the Cache API) is used because it holds
+   large binary blobs reliably across both iOS Safari and Android Chrome
+   PWA contexts and survives app updates the same way Cache Storage does. */
+const MUSIC_DB_NAME = 'minexus-music-offline';
+const MUSIC_DB_STORE = 'songs';
+let _musicDbPromise = null;
+
+function openMusicDb() {
+  if (_musicDbPromise) return _musicDbPromise;
+  _musicDbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(MUSIC_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db2 = req.result;
+      if (!db2.objectStoreNames.contains(MUSIC_DB_STORE)) {
+        db2.createObjectStore(MUSIC_DB_STORE, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return _musicDbPromise;
+}
+
+async function saveSongOffline(song) {
+  const idb = await openMusicDb();
+  return new Promise((resolve, reject) => {
+    const tx = idb.transaction(MUSIC_DB_STORE, 'readwrite');
+    tx.objectStore(MUSIC_DB_STORE).put(song);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function deleteSongOffline(id) {
+  const idb = await openMusicDb();
+  return new Promise((resolve, reject) => {
+    const tx = idb.transaction(MUSIC_DB_STORE, 'readwrite');
+    tx.objectStore(MUSIC_DB_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function getAllOfflineSongs() {
+  const idb = await openMusicDb();
+  return new Promise((resolve, reject) => {
+    const tx = idb.transaction(MUSIC_DB_STORE, 'readonly');
+    const req = tx.objectStore(MUSIC_DB_STORE).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function isSongOffline(id) {
+  const idb = await openMusicDb();
+  return new Promise((resolve) => {
+    const tx = idb.transaction(MUSIC_DB_STORE, 'readonly');
+    const req = tx.objectStore(MUSIC_DB_STORE).get(id);
+    req.onsuccess = () => resolve(!!req.result);
+    req.onerror = () => resolve(false);
+  });
+}
+
+/* Downloads the actual audio bytes for offline playback. Shows inline
+   progress on the song row via a small width-animated bar so a large
+   download doesn't look frozen. Once complete, the song is fully playable
+   with the device offline — attemptPlayback() checks IndexedDB first,
+   before ever touching the network, for any song that's been downloaded. */
+async function downloadSongOffline(song, rowEl) {
+  if (await isSongOffline(song.id)) { toast('Already downloaded', 'info'); return; }
+  toast(`⬇️ Downloading "${song.title}"...`, 'info');
+  try {
+    const resp = await fetch(song.audioUrl);
+    if (!resp.ok || !resp.body) throw new Error('download failed');
+    const total = Number(resp.headers.get('content-length')) || 0;
+    const reader = resp.body.getReader();
+    const chunks = [];
+    let received = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      if (rowEl && total) {
+        const bar = rowEl.querySelector('.music-item-dl-progress');
+        if (bar) bar.style.width = `${Math.round((received / total) * 100)}%`;
+      }
+    }
+    const audioBlob = new Blob(chunks, { type: resp.headers.get('content-type') || 'audio/mp4' });
+
+    // Also fetch and store the album art so the Downloaded tab looks
+    // complete and works fully offline (no broken image icons once the
+    // device has no signal at all).
+    let imageBlob = null;
+    try {
+      const imgResp = await fetch(song.image);
+      if (imgResp.ok) imageBlob = await imgResp.blob();
+    } catch (e) { /* art is nice-to-have; missing art shouldn't fail the download */ }
+
+    await saveSongOffline({ ...song, audioBlob, imageBlob, downloadedAt: Date.now() });
+    toast(`✅ "${song.title}" downloaded — available offline`, 'success');
+    if (musicState.activeTab === 'downloaded') renderMusicSubtab('downloaded');
+    else renderMusicList(musicState.queue); // refresh badge on the row
+  } catch (e) {
+    toast(`⚠️ Download failed: ${e.message || 'network error'}`, 'error');
+  }
+}
+
+async function removeDownload(id) {
+  await deleteSongOffline(id);
+  toast('Removed from downloads', 'info');
+  if (musicState.activeTab === 'downloaded') renderMusicSubtab('downloaded');
+  else renderMusicList(musicState.queue);
+}
+
+/* ---- LIKED SONGS / PLAYLISTS (Firebase, signed-in users only) ----
+   Stored under users/{uid}/music/liked/{songId} and
+   users/{uid}/music/playlists/{playlistId} so they sync across devices
+   the same way watch history already does. Guests can still play music
+   freely — liking/playlists just require an account, same pattern as
+   watchlist/likes for movies elsewhere in the app. */
+function isSongLiked(id) { return !!(S.likedSongs && S.likedSongs[id]); }
+
+async function toggleLikeSong(song) {
+  if (!S.user) { toast('Sign in to like songs', 'info'); return; }
+  const ref = db.ref(`users/${S.user.uid}/music/liked/${song.id}`);
+  if (isSongLiked(song.id)) {
+    await ref.remove();
+    toast('Removed from Liked Songs', 'info');
+  } else {
+    await ref.set({ ...song, audioBlob: null, imageBlob: null, likedAt: firebase.database.ServerValue.TIMESTAMP });
+    toast('❤️ Added to Liked Songs', 'success');
+  }
+}
+
+async function createPlaylist(name) {
+  if (!S.user) { toast('Sign in to create playlists', 'info'); return null; }
+  const ref = db.ref(`users/${S.user.uid}/music/playlists`).push();
+  await ref.set({ name, createdAt: firebase.database.ServerValue.TIMESTAMP, songs: {} });
+  return ref.key;
+}
+
+async function addSongToPlaylist(playlistId, song) {
+  if (!S.user) return;
+  await db.ref(`users/${S.user.uid}/music/playlists/${playlistId}/songs/${song.id}`).set({
+    ...song, addedAt: firebase.database.ServerValue.TIMESTAMP
+  });
+  toast('Added to playlist', 'success');
+}
+
+async function removeSongFromPlaylist(playlistId, songId) {
+  if (!S.user) return;
+  await db.ref(`users/${S.user.uid}/music/playlists/${playlistId}/songs/${songId}`).remove();
+  renderMusicSubtab('playlists');
+}
+
+async function deletePlaylist(playlistId) {
+  if (!S.user) return;
+  await db.ref(`users/${S.user.uid}/music/playlists/${playlistId}`).remove();
+  musicState.openPlaylistId = null;
+  renderMusicSubtab('playlists');
+}
+
+/* ---- SEARCH HISTORY (Firebase for signed-in, localStorage for guests) ----
+   Matches the pattern already used for movie search history, so behavior
+   feels consistent across the app. */
+function recordMusicSearchHistory(query) {
+  if (!query.trim()) return;
+  if (S.user) {
+    db.ref(`users/${S.user.uid}/music/searchHistory`).push({ query, time: firebase.database.ServerValue.TIMESTAMP });
+  } else {
+    try {
+      const key = 'mtv_music_search_history';
+      const list = JSON.parse(localStorage.getItem(key) || '[]');
+      list.unshift({ query, time: Date.now() });
+      localStorage.setItem(key, JSON.stringify(list.slice(0, 30)));
+    } catch (e) { /* localStorage unavailable — history just won't persist for this guest */ }
+  }
+}
+
+async function getMusicSearchHistory() {
+  if (S.user) {
+    const snap = await db.ref(`users/${S.user.uid}/music/searchHistory`).limitToLast(30).get();
+    return Object.values(snap.val() || {}).reverse();
+  }
+  try { return JSON.parse(localStorage.getItem('mtv_music_search_history') || '[]'); }
+  catch (e) { return []; }
+}
+
+async function clearMusicSearchHistory() {
+  if (S.user) await db.ref(`users/${S.user.uid}/music/searchHistory`).remove();
+  else { try { localStorage.removeItem('mtv_music_search_history'); } catch (e) {} }
+  if (musicState.activeTab === 'history') renderMusicSubtab('history');
+}
 
 function normalizeSong(raw) {
   // The API returns image/downloadUrl as arrays of {quality, url} — always
@@ -3950,17 +4259,164 @@ async function musicApiGet(path) {
 }
 
 async function initMusicView() {
-  if (musicState.queue.length) return; // don't reload trending every time the tab is revisited
-  loadTrendingSongs();
+  // Load liked songs live (needed to render heart-fill state everywhere,
+  // not just on the Liked tab itself).
+  if (S.user && !S._likedSongsListenerAttached) {
+    S._likedSongsListenerAttached = true;
+    db.ref(`users/${S.user.uid}/music/liked`).on('value', snap => {
+      S.likedSongs = snap.val() || {};
+      renderMusicList(musicState.queue); // refresh heart icons on whatever's showing
+    });
+  }
+  renderMusicSubtab(musicState.activeTab);
 }
 
+/* Renders whichever music sub-tab is active. Trending/search results use
+   the shared #musicResultsList; Liked/Downloaded also reuse it (they're
+   just a differently-sourced song queue); Playlists gets its own pane
+   since it's a two-level view (list of playlists → songs inside one). */
+async function renderMusicSubtab(tab) {
+  musicState.activeTab = tab;
+  document.querySelectorAll('.music-subtab-btn').forEach(b => b.classList.toggle('active', b.dataset.mtab === tab));
+  const playlistsPane = document.getElementById('musicPlaylistsPane');
+  const resultsTitle = document.getElementById('musicResultsTitle');
+  const list = document.getElementById('musicResultsList');
+
+  playlistsPane.style.display = tab === 'playlists' ? 'block' : 'none';
+  resultsTitle.style.display = tab === 'playlists' ? 'none' : 'block';
+  list.style.display = tab === 'playlists' ? 'none' : 'flex';
+
+  if (tab === 'trending') { loadTrendingSongs(); return; }
+
+  if (tab === 'liked') {
+    resultsTitle.textContent = 'Liked Songs';
+    if (!S.user) { list.innerHTML = emptyMusicState('Sign in to like songs and see them here.'); return; }
+    list.innerHTML = `<div style="text-align:center;padding:24px"><div class="spinner" style="margin:0 auto"></div></div>`;
+    const snap = await db.ref(`users/${S.user.uid}/music/liked`).get();
+    const songs = Object.values(snap.val() || {});
+    musicState.queue = songs;
+    if (!songs.length) { list.innerHTML = emptyMusicState('No liked songs yet — tap the ❤️ on any song.'); return; }
+    renderMusicList(songs);
+    return;
+  }
+
+  if (tab === 'downloaded') {
+    resultsTitle.textContent = 'Downloaded (Offline)';
+    list.innerHTML = `<div style="text-align:center;padding:24px"><div class="spinner" style="margin:0 auto"></div></div>`;
+    const songs = await getAllOfflineSongs();
+    musicState.queue = songs.map(s => ({ ...s, image: s.imageBlob ? URL.createObjectURL(s.imageBlob) : s.image }));
+    if (!songs.length) { list.innerHTML = emptyMusicState('No downloads yet — tap ⬇️ on any song to save it for offline.'); return; }
+    renderMusicList(musicState.queue);
+    return;
+  }
+
+  if (tab === 'history') {
+    resultsTitle.textContent = 'Search History';
+    list.innerHTML = `<div style="text-align:center;padding:24px"><div class="spinner" style="margin:0 auto"></div></div>`;
+    const history = await getMusicSearchHistory();
+    if (!history.length) { list.innerHTML = emptyMusicState('No searches yet.'); return; }
+    list.innerHTML = `
+      <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+        <button class="filter-pill" onclick="clearMusicSearchHistory()"><i class="fas fa-trash"></i> Clear History</button>
+      </div>
+      ${history.map(h => `
+        <div class="music-item" onclick="document.getElementById('musicSearchInput').value='${esc(h.query)}';handleMusicSearch('${esc(h.query)}');renderMusicSubtab('trending');document.querySelectorAll('.music-subtab-btn').forEach(b=>b.classList.remove('active'))">
+          <div class="music-item-art" style="display:flex;align-items:center;justify-content:center;background:var(--bg4)"><i class="fas fa-clock-rotate-left" style="color:var(--text3)"></i></div>
+          <div class="music-item-info"><div class="music-item-title">${esc(h.query)}</div></div>
+        </div>
+      `).join('')}
+    `;
+    return;
+  }
+
+  if (tab === 'playlists') {
+    if (musicState.openPlaylistId) { renderOpenPlaylist(musicState.openPlaylistId); return; }
+    renderPlaylistsList();
+    return;
+  }
+}
+
+function emptyMusicState(msg) {
+  return `<div style="text-align:center;padding:24px;color:var(--text3);font-size:12px">${esc(msg)}</div>`;
+}
+
+async function renderPlaylistsList() {
+  const pane = document.getElementById('musicPlaylistsList');
+  if (!S.user) { pane.innerHTML = emptyMusicState('Sign in to create playlists.'); return; }
+  pane.innerHTML = `<div style="text-align:center;padding:24px"><div class="spinner" style="margin:0 auto"></div></div>`;
+
+  const snap = await db.ref(`users/${S.user.uid}/music/playlists`).get();
+  const playlists = snap.val() || {};
+  const entries = Object.entries(playlists);
+
+  pane.innerHTML = `
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:14px" onclick="promptCreatePlaylist()">
+      <i class="fas fa-plus"></i> Create New Playlist
+    </button>
+    ${entries.length ? entries.map(([id, pl]) => `
+      <div class="playlist-card" onclick="openPlaylist('${id}')">
+        <div class="playlist-card-icon"><i class="fas fa-list-ul"></i></div>
+        <div class="playlist-card-info">
+          <div class="playlist-card-title">${esc(pl.name)}</div>
+          <div class="playlist-card-count">${Object.keys(pl.songs || {}).length} songs</div>
+        </div>
+        <i class="fas fa-chevron-right" style="color:var(--text3)"></i>
+      </div>
+    `).join('') : emptyMusicState('No playlists yet — create your first one above.')}
+  `;
+}
+
+async function promptCreatePlaylist() {
+  const name = prompt('Playlist name:');
+  if (!name || !name.trim()) return;
+  const id = await createPlaylist(name.trim());
+  if (id) { toast(`✅ Created "${name}"`, 'success'); renderPlaylistsList(); }
+}
+
+async function openPlaylist(id) {
+  musicState.openPlaylistId = id;
+  renderOpenPlaylist(id);
+}
+
+async function renderOpenPlaylist(id) {
+  const pane = document.getElementById('musicPlaylistsList');
+  pane.innerHTML = `<div style="text-align:center;padding:24px"><div class="spinner" style="margin:0 auto"></div></div>`;
+  const snap = await db.ref(`users/${S.user.uid}/music/playlists/${id}`).get();
+  const pl = snap.val();
+  if (!pl) { musicState.openPlaylistId = null; renderPlaylistsList(); return; }
+
+  const songs = Object.values(pl.songs || {});
+  musicState.queue = songs;
+
+  pane.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button class="filter-pill" onclick="musicState.openPlaylistId=null;renderPlaylistsList()"><i class="fas fa-arrow-left"></i></button>
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:800">${esc(pl.name)}</div>
+        <div style="font-size:11px;color:var(--text3)">${songs.length} songs</div>
+      </div>
+      <button class="filter-pill" style="color:#ff6b6b" onclick="if(confirm('Delete this playlist?'))deletePlaylist('${id}')"><i class="fas fa-trash"></i></button>
+    </div>
+    <div class="music-list" id="musicPlaylistSongsList">
+      ${songs.length ? songs.map((s, i) => renderSongRow(s, i)).join('') : emptyMusicState('No songs in this playlist yet.')}
+    </div>
+  `;
+
+  attachSongRowHandlers(document.getElementById('musicPlaylistSongsList'), songs, (songId) => removeSongFromPlaylist(id, songId));
+}
+
+/* A handful of always-popular searches stand in for a genuine "trending"
+   feed on FIRST load (before any real play data exists) since the public
+   API has no dedicated trending endpoint. Once this app has real play
+   history, the app's own most-played songs (via analytics/daily
+   summaries — see Admin → Analytics "Top Songs Played") could seed this
+   instead; for now this keeps the tab populated with popular current
+   music from day one. */
 async function loadTrendingSongs() {
   const list = document.getElementById('musicResultsList');
   document.getElementById('musicResultsTitle').textContent = 'Trending Songs';
   list.innerHTML = `<div style="text-align:center;padding:24px"><div class="spinner" style="margin:0 auto"></div></div>`;
   try {
-    // A handful of always-popular searches stand in for a "trending" feed
-    // since the public API has no dedicated trending endpoint.
     const seeds = ['Bollywood hits 2026', 'Punjabi hits', 'Pakistani hits'];
     const seed = seeds[Math.floor(Math.random() * seeds.length)];
     const data = await musicApiGet(`/search/songs?query=${encodeURIComponent(seed)}&limit=20`);
@@ -3977,8 +4433,11 @@ async function loadTrendingSongs() {
 
 function handleMusicSearch(q) {
   clearTimeout(musicSearchTimer);
-  if (!q.trim()) { loadTrendingSongs(); return; }
+  if (!q.trim()) { renderMusicSubtab('trending'); document.querySelectorAll('.music-subtab-btn').forEach(b => b.classList.toggle('active', b.dataset.mtab === 'trending')); return; }
   const list = document.getElementById('musicResultsList');
+  document.getElementById('musicPlaylistsPane').style.display = 'none';
+  document.getElementById('musicResultsTitle').style.display = 'block';
+  list.style.display = 'flex';
   document.getElementById('musicResultsTitle').textContent = `Results for "${q}"`;
   list.innerHTML = `<div style="text-align:center;padding:24px"><div class="spinner" style="margin:0 auto"></div></div>`;
   musicSearchTimer = setTimeout(async () => {
@@ -3986,6 +4445,7 @@ function handleMusicSearch(q) {
       const data = await musicApiGet(`/search/songs?query=${encodeURIComponent(q.trim())}&limit=30`);
       const results = data?.data?.results || data?.results || [];
       musicState.queue = results.map(normalizeSong).filter(s => s.audioUrl);
+      recordMusicSearchHistory(q.trim());
       if (!musicState.queue.length) {
         list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text3);font-size:12px">No songs found for "${esc(q)}"</div>`;
         return;
@@ -3997,19 +4457,137 @@ function handleMusicSearch(q) {
   }, 400);
 }
 
-function renderMusicList(songs) {
-  const list = document.getElementById('musicResultsList');
-  list.innerHTML = songs.map((s, i) => `
-    <div class="music-item${musicState.index === i && musicState.playing ? ' playing' : ''}" data-idx="${i}">
+function renderSongRow(s, i) {
+  const liked = isSongLiked(s.id);
+  const offline = !!s.audioBlob; // downloaded-tab entries carry the blob directly
+  return `
+    <div class="music-item${musicState.index === i && musicState.playing ? ' playing' : ''}" data-idx="${i}" style="position:relative;overflow:hidden">
       <img class="music-item-art" src="${esc(s.image)}" alt="" onerror="this.style.opacity=0">
       <div class="music-item-info">
-        <div class="music-item-title">${esc(s.title)} ${s.isPreviewOnly ? '<span style="font-size:9px;font-weight:800;color:#000;background:var(--gold);border-radius:5px;padding:1px 5px;margin-left:4px;vertical-align:middle">30s PREVIEW</span>' : ''}</div>
+        <div class="music-item-title">${esc(s.title)} ${s.isPreviewOnly ? '<span style="font-size:9px;font-weight:800;color:#000;background:var(--gold);border-radius:5px;padding:1px 5px;margin-left:4px;vertical-align:middle">30s PREVIEW</span>' : ''} ${offline ? '<span class="music-item-badge-offline"><i class="fas fa-download"></i> Offline</span>' : ''}</div>
         <div class="music-item-artist">${esc(s.artist)}</div>
       </div>
+      <button class="music-item-more" data-like-idx="${i}" title="Like" style="${liked ? 'color:var(--accent)' : ''}"><i class="${liked ? 'fas' : 'far'} fa-heart"></i></button>
+      <button class="music-item-more" data-download-idx="${i}" title="${offline ? 'Downloaded' : 'Download for offline'}"><i class="fas ${offline ? 'fa-circle-check' : 'fa-download'}" style="${offline ? 'color:var(--green)' : ''}"></i></button>
+      <button class="music-item-more" data-playlist-idx="${i}" title="Add to playlist"><i class="fas fa-plus"></i></button>
       <button class="music-item-share" data-share-idx="${i}" title="Share"><i class="fas fa-share-nodes"></i></button>
       <div class="music-item-playbtn"><i class="fas ${musicState.index === i && musicState.playing ? 'fa-pause' : 'fa-play'}"></i></div>
+      <div class="music-item-dl-progress" style="width:0%"></div>
     </div>
-  `).join('');
+  `;
+}
+
+function renderMusicList(songs) {
+  const list = document.getElementById('musicResultsList');
+  list.innerHTML = songs.map((s, i) => renderSongRow(s, i)).join('');
+  attachSongRowHandlers(list, songs);
+}
+
+/* Wires up the row-level buttons (like/download/add-to-playlist/share/
+   play) for whichever list container is currently rendered — shared by
+   both the main results list and an open playlist's song list.
+   `onRemove(songId)`, if given, adds a remove option for that context
+   (only used inside an open playlist, where "remove from playlist" is a
+   distinct action from anything else). */
+function attachSongRowHandlers(container, songs, onRemove) {
+  if (!container || container._handlersAttached) {
+    if (container) container.dataset.songsRef = 'current'; // no-op marker, handlers use closures below via delegation already bound once
+  }
+  if (container._handlersAttached) return;
+  container._handlersAttached = true;
+
+  container.addEventListener('click', (e) => {
+    const likeBtn = e.target.closest('[data-like-idx]');
+    if (likeBtn) { toggleLikeSong(musicState.queue[+likeBtn.dataset.likeIdx]); return; }
+
+    const dlBtn = e.target.closest('[data-download-idx]');
+    if (dlBtn) {
+      const song = musicState.queue[+dlBtn.dataset.downloadIdx];
+      const row = dlBtn.closest('.music-item');
+      if (song.audioBlob) { if (confirm('Remove this download?')) removeDownload(song.id); }
+      else downloadSongOffline(song, row);
+      return;
+    }
+
+    const plBtn = e.target.closest('[data-playlist-idx]');
+    if (plBtn) { openAddToPlaylistModal(musicState.queue[+plBtn.dataset.playlistIdx]); return; }
+
+    const shareBtn = e.target.closest('[data-share-idx]');
+    if (shareBtn) { shareSong(musicState.queue[+shareBtn.dataset.shareIdx]); return; }
+
+    const item = e.target.closest('.music-item[data-idx]');
+    if (!item) return;
+    const idx = +item.dataset.idx;
+    if (idx === musicState.index) toggleMusicPlayPause();
+    else playMusicAt(idx);
+  });
+}
+
+function openAddToPlaylistModal(song) {
+  if (!S.user) { toast('Sign in to use playlists', 'info'); return; }
+  musicState.pendingPlaylistSong = song;
+  document.getElementById('addToPlaylistModal').style.display = 'flex';
+  loadAddToPlaylistList();
+}
+function closeAddToPlaylistModal() {
+  document.getElementById('addToPlaylistModal').style.display = 'none';
+  musicState.pendingPlaylistSong = null;
+}
+async function loadAddToPlaylistList() {
+  const el = document.getElementById('addToPlaylistList');
+  el.innerHTML = `<div style="text-align:center;padding:16px"><div class="spinner" style="margin:0 auto"></div></div>`;
+  const snap = await db.ref(`users/${S.user.uid}/music/playlists`).get();
+  const playlists = Object.entries(snap.val() || {});
+  el.innerHTML = playlists.length ? playlists.map(([id, pl]) => `
+    <div class="playlist-pick-row" onclick="addSongToPlaylist('${id}', musicState.pendingPlaylistSong).then(closeAddToPlaylistModal)">
+      <div class="playlist-card-icon" style="width:36px;height:36px;font-size:13px"><i class="fas fa-list-ul"></i></div>
+      <div style="flex:1;font-size:13px;font-weight:600">${esc(pl.name)}</div>
+    </div>
+  `).join('') : emptyMusicState('No playlists yet — create one below.');
+}
+document.getElementById('createPlaylistFromModalBtn')?.addEventListener('click', async () => {
+  const name = prompt('Playlist name:');
+  if (!name || !name.trim()) return;
+  const id = await createPlaylist(name.trim());
+  if (id && musicState.pendingPlaylistSong) {
+    await addSongToPlaylist(id, musicState.pendingPlaylistSong);
+    closeAddToPlaylistModal();
+  }
+});
+
+/* ---- BACKGROUND PLAYBACK + LOCK-SCREEN / NOTIFICATION CONTROLS ----
+   The Media Session API is what lets audio keep playing when the screen
+   locks or another app comes to the foreground (this is a platform/OS
+   behavior the browser grants specifically to tabs that register a media
+   session — it is NOT something any web app can force on its own), and it
+   populates the OS's now-playing notification / lock-screen widget with
+   title, artist, artwork, and working play/pause/next/previous buttons
+   that control THIS player even while the app itself isn't visible. This
+   is set up once and just kept in sync on every song change. */
+function setupMediaSession() {
+  if (!('mediaSession' in navigator)) return;
+  navigator.mediaSession.setActionHandler('play', () => toggleMusicPlayPause());
+  navigator.mediaSession.setActionHandler('pause', () => toggleMusicPlayPause());
+  navigator.mediaSession.setActionHandler('previoustrack', () => musicPrev());
+  navigator.mediaSession.setActionHandler('nexttrack', () => musicNext());
+  navigator.mediaSession.setActionHandler('seekto', (details) => {
+    const audio = document.getElementById('musicAudio');
+    if (audio && details.seekTime != null) audio.currentTime = details.seekTime;
+  });
+}
+
+function updateMediaSessionMetadata(song) {
+  if (!('mediaSession' in navigator)) return;
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: song.title,
+    artist: song.artist,
+    album: 'MINEXUS Music',
+    artwork: song.image ? [
+      { src: song.image, sizes: '96x96', type: 'image/jpeg' },
+      { src: song.image, sizes: '512x512', type: 'image/jpeg' }
+    ] : []
+  });
+  navigator.mediaSession.playbackState = musicState.playing ? 'playing' : 'paused';
 }
 
 function playMusicAt(idx) {
@@ -4019,23 +4597,40 @@ function playMusicAt(idx) {
   musicState.playing = true;
   const audio = document.getElementById('musicAudio');
 
-  // Some JioSaavn CDN edge nodes intermittently 403/redirect a specific
-  // quality URL even though the API returned it as valid — rather than
-  // silently failing (the old `.catch(() => {})` swallowed every error,
-  // which is why nothing appeared to happen when a song failed to play),
-  // this now listens for the actual media error and retries once against
-  // the same song's OTHER available qualities before giving up and
-  // telling the user exactly what went wrong.
-  attemptPlayback(audio, song, 0);
+  // If this exact song was downloaded for offline use, play the stored
+  // Blob directly — zero network required, works fully offline. Every
+  // other song streams normally through the CDN proxy.
+  if (song.audioBlob) {
+    const blobUrl = URL.createObjectURL(song.audioBlob);
+    audio.src = blobUrl;
+    audio.play().catch(() => {});
+  } else {
+    // Some JioSaavn CDN edge nodes intermittently 403/redirect a specific
+    // quality URL even though the API returned it as valid — rather than
+    // silently failing (the old `.catch(() => {})` swallowed every error,
+    // which is why nothing appeared to happen when a song failed to play),
+    // this now listens for the actual media error and retries once against
+    // the same song's OTHER available qualities before giving up and
+    // telling the user exactly what went wrong.
+    attemptPlayback(audio, song, 0);
+  }
 
+  const artSrc = song.imageBlob ? URL.createObjectURL(song.imageBlob) : song.image;
   document.getElementById('miniPlayer').style.display = 'block';
-  document.getElementById('miniPlayerArt').src = song.image;
+  document.getElementById('miniPlayerArt').src = artSrc;
   document.getElementById('miniPlayerArt').onerror = function () { this.style.opacity = '0'; };
   document.getElementById('miniPlayerArt').onload = function () { this.style.opacity = '1'; };
   document.getElementById('miniPlayerTitle').textContent = song.title;
   document.getElementById('miniPlayerArtist').textContent = song.artist;
+  const likeBtn = document.getElementById('miniPlayerLikeBtn');
+  if (likeBtn) {
+    const liked = isSongLiked(song.id);
+    likeBtn.classList.toggle('active', liked);
+    likeBtn.innerHTML = `<i class="${liked ? 'fas' : 'far'} fa-heart"></i>`;
+  }
   syncMiniPlayerPlayIcon();
   renderMusicList(musicState.queue);
+  updateMediaSessionMetadata({ ...song, image: artSrc });
 
   // Track song plays — powers the "Top Songs Played" breakdown in
   // Admin → Analytics.
@@ -4057,7 +4652,7 @@ function attemptPlayback(audio, song, retryCount) {
     audio.removeEventListener('error', onError);
     const nextUrl = (song.qualityFallbacks || [])[retryCount];
     if (nextUrl) {
-      playSongUrl(audio, { ...song, audioUrl: nextUrl }, retryCount + 1);
+      attemptPlayback(audio, { ...song, audioUrl: nextUrl }, retryCount + 1);
     } else {
       toast(`⚠️ "${song.title}" couldn't be played — the source link may be down. Try another song.`, 'error');
       musicState.playing = false;
@@ -4077,7 +4672,6 @@ function attemptPlayback(audio, song, retryCount) {
     }
   });
 }
-function playSongUrl(audio, song, retryCount) { attemptPlayback(audio, song, retryCount); }
 
 function toggleMusicPlayPause() {
   const audio = document.getElementById('musicAudio');
@@ -4086,6 +4680,7 @@ function toggleMusicPlayPause() {
   else { audio.pause(); musicState.playing = false; }
   syncMiniPlayerPlayIcon();
   renderMusicList(musicState.queue);
+  if ('mediaSession' in navigator) navigator.mediaSession.playbackState = musicState.playing ? 'playing' : 'paused';
 }
 
 function pauseMusic() {
@@ -4129,29 +4724,53 @@ async function shareSong(song) {
     clearBtn.style.display = input.value ? 'flex' : 'none';
     handleMusicSearch(input.value);
   });
-  clearBtn?.addEventListener('click', () => { input.value = ''; clearBtn.style.display = 'none'; loadTrendingSongs(); });
+  clearBtn?.addEventListener('click', () => { input.value = ''; clearBtn.style.display = 'none'; renderMusicSubtab('trending'); });
 
-  document.getElementById('musicResultsList')?.addEventListener('click', (e) => {
-    const shareBtn = e.target.closest('[data-share-idx]');
-    if (shareBtn) { shareSong(musicState.queue[+shareBtn.dataset.shareIdx]); return; }
-    const item = e.target.closest('.music-item[data-idx]');
-    if (!item) return;
-    const idx = +item.dataset.idx;
-    if (idx === musicState.index) toggleMusicPlayPause();
-    else playMusicAt(idx);
+  document.querySelectorAll('.music-subtab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input2 = document.getElementById('musicSearchInput');
+      if (input2) input2.value = '';
+      renderMusicSubtab(btn.dataset.mtab);
+    });
   });
+
+  setupMediaSession();
 
   const audio = document.getElementById('musicAudio');
   audio.addEventListener('ended', musicNext);
   audio.addEventListener('timeupdate', () => {
     const fill = document.getElementById('miniPlayerProgressFill');
     if (fill && audio.duration) fill.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
+    if ('mediaSession' in navigator && audio.duration) {
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: audio.duration, playbackRate: audio.playbackRate, position: audio.currentTime
+        });
+      } catch (e) { /* setPositionState can throw on some Android WebViews — non-critical */ }
+    }
+  });
+
+  // Tap-to-seek on the progress bar — a small but expected "real player"
+  // touch that was missing before (previously just a passive progress display).
+  document.getElementById('miniPlayerProgressBar')?.addEventListener('click', (e) => {
+    if (!audio.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    audio.currentTime = pct * audio.duration;
   });
 
   document.getElementById('miniPlayerPlayBtn')?.addEventListener('click', toggleMusicPlayPause);
   document.getElementById('miniPlayerNextBtn')?.addEventListener('click', musicNext);
   document.getElementById('miniPlayerPrevBtn')?.addEventListener('click', musicPrev);
   document.getElementById('miniPlayerShareBtn')?.addEventListener('click', () => shareSong(musicState.queue[musicState.index]));
+  document.getElementById('miniPlayerLikeBtn')?.addEventListener('click', () => {
+    const song = musicState.queue[musicState.index];
+    if (song) toggleLikeSong(song).then(() => playMusicAt(musicState.index)); // re-render to sync heart state
+  });
+  document.getElementById('miniPlayerDownloadBtn')?.addEventListener('click', () => {
+    const song = musicState.queue[musicState.index];
+    if (song) downloadSongOffline(song, null);
+  });
   document.getElementById('miniPlayerCloseBtn')?.addEventListener('click', () => {
     pauseMusic();
     audio.src = '';
