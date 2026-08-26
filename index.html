@@ -367,6 +367,7 @@ input,select{font-family:inherit}
   display:flex;align-items:center;gap:6px;
 }
 .section-title span.accent{color:var(--accent)}
+#musicResultsTitle{flex-direction:column;align-items:flex-start}
 .see-all{font-size:12px;color:var(--accent);font-weight:700;padding:4px 8px;border-radius:6px}
 
 .h-scroll{
@@ -812,6 +813,70 @@ input,select{font-family:inherit}
 .playlist-card-info{flex:1;min-width:0}
 .playlist-card-title{font-size:13px;font-weight:700}
 .playlist-card-count{font-size:11px;color:var(--text3)}
+
+/* ---- Music-app style discovery grid (Trending tab) ---- */
+.music-genre-section{margin-bottom:22px}
+.music-genre-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 2px}
+.music-genre-title{font-size:14px;font-weight:800;display:flex;align-items:center;gap:6px}
+.music-genre-seeall{font-size:11px;color:var(--cyan);font-weight:700}
+.music-card-row{display:flex;gap:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 2px 6px}
+.music-card-row::-webkit-scrollbar{display:none}
+.music-card{
+  flex-shrink:0;width:118px;cursor:pointer;position:relative;
+}
+.music-card-art-wrap{
+  width:118px;height:118px;border-radius:14px;overflow:hidden;position:relative;background:var(--bg4);
+  box-shadow:0 4px 14px rgba(0,0,0,.35);transition:.2s;
+}
+.music-card:active .music-card-art-wrap{transform:scale(.96)}
+.music-card-art-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+.music-card-playbtn{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0);
+  opacity:0;transition:.2s;color:#fff;font-size:26px;
+}
+.music-card:hover .music-card-playbtn{opacity:1;background:rgba(0,0,0,.35)}
+.music-card.playing .music-card-art-wrap{box-shadow:0 0 0 2px var(--cyan),0 4px 14px rgba(0,210,255,.3)}
+.music-card-title{font-size:12px;font-weight:700;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.music-card-artist{font-size:10.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.music-card-actions{display:flex;gap:4px;margin-top:5px}
+.music-card-action-btn{
+  width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:var(--bg3);color:var(--text3);font-size:9.5px;transition:.15s;
+}
+.music-card-action-btn:hover{background:var(--bg4);color:#fff}
+.music-card-action-btn.liked{color:var(--accent);background:rgba(255,64,64,.12)}
+.music-card-action-btn.downloaded{color:var(--green);background:rgba(0,230,118,.12)}
+
+/* Featured banner carousel — bigger, hero-style cards for standout picks */
+.music-banner-row{display:flex;gap:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 2px 6px}
+.music-banner-row::-webkit-scrollbar{display:none}
+.music-banner-card{
+  flex-shrink:0;width:200px;height:110px;border-radius:16px;overflow:hidden;position:relative;cursor:pointer;
+  background:var(--bg4);box-shadow:0 6px 18px rgba(0,0,0,.4);
+}
+.music-banner-card img{width:100%;height:100%;object-fit:cover;display:block;filter:brightness(.7)}
+.music-banner-card-overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:12px;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.85))}
+.music-banner-card-title{font-size:13px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.music-banner-card-artist{font-size:10.5px;color:rgba(255,255,255,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.music-banner-card-playbtn{
+  position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:50%;
+  background:rgba(0,210,255,.9);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;
+}
+
+/* Artist chip row (tap to filter/search that artist) */
+.artist-chip-row{display:flex;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 2px 6px}
+.artist-chip-row::-webkit-scrollbar{display:none}
+.artist-chip{flex-shrink:0;width:72px;text-align:center;cursor:pointer}
+.artist-chip-art{width:64px;height:64px;border-radius:50%;object-fit:cover;background:var(--bg4);margin:0 auto 6px;display:block}
+.artist-chip-name{font-size:10.5px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Group-by chips (Songs / Artists / Albums) shown above search results */
+.music-groupby-row{display:flex;gap:6px;margin-top:8px}
+.music-groupby-btn{
+  padding:5px 12px;border-radius:14px;background:var(--bg3);border:1px solid var(--border);
+  color:var(--text2);font-size:11px;font-weight:700;
+}
+.music-groupby-btn.active{background:linear-gradient(135deg,var(--cyan),#0091b3);color:#fff;border-color:transparent}
 
 /* Bottom-sheet modal (Add to Playlist) */
 .modal-overlay{
@@ -1898,6 +1963,9 @@ input,select{font-family:inherit}
     <div id="musicPlaylistsPane" style="display:none">
       <div id="musicPlaylistsList"></div>
     </div>
+
+    <!-- Trending/discovery sub-view: genre banner rows + grid, music-app style -->
+    <div id="musicDiscoverPane" style="display:none"></div>
 
     <h3 class="section-title" id="musicResultsTitle" style="margin-bottom:10px">Trending Songs</h3>
     <div class="music-list" id="musicResultsList"></div>
@@ -4236,6 +4304,7 @@ function normalizeSong(raw) {
     id: raw.id || raw.songid || String(Math.random()),
     title: (raw.name || raw.song || raw.title || 'Untitled').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#039;/g, "'"),
     artist: artists,
+    album: raw.album?.name || raw.album || raw.more_info?.album || '',
     image,
     audioUrl,
     qualityFallbacks,
@@ -4279,12 +4348,14 @@ async function renderMusicSubtab(tab) {
   musicState.activeTab = tab;
   document.querySelectorAll('.music-subtab-btn').forEach(b => b.classList.toggle('active', b.dataset.mtab === tab));
   const playlistsPane = document.getElementById('musicPlaylistsPane');
+  const discoverPane = document.getElementById('musicDiscoverPane');
   const resultsTitle = document.getElementById('musicResultsTitle');
   const list = document.getElementById('musicResultsList');
 
   playlistsPane.style.display = tab === 'playlists' ? 'block' : 'none';
-  resultsTitle.style.display = tab === 'playlists' ? 'none' : 'block';
-  list.style.display = tab === 'playlists' ? 'none' : 'flex';
+  discoverPane.style.display = tab === 'trending' ? 'block' : 'none';
+  resultsTitle.style.display = (tab === 'playlists' || tab === 'trending') ? 'none' : 'block';
+  list.style.display = (tab === 'playlists' || tab === 'trending') ? 'none' : 'flex';
 
   if (tab === 'trending') { loadTrendingSongs(); return; }
 
@@ -4411,24 +4482,159 @@ async function renderOpenPlaylist(id) {
    history, the app's own most-played songs (via analytics/daily
    summaries — see Admin → Analytics "Top Songs Played") could seed this
    instead; for now this keeps the tab populated with popular current
-   music from day one. */
+   music from day one.
+
+   v6 replaces the old flat list with a genuine music-app-style discovery
+   layout: a featured banner row, then several horizontally-scrolling
+   genre grids (Bollywood, Punjabi, Pakistani, Trending Now), each card
+   showing small like/download actions right on the tile — the same
+   "browse by mood/genre" pattern Spotify/YouTube Music/JioSaavn's own app
+   use, rather than one long undifferentiated list. */
+const MUSIC_GENRES = [
+  { key: 'bollywood', label: '🎬 Bollywood Hits', seed: 'Bollywood hits 2026' },
+  { key: 'punjabi', label: '🎵 Punjabi Hits', seed: 'Punjabi hits 2026' },
+  { key: 'pakistani', label: '🇵🇰 Pakistani Hits', seed: 'Pakistani hits' },
+  { key: 'romantic', label: '❤️ Romantic', seed: 'romantic hindi songs' },
+  { key: 'lofi', label: '🌙 Lo-fi & Chill', seed: 'lofi chill hindi' }
+];
+
 async function loadTrendingSongs() {
-  const list = document.getElementById('musicResultsList');
-  document.getElementById('musicResultsTitle').textContent = 'Trending Songs';
-  list.innerHTML = `<div style="text-align:center;padding:24px"><div class="spinner" style="margin:0 auto"></div></div>`;
+  const pane = document.getElementById('musicDiscoverPane');
+  pane.innerHTML = `<div style="text-align:center;padding:40px"><div class="spinner" style="margin:0 auto"></div></div>`;
+
   try {
-    const seeds = ['Bollywood hits 2026', 'Punjabi hits', 'Pakistani hits'];
-    const seed = seeds[Math.floor(Math.random() * seeds.length)];
-    const data = await musicApiGet(`/search/songs?query=${encodeURIComponent(seed)}&limit=20`);
-    const results = data?.data?.results || data?.results || [];
-    if (!results.length) throw new Error('empty');
-    musicState.queue = results.map(normalizeSong).filter(s => s.audioUrl);
-    renderMusicList(musicState.queue);
+    // Fetch all genre rows in parallel — much faster than one at a time,
+    // and each row degrades independently (one slow/failed genre doesn't
+    // block the others from showing).
+    const genreResults = await Promise.all(MUSIC_GENRES.map(async (g) => {
+      try {
+        const data = await musicApiGet(`/search/songs?query=${encodeURIComponent(g.seed)}&limit=12`);
+        const results = data?.data?.results || data?.results || [];
+        return { ...g, songs: results.map(normalizeSong).filter(s => s.audioUrl) };
+      } catch (e) {
+        return { ...g, songs: [] };
+      }
+    }));
+
+    const validGenres = genreResults.filter(g => g.songs.length);
+    if (!validGenres.length) throw new Error('empty');
+
+    // Build one flat "master queue" across all genres so tapping any card
+    // anywhere on this page plays correctly with working next/previous —
+    // each song's position in the flat queue is tracked via a data
+    // attribute rather than assuming index order matches DOM order.
+    const masterQueue = [];
+    validGenres.forEach(g => g.songs.forEach(s => masterQueue.push(s)));
+    musicState.queue = masterQueue;
+    let queueOffset = 0;
+
+    // Featured banner row — first 6 songs from the first available genre,
+    // shown bigger/bolder since this is the first thing a person sees.
+    const featured = validGenres[0].songs.slice(0, 6);
+    const featuredStart = 0;
+
+    let html = `
+      <div class="music-genre-section">
+        <div class="music-genre-header"><div class="music-genre-title">✨ Featured For You</div></div>
+        <div class="music-banner-row">
+          ${featured.map((s, i) => `
+            <div class="music-banner-card" data-play-idx="${featuredStart + i}">
+              <img src="${esc(s.image)}" alt="" onerror="this.style.opacity=0">
+              <div class="music-banner-card-overlay">
+                <div class="music-banner-card-title">${esc(s.title)}</div>
+                <div class="music-banner-card-artist">${esc(s.artist)}</div>
+              </div>
+              <div class="music-banner-card-playbtn"><i class="fas fa-play"></i></div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    queueOffset += validGenres[0].songs.length;
+
+    validGenres.forEach((g, gi) => {
+      const startIdx = gi === 0 ? 0 : validGenres.slice(0, gi).reduce((sum, x) => sum + x.songs.length, 0);
+      html += `
+        <div class="music-genre-section">
+          <div class="music-genre-header">
+            <div class="music-genre-title">${g.label}</div>
+            <div class="music-genre-seeall" data-genre-seeall="${esc(g.seed)}">See All</div>
+          </div>
+          <div class="music-card-row">
+            ${g.songs.map((s, i) => {
+              const liked = isSongLiked(s.id);
+              return `
+              <div class="music-card" data-play-idx="${startIdx + i}">
+                <div class="music-card-art-wrap">
+                  <img src="${esc(s.image)}" alt="" onerror="this.style.opacity=0">
+                  <div class="music-card-playbtn"><i class="fas fa-play"></i></div>
+                </div>
+                <div class="music-card-title">${esc(s.title)}</div>
+                <div class="music-card-artist">${esc(s.artist)}</div>
+                <div class="music-card-actions">
+                  <button class="music-card-action-btn${liked ? ' liked' : ''}" data-card-like="${startIdx + i}" title="Like"><i class="${liked ? 'fas' : 'far'} fa-heart"></i></button>
+                  <button class="music-card-action-btn" data-card-download="${startIdx + i}" title="Download"><i class="fas fa-download"></i></button>
+                  <button class="music-card-action-btn" data-card-playlist="${startIdx + i}" title="Add to playlist"><i class="fas fa-plus"></i></button>
+                </div>
+              </div>
+            `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    });
+
+    pane.innerHTML = html;
+    attachDiscoverPaneHandlers(pane);
   } catch (e) {
-    list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text3);font-size:12px">
+    pane.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text3);font-size:12px">
       Couldn't load music right now. Try searching above, or check the Music API setting in Admin Panel.
     </div>`;
   }
+}
+
+/* Wires up every tappable element in the discovery grid (play, like,
+   download, add-to-playlist, "See All" → jumps into a full search for
+   that genre). Delegated once per render since the grid is rebuilt fresh
+   each time loadTrendingSongs() runs. */
+function attachDiscoverPaneHandlers(pane) {
+  pane.addEventListener('click', (e) => {
+    const seeAll = e.target.closest('[data-genre-seeall]');
+    if (seeAll) {
+      const seed = seeAll.dataset.genreSeeall;
+      document.getElementById('musicSearchInput').value = seed;
+      handleMusicSearch(seed);
+      return;
+    }
+
+    const likeBtn = e.target.closest('[data-card-like]');
+    if (likeBtn) {
+      const song = musicState.queue[+likeBtn.dataset.cardLike];
+      if (song) toggleLikeSong(song).then(() => {
+        const liked = isSongLiked(song.id);
+        likeBtn.classList.toggle('liked', liked);
+        likeBtn.innerHTML = `<i class="${liked ? 'fas' : 'far'} fa-heart"></i>`;
+      });
+      return;
+    }
+
+    const dlBtn = e.target.closest('[data-card-download]');
+    if (dlBtn) {
+      const song = musicState.queue[+dlBtn.dataset.cardDownload];
+      if (song) downloadSongOffline(song, null);
+      return;
+    }
+
+    const plBtn = e.target.closest('[data-card-playlist]');
+    if (plBtn) {
+      const song = musicState.queue[+plBtn.dataset.cardPlaylist];
+      if (song) openAddToPlaylistModal(song);
+      return;
+    }
+
+    const playCard = e.target.closest('[data-play-idx]');
+    if (playCard) { playMusicAt(+playCard.dataset.playIdx); return; }
+  });
 }
 
 function handleMusicSearch(q) {
@@ -4436,9 +4642,17 @@ function handleMusicSearch(q) {
   if (!q.trim()) { renderMusicSubtab('trending'); document.querySelectorAll('.music-subtab-btn').forEach(b => b.classList.toggle('active', b.dataset.mtab === 'trending')); return; }
   const list = document.getElementById('musicResultsList');
   document.getElementById('musicPlaylistsPane').style.display = 'none';
+  document.getElementById('musicDiscoverPane').style.display = 'none';
   document.getElementById('musicResultsTitle').style.display = 'block';
   list.style.display = 'flex';
-  document.getElementById('musicResultsTitle').textContent = `Results for "${q}"`;
+  document.getElementById('musicResultsTitle').innerHTML = `
+    Results for "${esc(q)}"
+    <div class="music-groupby-row" id="musicGroupByRow" style="display:none">
+      <button class="music-groupby-btn active" data-groupby="song">Songs</button>
+      <button class="music-groupby-btn" data-groupby="artist">Artists</button>
+      <button class="music-groupby-btn" data-groupby="album">Albums</button>
+    </div>
+  `;
   list.innerHTML = `<div style="text-align:center;padding:24px"><div class="spinner" style="margin:0 auto"></div></div>`;
   musicSearchTimer = setTimeout(async () => {
     try {
@@ -4450,11 +4664,48 @@ function handleMusicSearch(q) {
         list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text3);font-size:12px">No songs found for "${esc(q)}"</div>`;
         return;
       }
+      document.getElementById('musicGroupByRow').style.display = 'flex';
       renderMusicList(musicState.queue);
     } catch (e) {
       list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text3);font-size:12px">Search failed — the music service may be temporarily down.</div>`;
     }
   }, 400);
+}
+
+/* Groups the current search queue by artist or album — this is what
+   powers the "Artists" / "Albums" filter chips above search results, the
+   same by-artist/by-album browsing pattern every mainstream music app
+   offers rather than only ever showing one flat song list. Tapping a
+   resulting artist/album group plays through just that group's songs. */
+function renderMusicGroupBy(mode) {
+  document.querySelectorAll('.music-groupby-btn').forEach(b => b.classList.toggle('active', b.dataset.groupby === mode));
+  const list = document.getElementById('musicResultsList');
+
+  if (mode === 'song') { renderMusicList(musicState.queue); return; }
+
+  const key = mode === 'artist' ? 'artist' : 'album';
+  const groups = {};
+  musicState.queue.forEach((s, i) => {
+    const name = (s[key] || 'Unknown').split(',')[0].trim(); // primary artist/album only, not a joined multi-name string
+    if (!groups[name]) groups[name] = { name, songs: [], image: s.image };
+    groups[name].songs.push(i);
+  });
+
+  const groupList = Object.values(groups).sort((a, b) => b.songs.length - a.songs.length);
+  list.innerHTML = groupList.map(g => `
+    <div class="music-item" data-group-play="${g.songs[0]}">
+      <img class="music-item-art" src="${esc(g.image)}" alt="" onerror="this.style.opacity=0" style="border-radius:${mode === 'artist' ? '50%' : '9px'}">
+      <div class="music-item-info">
+        <div class="music-item-title">${esc(g.name)}</div>
+        <div class="music-item-artist">${g.songs.length} song${g.songs.length > 1 ? 's' : ''}</div>
+      </div>
+      <div class="music-item-playbtn"><i class="fas fa-play"></i></div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('[data-group-play]').forEach(el => {
+    el.addEventListener('click', () => playMusicAt(+el.dataset.groupPlay));
+  });
 }
 
 function renderSongRow(s, i) {
@@ -4629,7 +4880,16 @@ function playMusicAt(idx) {
     likeBtn.innerHTML = `<i class="${liked ? 'fas' : 'far'} fa-heart"></i>`;
   }
   syncMiniPlayerPlayIcon();
-  renderMusicList(musicState.queue);
+  if (musicState.activeTab === 'trending') {
+    // Discovery grid uses its own card markup (not .music-item), so
+    // re-highlight the "now playing" card there instead of calling
+    // renderMusicList (which only targets the flat list view).
+    document.querySelectorAll('#musicDiscoverPane [data-play-idx]').forEach(el => {
+      el.classList.toggle('playing', +el.dataset.playIdx === idx);
+    });
+  } else {
+    renderMusicList(musicState.queue);
+  }
   updateMediaSessionMetadata({ ...song, image: artSrc });
 
   // Track song plays — powers the "Top Songs Played" breakdown in
@@ -4732,6 +4992,14 @@ async function shareSong(song) {
       if (input2) input2.value = '';
       renderMusicSubtab(btn.dataset.mtab);
     });
+  });
+
+  // Group-by chips (Songs/Artists/Albums) are re-rendered fresh on every
+  // search, so this listens on their static parent container instead of
+  // binding directly to buttons that get replaced each time.
+  document.getElementById('musicResultsTitle')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.music-groupby-btn');
+    if (btn) renderMusicGroupBy(btn.dataset.groupby);
   });
 
   setupMediaSession();
@@ -5645,7 +5913,71 @@ db.ref('custom_servers').on('value', snap => {
   }
 });
 
-/* ---- AD SLOTS ----
+/* ---- MONETAG (Vignette Banner + In-Page Push) ----
+   These two formats are page-level scripts, not embed-code-in-a-div like
+   AdSense — Monetag's own SDK decides where/when to render them (a
+   transition-point banner for Vignette, a notification-style card for
+   IPP), so there's no fixed slot element for them the way there is for
+   the custom AdSense slots below. Instead, this loads each script exactly
+   once, sitewide, keyed off the admin-configured Zone ID from Firebase
+   app_config/monetag — the same live-sync pattern as every other
+   Admin-controlled setting in this app, so a new Zone ID goes live for
+   every visitor immediately without needing a redeploy.
+
+   Loading each script only once (guarded by data-zone-loaded) matters
+   because Monetag's docs warn duplicate script tags for the same zone
+   cause ads to misbehave or simply not fire — a real risk here since
+   Firebase's .on('value') can re-fire this callback (e.g. after any other
+   admin edits app_config, even unrelated fields), and the callback must
+   stay idempotent rather than re-inserting the tag every time. */
+function loadMonetagScript(zoneId, kind) {
+  if (!zoneId) return;
+  const existing = document.querySelector(`script[data-monetag-zone="${zoneId}"]`);
+  if (existing) return; // already loaded — never insert the same zone twice
+
+  const script = document.createElement('script');
+  script.src = `//libtl.com/sdk.js`;
+  script.dataset.zone = zoneId;
+  script.dataset.monetagZone = zoneId;
+  script.dataset.monetagKind = kind;
+  // 'onclick' is Monetag's own attribute name for the auto-triggering
+  // in-page formats (Vignette/IPP show themselves on qualifying
+  // interactions without any extra code on our end) — this is the
+  // documented integration shape for these two specific formats.
+  script.setAttribute('data-cfasync', 'false');
+  document.body.appendChild(script);
+}
+
+/* Some Monetag accounts issue a slightly different tag shape than the
+   generic data-zone pattern above. If the admin pasted an exact raw
+   snippet (Admin Panel → Monetization → Advanced), that takes priority
+   over the generated Zone ID script — inserted exactly once, verbatim. */
+function loadMonetagRaw(html, kind) {
+  if (!html || !html.trim()) return;
+  if (document.querySelector(`[data-monetag-raw="${kind}"]`)) return; // already inserted
+
+  const wrapper = document.createElement('div');
+  wrapper.style.display = 'none';
+  wrapper.setAttribute('data-monetag-raw', kind);
+  wrapper.innerHTML = html;
+  document.body.appendChild(wrapper);
+  wrapper.querySelectorAll('script').forEach(oldScript => {
+    const newScript = document.createElement('script');
+    [...oldScript.attributes].forEach(attr => newScript.setAttribute(attr.name, attr.value));
+    newScript.textContent = oldScript.textContent;
+    oldScript.replaceWith(newScript);
+  });
+}
+
+db.ref('app_config/monetag').on('value', snap => {
+  const cfg = snap.val() || {};
+  if (cfg.vignetteRaw) loadMonetagRaw(cfg.vignetteRaw, 'vignette');
+  else loadMonetagScript(cfg.vignetteZone, 'vignette');
+  if (cfg.ippRaw) loadMonetagRaw(cfg.ippRaw, 'ipp');
+  else loadMonetagScript(cfg.ippZone, 'ipp');
+});
+
+/* ---- CUSTOM AD SLOTS (AdSense or other verified banner embeds) ----
    Each slot (adSlotHomeTop, adSlotHomeMid, adSlotPlayer) gets its HTML from
    Firebase app_config/ad_slots/{slotName}, set from the Admin Panel's
    Monetization tab. A slot stays hidden until it actually has content, so

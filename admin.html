@@ -822,20 +822,66 @@ tr:hover td{background:var(--bg-card-hover)}
     <div class="tab-content" id="tab-monetization">
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title"><i class="fas fa-dollar-sign" style="color:var(--gold)"></i> Ad Slots</h2>
+          <h2 class="card-title"><i class="fas fa-dollar-sign" style="color:var(--gold)"></i> Monetag — Vignette & In-Page Push</h2>
         </div>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.7">
-          Paste embed code from a <b>trusted, verified ad network</b> (Google AdSense, or a CPM network with a real
-          account you control) into any slot below — it syncs live to every visitor, no redeploy needed. Leave a
-          slot empty to hide it completely; nothing shows until you add code.
+          Enter your Monetag <b>Zone IDs</b> below — just the number from your Monetag dashboard for each format, not
+          the full script. The app builds and loads the correct tag for you, styled to blend with the app's own dark
+          theme wherever Monetag allows customization, and only loads each script once sitewide (never duplicated
+          across pages, which is a common cause of ads that don't fire correctly). Leave a field blank to disable
+          that format completely.
           <br><br>
-          <b style="color:#ff6b6b">⚠️ Safety note:</b> only use code from networks you've personally signed up with
-          and verified. Random ad-tag snippets from unfamiliar sites are a common way malware and deceptive
-          redirects get distributed — several were caught and removed from this app for exactly that reason. When
-          in doubt, Google AdSense is the safest and most reliable option for a site like this.
+          <b>Vignette Banner</b> — a native-style banner that appears at natural transition points (e.g. moving
+          between tabs); closable, doesn't cover content, works on every platform.
+          <br>
+          <b>In-Page Push (IPP)</b> — a small notification-style banner that sits within the page itself rather than
+          as a browser-level popup; works on iOS too, unlike classic push notifications.
+          <br><br>
+          <b style="color:#ff6b6b">⚠️ Safety note:</b> only ever use Zone IDs from your own verified Monetag account.
         </p>
 
         <form id="adSlotsForm" class="form-grid">
+          <div class="form-group">
+            <label>🎬 Vignette Banner — Zone ID</label>
+            <input type="text" class="form-control" id="monetagVignetteZone" placeholder="e.g. 9876543" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label>📌 In-Page Push — Zone ID</label>
+            <input type="text" class="form-control" id="monetagIppZone" placeholder="e.g. 9876544" inputmode="numeric">
+          </div>
+          <div style="grid-column:1/-1">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Monetag Zones</button>
+            <span id="adSlotsStatus" style="font-size:11px;color:var(--text-muted);margin-left:10px"></span>
+          </div>
+        </form>
+
+        <details style="margin-top:16px">
+          <summary style="cursor:pointer;font-size:12px;color:var(--text-muted);font-weight:700">Advanced: paste the raw Monetag script instead (if Zone ID alone doesn't work for your account)</summary>
+          <p style="font-size:11.5px;color:var(--text-muted);margin:10px 0;line-height:1.6">
+            Some Monetag accounts issue a slightly different tag shape. If ads don't appear after saving a Zone ID
+            above, copy the exact <code>&lt;script&gt;</code> snippet from your Monetag dashboard (Sites → your zone
+            → Get tag) and paste it here instead — it's inserted exactly as given, once, sitewide.
+          </p>
+          <div class="form-group">
+            <label>Vignette — raw script (optional override)</label>
+            <textarea class="form-control" id="monetagVignetteRaw" rows="3" placeholder="<!-- Paste exact Monetag Vignette script here if needed -->" style="font-family:monospace;font-size:11px"></textarea>
+          </div>
+          <div class="form-group">
+            <label>In-Page Push — raw script (optional override)</label>
+            <textarea class="form-control" id="monetagIppRaw" rows="3" placeholder="<!-- Paste exact Monetag IPP script here if needed -->" style="font-family:monospace;font-size:11px"></textarea>
+          </div>
+        </details>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-rectangle-ad" style="color:var(--cyan)"></i> Custom AdSense / Banner Slots</h2>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.7">
+          Optional — paste embed code from Google AdSense or another verified network for a specific in-page banner
+          placement. Leave empty to hide.
+        </p>
+        <form id="customAdSlotsForm" class="form-grid">
           <div class="form-group" style="grid-column:1/-1">
             <label>🏠 Home Top (below the hero banner — most visible slot)</label>
             <textarea class="form-control" id="adSlotHomeTop" rows="3" placeholder="<!-- Paste AdSense or other verified ad embed code here -->" style="font-family:monospace;font-size:11px"></textarea>
@@ -849,8 +895,8 @@ tr:hover td{background:var(--bg-card-hover)}
             <textarea class="form-control" id="adSlotPlayer" rows="3" placeholder="<!-- Paste ad embed code here -->" style="font-family:monospace;font-size:11px"></textarea>
           </div>
           <div style="grid-column:1/-1">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Ad Slots</button>
-            <span id="adSlotsStatus" style="font-size:11px;color:var(--text-muted);margin-left:10px"></span>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Custom Ad Slots</button>
+            <span id="customAdSlotsStatus" style="font-size:11px;color:var(--text-muted);margin-left:10px"></span>
           </div>
         </form>
       </div>
@@ -1484,7 +1530,38 @@ db.ref('custom_servers').on('value', snap => {
   renderCustomServerList();
 });
 
-// Monetization / Ad Slots
+// Monetization — Monetag Zone IDs (Vignette + In-Page Push)
+db.ref('app_config/monetag').on('value', snap => {
+  const cfg = snap.val() || {};
+  const vEl = document.getElementById('monetagVignetteZone');
+  const iEl = document.getElementById('monetagIppZone');
+  const vRawEl = document.getElementById('monetagVignetteRaw');
+  const iRawEl = document.getElementById('monetagIppRaw');
+  if (vEl) vEl.value = cfg.vignetteZone || '';
+  if (iEl) iEl.value = cfg.ippZone || '';
+  if (vRawEl) vRawEl.value = cfg.vignetteRaw || '';
+  if (iRawEl) iRawEl.value = cfg.ippRaw || '';
+  const activeCount = [cfg.vignetteZone || cfg.vignetteRaw, cfg.ippZone || cfg.ippRaw].filter(Boolean).length;
+  document.getElementById('adSlotsStatus').textContent = activeCount
+    ? `${activeCount} of 2 Monetag formats active`
+    : 'No Monetag zones configured yet';
+});
+
+document.getElementById('adSlotsForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const vignetteZone = document.getElementById('monetagVignetteZone').value.trim();
+  const ippZone = document.getElementById('monetagIppZone').value.trim();
+  const vignetteRaw = document.getElementById('monetagVignetteRaw').value.trim();
+  const ippRaw = document.getElementById('monetagIppRaw').value.trim();
+  // Basic sanity check — Monetag zone IDs are always numeric. Catches a
+  // pasted-in full script tag by mistake before it gets saved as garbage.
+  if (vignetteZone && !/^\d+$/.test(vignetteZone)) { toast('Vignette Zone ID should be numbers only', 'error'); return; }
+  if (ippZone && !/^\d+$/.test(ippZone)) { toast('In-Page Push Zone ID should be numbers only', 'error'); return; }
+  await db.ref('app_config/monetag').set({ vignetteZone, ippZone, vignetteRaw, ippRaw });
+  toast('Monetag Zones Saved — live for all visitors now!');
+};
+
+// Monetization — Custom AdSense / banner embed slots (separate, optional)
 const AD_SLOT_IDS = ['adSlotHomeTop', 'adSlotHomeMid', 'adSlotPlayer'];
 
 db.ref('app_config/ad_slots').on('value', snap => {
@@ -1494,17 +1571,17 @@ db.ref('app_config/ad_slots').on('value', snap => {
     if (el) el.value = slots[id] || '';
   });
   const activeCount = AD_SLOT_IDS.filter(id => (slots[id] || '').trim()).length;
-  document.getElementById('adSlotsStatus').textContent = activeCount
-    ? `${activeCount} of ${AD_SLOT_IDS.length} slots active`
-    : 'No ad slots configured yet';
+  document.getElementById('customAdSlotsStatus').textContent = activeCount
+    ? `${activeCount} of ${AD_SLOT_IDS.length} custom slots active`
+    : 'No custom ad slots configured';
 });
 
-document.getElementById('adSlotsForm').onsubmit = async (e) => {
+document.getElementById('customAdSlotsForm').onsubmit = async (e) => {
   e.preventDefault();
   const payload = {};
   AD_SLOT_IDS.forEach(id => { payload[id] = document.getElementById(id).value.trim(); });
   await db.ref('app_config/ad_slots').set(payload);
-  toast('Ad Slots Saved — live for all visitors now!');
+  toast('Custom Ad Slots Saved — live for all visitors now!');
 };
 
 // Developer Page
