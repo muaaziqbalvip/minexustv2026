@@ -1087,6 +1087,41 @@ input,select{font-family:inherit}
   color:var(--text3);letter-spacing:.5px;text-transform:uppercase;
   opacity:.6;pointer-events:none;
 }
+
+/* ===== REPEATABLE 320x50 AD BANNER (v8 — Ads Everywhere) =====
+   Muaaz asked for a 320x50 Adsterra banner under every grid/list/section
+   across the whole app (Movies, Series, Home rows, Live TV, Music,
+   Account, Leaderboard, Calendar, even the standalone Admin/Privacy/Terms
+   pages) — not just the 3 spots that existed before. Rather than needing a
+   unique element id + a unique Admin config field for every single one of
+   those (which would mean editing ads-engine.js AND admin.html every time
+   a new placement is wanted), every element with class="ad-banner-slot"
+   gets filled automatically from the SAME 320x50 Adsterra key already
+   configured once in Admin → Monetization. Drop as many of these divs
+   anywhere in the markup as wanted; no JS or Admin changes needed per spot.
+   Styled as a clean, rounded "Sponsored" card — matches the app's existing
+   dark card look instead of a plain ad-network box, so it reads as a
+   native part of the design rather than a bolted-on banner. */
+.ad-banner-slot{
+  margin:14px;border-radius:14px;overflow:hidden;
+  background:linear-gradient(180deg, var(--bg3), var(--bg2));
+  border:1px solid var(--border);
+  min-height:66px;display:none;align-items:center;justify-content:center;
+  position:relative;padding-top:16px;
+  box-shadow:0 2px 10px rgba(0,0,0,.15);
+}
+.ad-banner-slot.ad-banner-visible{ display:flex; }
+.ad-banner-slot::before{
+  content:'Sponsored';
+  position:absolute;top:5px;left:10px;font-size:9px;font-weight:800;
+  color:var(--text3);letter-spacing:.6px;text-transform:uppercase;
+  opacity:.65;pointer-events:none;
+}
+/* Grid variant: spans the full grid width so it reads as a clean divider
+   row rather than an oddly-sized grid tile squeezed between posters. */
+.grid .ad-banner-slot, .channels-grid .ad-banner-slot{
+  grid-column:1/-1;
+}
 .server-label{
   font-size:10px;font-weight:800;letter-spacing:1px;
   color:var(--text3);text-transform:uppercase;margin-bottom:8px;
@@ -1630,6 +1665,9 @@ input,select{font-family:inherit}
     </div>
   </section>
 
+  <!-- AD: below Trending row -->
+  <div class="ad-banner-slot"></div>
+
   <!-- NEW & UPCOMING RELEASES -->
   <section class="section">
     <div class="section-inner">
@@ -1657,6 +1695,9 @@ input,select{font-family:inherit}
     </div>
   </section>
 
+  <!-- AD: below Bollywood/Desi Cinema row -->
+  <div class="ad-banner-slot"></div>
+
   <!-- TOP WEB SERIES -->
   <section class="section">
     <div class="section-inner">
@@ -1679,6 +1720,9 @@ input,select{font-family:inherit}
     </div>
   </section>
 
+  <!-- AD: below Live Channels row -->
+  <div class="ad-banner-slot"></div>
+
   <!-- MUSIC PREVIEW (v6 — Home now surfaces Music alongside Movies/Series/Live TV) -->
   <section class="section">
     <div class="section-inner">
@@ -1689,6 +1733,9 @@ input,select{font-family:inherit}
       <div class="h-scroll music-home-row" id="musicPrevRow"></div>
     </div>
   </section>
+
+  <!-- AD: below Music row, just before the footer -->
+  <div class="ad-banner-slot"></div>
 
   <footer class="footer">
     <div class="footer-logo logo">
@@ -1722,6 +1769,8 @@ input,select{font-family:inherit}
     </div>
     <div class="section-inner" style="margin-top:16px">
       <div class="grid" id="moviesGrid"></div>
+      <!-- AD: below Movies grid -->
+      <div class="ad-banner-slot"></div>
       <div class="load-more-wrap" id="moviesLoadMoreWrap" style="text-align:center;padding:16px">
         <button class="btn btn-secondary" id="moviesLoadMoreBtn"><i class="fas fa-plus"></i> Load More</button>
       </div>
@@ -1746,6 +1795,8 @@ input,select{font-family:inherit}
     </div>
     <div class="section-inner" style="margin-top:16px">
       <div class="grid" id="seriesGrid"></div>
+      <!-- AD: below Series grid -->
+      <div class="ad-banner-slot"></div>
       <div class="load-more-wrap" id="seriesLoadMoreWrap" style="text-align:center;padding:16px">
         <button class="btn btn-secondary" id="seriesLoadMoreBtn"><i class="fas fa-plus"></i> Load More</button>
       </div>
@@ -1768,6 +1819,8 @@ input,select{font-family:inherit}
     <button class="country-tab" data-country="WORLD">🌐 Custom / Sports</button>
   </div>
   <div id="channelsGrid" class="channels-grid"></div>
+  <!-- AD: below Live TV channels grid -->
+  <div class="ad-banner-slot"></div>
 </div>
 
 <!-- ===== RELEASE CALENDAR & NEWS VIEW ===== -->
@@ -1787,6 +1840,8 @@ input,select{font-family:inherit}
     <div id="calendarContent" class="calendar-content">
       <div style="text-align:center;padding:30px;color:var(--text3)">Loading...</div>
     </div>
+    <!-- AD: below Calendar & News content -->
+    <div class="ad-banner-slot"></div>
   </div>
 </div>
 
@@ -1804,6 +1859,8 @@ input,select{font-family:inherit}
     <div class="leader-list" id="leaderboardList">
       <div style="text-align:center;padding:20px;color:var(--text3)">Loading leaderboard...</div>
     </div>
+    <!-- AD: below Leaderboard list -->
+    <div class="ad-banner-slot"></div>
   </div>
 </div>
 
@@ -1834,6 +1891,9 @@ input,select{font-family:inherit}
       <h3><i class="fas fa-envelope" style="color:var(--cyan)"></i> Get in Touch</h3>
       <div id="devContactLinks" class="dev-contact-links"></div>
     </div>
+
+    <!-- AD: on the Developer/About page -->
+    <div class="ad-banner-slot"></div>
 
     <div class="dev-footer-note">
       <i class="fas fa-heart" style="color:var(--accent)"></i> MINEXUS TV — Built with passion for great cinema.
@@ -1881,6 +1941,9 @@ input,select{font-family:inherit}
     </div>
 
     <div id="accTabContent" class="acc-list-grid"></div>
+
+    <!-- AD: below Account history/watchlist/likes grid -->
+    <div class="ad-banner-slot"></div>
 
     <div style="margin-top:20px">
       <button class="btn btn-secondary" id="accountLogoutBtn" style="width:100%;justify-content:center;color:#ff6b6b">
@@ -2037,6 +2100,9 @@ input,select{font-family:inherit}
 
     <h3 class="section-title" id="musicResultsTitle" style="margin-bottom:10px">Trending Songs</h3>
     <div class="music-list" id="musicResultsList"></div>
+
+    <!-- AD: below Music list (Trending/Liked/Downloaded/History all render into musicResultsList above, so this one slot covers all of them) -->
+    <div class="ad-banner-slot"></div>
   </div>
 </div>
 
@@ -2127,6 +2193,29 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.database();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
+
+/* Forces Firebase Auth to persist the session in IndexedDB/localStorage
+   (survives closing the tab, restarting the browser, and reopening the
+   installed PWA) instead of relying on Firebase's implicit default.
+   Without this explicit call, some environments — the app opened as an
+   installed PWA/home-screen icon, Safari's storage partitioning, some
+   Android WebView wrappers — fall back to session-only or in-memory
+   persistence, which silently signs the user out the moment the tab/app
+   is closed. This is what caused "I have to log in again every single
+   time." setPersistence() must be called and awaited BEFORE any sign-in
+   or getRedirectResult() call, so this runs immediately at load. The lock
+   overlay defaults to display:none in the HTML and is only ever shown from
+   a user action (see authLockOverlay usage below), so there's no
+   flash-of-"please sign in" while this and the first onAuthStateChanged
+   callback are still resolving. */
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => {
+  // Some privacy modes (Safari private browsing, some locked-down
+  // corporate/managed browsers) block IndexedDB entirely, so this can
+  // legitimately reject there — falling back to Firebase's default
+  // in that case is the best available option, so this is deliberately
+  // non-fatal and never blocks the rest of the app from loading.
+  console.warn('[MINEXUS] Could not set LOCAL auth persistence, using default:', err);
+});
 </script>
 <script src="/ads-engine.js"></script>
 <script>
@@ -3027,14 +3116,46 @@ function esc(s) {
    lives in memory, so nothing can ever fail to parse. */
 let _registrySeq = 0;
 const _itemRegistry = new Map();
+/* REAL BUG FIXED HERE: this registry backs every card's click handler
+   (see the delegated click listener further below) — a card only knows
+   which item it represents via this map's key. The old version gave every
+   single registerItem() call a brand-new sequential key and evicted the
+   OLDEST entry once the map passed 500 items. That sounds generous, but
+   every view render (Home rows, Movies grid, Series grid, infinite scroll,
+   Calendar, News, Account/History/Watchlist/Likes, search dropdown) calls
+   this per card, including RE-renders of the exact same items — switching
+   tabs back and forth, a Firebase listener firing again, scrolling a grid
+   — so the 500-item budget got burned through fast in an ordinary browsing
+   session, and the CARD THAT GOT EVICTED FIRST was always whichever one
+   had sat around longest — which is exactly the item currently open in
+   Account > History, since a person typically browses around FIRST and
+   checks History later. The result: tapping a history/watchlist/likes
+   card silently did nothing (getRegisteredItem returned undefined, so the
+   `if (item)` guard below just no-opped) — no error, it just didn't work,
+   which is what looked like "history is bugged."
+   FIX: key the registry by the item's own stable id+type instead of a
+   counter, so re-registering the SAME item (which happens constantly on
+   re-renders) reuses its existing entry instead of burning a new eviction
+   slot. This alone eliminates almost all churn, since most "different"
+   registerItem() calls across re-renders are actually the same handful of
+   titles over and over. The cap is also raised and now evicts by ACTUAL
+   recency of use (a re-registered item is moved to the end, i.e. treated
+   as freshly touched) rather than pure insertion order. */
+const _ITEM_REGISTRY_CAP = 2000;
+function _itemRegistryKey(item) {
+  const id = (item && (item.id ?? item.name)) || '';
+  const type = (item && item.type) || (item && item._kind) || '';
+  return `${type}:${id}`;
+}
 function registerItem(item) {
-  const key = 'r' + (_registrySeq++);
-  // Cap registry size for the same reason as the response cache — infinite
-  // scroll grids and repeated Calendar/News renders would otherwise let
-  // this grow unbounded over a long session. Evicting the oldest entries
-  // is safe: once a card scrolls out of the DOM (or a view is re-rendered),
-  // nothing references its old key anymore anyway.
-  if (_itemRegistry.size >= 500) {
+  const key = _itemRegistryKey(item) || ('r' + (_registrySeq++));
+  if (_itemRegistry.has(key)) {
+    // Already registered — refresh its position so it reads as recently
+    // used (Map preserves insertion order, so delete+re-set moves it to
+    // the end), then just update the stored object in case any fields
+    // changed since (e.g. resume progress) and return the same key.
+    _itemRegistry.delete(key);
+  } else if (_itemRegistry.size >= _ITEM_REGISTRY_CAP) {
     const oldestKey = _itemRegistry.keys().next().value;
     _itemRegistry.delete(oldestKey);
   }

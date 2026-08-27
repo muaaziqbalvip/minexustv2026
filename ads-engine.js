@@ -57,6 +57,7 @@
       this._watchMonetag();
       this._watchAdsterra();
       this._watchCustomSlots();
+      this._observeNewBannerSlots();
     },
 
     _logError(context, err) {
@@ -254,8 +255,63 @@
             if (cfg.smartlinkUrl) { supportLink.href = cfg.smartlinkUrl; supportLink.style.display = 'inline-flex'; }
             else supportLink.style.display = 'none';
           }
+          // Note: the repeatable .ad-banner-slot placements (see the CSS
+          // comment above and _observeNewBannerSlots below) are filled by
+          // their OWN dedicated key320x50 listener, not from here — kept
+          // separate so a grid re-render's MutationObserver callback can
+          // re-fill instantly from a cached value instead of needing a
+          // fresh Firebase read every time.
         } catch (e) { this._logError('adsterra-config-listener', e); }
       }, err => this._logError('adsterra-firebase-read', err));
+    },
+
+    /* Fills every .ad-banner-slot element currently in the DOM. Re-run on
+       every re-render (see the MutationObserver setup below) since views
+       like Movies/Series/Account rebuild their grid's innerHTML on tab
+       switch, filter change, or infinite scroll — which destroys and
+       recreates these elements, so a one-time fill at page load would
+       only ever have caught the very first render. */
+    _fillAllBannerSlots(key) {
+      if (!key) return;
+      document.querySelectorAll('.ad-banner-slot').forEach(el => {
+        // Skip ones already filled with this exact key — renderBanner
+        // already rebuilds the iframe unconditionally, so this check
+        // avoids needlessly tearing down and reloading an ad that's
+        // already showing correctly every time this function re-runs.
+        if (el.dataset.bannerKey === key) return;
+        el.dataset.bannerKey = key;
+        this.renderBanner(el, key, 320, 50);
+        el.classList.add('ad-banner-visible');
+      });
+    },
+
+    /* Watches for new .ad-banner-slot elements being added anywhere in the
+       page (grid re-renders, tab switches, infinite scroll appending more
+       cards) and fills them automatically — without this, a slot added to
+       the DOM after the initial Firebase config read would stay empty
+       forever, since _watchAdsterra's listener only re-fires when the
+       CONFIG changes in Firebase, not when new markup appears locally. */
+    _observeNewBannerSlots() {
+      let debounceTimer = null;
+      const obs = new MutationObserver(() => {
+        // Debounced: a single grid re-render can trigger dozens of
+        // individual childList mutations in one tick (each card being
+        // inserted), so this waits for the DOM churn to settle before
+        // scanning once, instead of re-scanning the whole document on
+        // every individual node insertion.
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          if (this._lastBannerKey) this._fillAllBannerSlots(this._lastBannerKey);
+        }, 150);
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+      // Cache the key separately from the Firebase listener closure above
+      // so this observer (which fires on unrelated DOM churn constantly)
+      // can re-fill without needing its own Firebase read every time.
+      this._db.ref('app_config/adsterra/key320x50').on('value', snap => {
+        this._lastBannerKey = snap.val() || null;
+        this._fillAllBannerSlots(this._lastBannerKey);
+      });
     },
 
     /* ---- CUSTOM AD SLOTS (AdSense or other verified banner embeds) ---- */

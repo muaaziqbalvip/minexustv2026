@@ -24,6 +24,13 @@ a{color:#00d2ff}
 .contact-box{background:#141724;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;margin-top:20px}
 .ad-slot-policy{margin:24px 0;border-radius:12px;overflow:hidden;background:#141724;border:1px solid rgba(255,255,255,.08);min-height:50px;display:flex;align-items:center;justify-content:center;position:relative;padding-top:14px}
 .ad-slot-policy::before{content:'Advertisement';position:absolute;top:4px;left:8px;font-size:9px;font-weight:700;color:#5d637a;letter-spacing:.5px;text-transform:uppercase;opacity:.6;pointer-events:none}
+/* Same repeatable 320x50 slot class used across index.html (see the CSS
+   comment there) — this lets the standalone Privacy/Terms pages pick up
+   any number of ad placements from the same shared ads-engine.js, styled
+   to match this page's own dark theme instead of the main app's variables. */
+.ad-banner-slot{margin:20px 0;border-radius:12px;overflow:hidden;background:#141724;border:1px solid rgba(255,255,255,.08);min-height:66px;display:none;align-items:center;justify-content:center;position:relative;padding-top:16px}
+.ad-banner-slot.ad-banner-visible{display:flex}
+.ad-banner-slot::before{content:'Sponsored';position:absolute;top:5px;left:10px;font-size:9px;font-weight:800;color:#5d637a;letter-spacing:.6px;text-transform:uppercase;opacity:.65;pointer-events:none}
 </style>
 </head>
 <body>
@@ -60,6 +67,9 @@ a{color:#00d2ff}
   <li><strong>Third-party streaming embed providers:</strong> when you play a title, the video is served by an external embed provider. We don't control their data practices; avoid entering personal information on any page that isn't part of minexustv.vercel.app itself.</li>
 </ul>
 
+<!-- AD: mid-content -->
+<div class="ad-banner-slot"></div>
+
 <h2>Your Choices</h2>
 <ul>
   <li>You can review and delete your watch history, watchlist, and likes at any time from your Account page.</li>
@@ -75,6 +85,9 @@ a{color:#00d2ff}
 
 <h2>Changes to This Policy</h2>
 <p>We may update this Privacy Policy from time to time. Continued use of the app after changes means you accept the updated policy.</p>
+
+<!-- AD: below main content, before Contact -->
+<div class="ad-banner-slot"></div>
 
 <h2>Contact Us</h2>
 <div class="ad-slot-policy" id="adsterraSlot160x300" style="display:none;min-height:300px"></div>

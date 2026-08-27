@@ -115,6 +115,21 @@ input,select,textarea{font-family:inherit;border:none;outline:none}
 .status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
 
 .content-body{padding:28px;max-width:1300px}
+/* Repeatable ad banner slot — filled by ads-engine.js from the same
+   Adsterra 320x50 key used across the main app (see index.html), so
+   Admin Panel picks up Monetization config automatically too. */
+.ad-banner-slot{
+  border-radius:var(--radius);overflow:hidden;
+  background:var(--bg-card);border:1px solid var(--border);
+  min-height:66px;display:none;align-items:center;justify-content:center;
+  position:relative;padding-top:16px;
+}
+.ad-banner-slot.ad-banner-visible{display:flex}
+.ad-banner-slot::before{
+  content:'Sponsored';position:absolute;top:5px;left:10px;font-size:9px;
+  font-weight:800;color:var(--text-muted);letter-spacing:.6px;
+  text-transform:uppercase;opacity:.65;pointer-events:none;
+}
 .tab-content{display:none}
 .tab-content.active{display:block}
 
@@ -1129,6 +1144,12 @@ tr:hover td{background:var(--bg-card-hover)}
     </div>
 
   </div>
+
+  <!-- AD: persistent slot at the bottom of every Admin Panel tab (outside
+       .content-body's per-tab divs, so it always shows regardless of
+       which section is active, without needing to duplicate it into
+       every single tab-content block). -->
+  <div class="ad-banner-slot" style="margin:20px 28px"></div>
 </main>
 
 </div>
@@ -1152,6 +1173,16 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
+</script>
+<script src="/ads-engine.js"></script>
+<script>
+// Loads the same shared ads engine used across index.html and the
+// standalone Privacy/Terms pages, so the .ad-banner-slot placed at the
+// bottom of the Admin Panel (see the markup above) picks up whatever
+// Adsterra key is configured in Monetization, same as everywhere else.
+if (window.MinexusAdsEngine) window.MinexusAdsEngine.init(db);
+</script>
+<script>
 
 function toast(msg) {
   const t = document.createElement('div');
