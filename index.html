@@ -707,7 +707,29 @@ input,select{font-family:inherit}
 }
 .acc-stab.active{background:var(--accent);color:#fff;border-color:transparent}
 
+.acc-type-filter{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none}
+.acc-type-filter::-webkit-scrollbar{display:none}
+.acc-type-btn{
+  display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;font-size:10.5px;font-weight:700;
+  background:transparent;color:var(--text3);border:1px solid var(--border);white-space:nowrap;
+}
+.acc-type-btn.active{background:var(--bg3);color:#fff;border-color:var(--border-active)}
+.acc-type-btn i{font-size:10px}
+
 .acc-list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+
+.acc-unified-card{
+  position:relative;border-radius:12px;overflow:hidden;cursor:pointer;background:var(--bg3);
+  border:1px solid var(--border);transition:.15s;
+}
+.acc-unified-card:hover{border-color:var(--border-active);transform:translateY(-2px)}
+.acc-unified-art{width:100%;aspect-ratio:1/1;background:var(--bg4);overflow:hidden}
+.acc-unified-art img{width:100%;height:100%;object-fit:cover}
+.acc-unified-badge{
+  position:absolute;top:6px;left:6px;font-size:8px;font-weight:800;color:#fff;
+  padding:2px 6px;border-radius:5px;letter-spacing:.4px;
+}
+.acc-unified-title{padding:8px;font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ===== LIVE TV VIEW STYLING ===== */
 .live-header{
@@ -1040,6 +1062,18 @@ input,select{font-family:inherit}
   position:relative;
 }
 .ad-slot::before{
+  content:'Advertisement';
+  position:absolute;top:4px;left:8px;font-size:9px;font-weight:700;
+  color:var(--text3);letter-spacing:.5px;text-transform:uppercase;
+  opacity:.6;pointer-events:none;
+}
+.ad-slot-adsterra{
+  margin:14px;border-radius:12px;overflow:hidden;
+  background:var(--bg3);border:1px solid var(--border);
+  min-height:50px;display:flex;align-items:center;justify-content:center;
+  position:relative;padding-top:14px;
+}
+.ad-slot-adsterra::before{
   content:'Advertisement';
   position:absolute;top:4px;left:8px;font-size:9px;font-weight:700;
   color:var(--text3);letter-spacing:.5px;text-transform:uppercase;
@@ -1552,6 +1586,7 @@ input,select{font-family:inherit}
 
   <!-- AD SLOT: Home Top (below hero, above content — high visibility, non-intrusive) -->
   <div class="ad-slot" id="adSlotHomeTop" style="display:none"></div>
+  <div class="ad-slot-adsterra" id="adsterraSlot320x50" style="display:none"></div>
 
   <!-- DIRECT PLAY BAR -->
   <section>
@@ -1600,6 +1635,8 @@ input,select{font-family:inherit}
 
   <!-- AD SLOT: Between Home Rows (natural scroll-break placement) -->
   <div class="ad-slot" id="adSlotHomeMid" style="display:none"></div>
+  <div class="ad-slot-adsterra" id="adsterraSlot160x300" style="display:none"></div>
+  <div class="ad-slot-adsterra" id="adsterraSlotNative" style="display:none;margin:16px 14px"></div>
 
   <!-- BOLLYWOOD & DESI CINEMA -->
   <section class="section">
@@ -1631,6 +1668,17 @@ input,select{font-family:inherit}
         <button class="see-all" data-view="live">See All</button>
       </div>
       <div class="h-scroll" id="livePrevRow"></div>
+    </div>
+  </section>
+
+  <!-- MUSIC PREVIEW (v6 — Home now surfaces Music alongside Movies/Series/Live TV) -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-header">
+        <h2 class="section-title"><span class="accent">🎵</span> Trending Music</h2>
+        <button class="see-all" data-view="music">See All</button>
+      </div>
+      <div class="h-scroll music-home-row" id="musicPrevRow"></div>
     </div>
   </section>
 
@@ -1807,10 +1855,21 @@ input,select{font-family:inherit}
     <div class="acc-sub-tabs" id="accSubTabs">
       <button class="acc-stab active" data-sub="history"><i class="fas fa-history"></i> Watch History</button>
       <button class="acc-stab" data-sub="watchlist"><i class="fas fa-bookmark"></i> My Watchlist</button>
-      <button class="acc-stab" data-sub="likes"><i class="fas fa-heart"></i> Liked Movies</button>
+      <button class="acc-stab" data-sub="likes"><i class="fas fa-heart"></i> Liked</button>
       <button class="acc-stab" data-sub="searches"><i class="fas fa-search"></i> Searches</button>
       <button class="acc-stab" data-sub="invite"><i class="fas fa-user-plus"></i> Invite Friends</button>
       <button class="acc-stab" data-sub="settings"><i class="fas fa-gear"></i> Settings</button>
+    </div>
+
+    <!-- Content-type filter — applies within History/Likes/Searches so
+         Movies, Series, Live TV, and Music all show in ONE place instead
+         of music/live having no visibility in the account section at all. -->
+    <div class="acc-type-filter" id="accTypeFilter">
+      <button class="acc-type-btn active" data-type="all"><i class="fas fa-layer-group"></i> All</button>
+      <button class="acc-type-btn" data-type="movie"><i class="fas fa-film"></i> Movies</button>
+      <button class="acc-type-btn" data-type="series"><i class="fas fa-tv"></i> Series</button>
+      <button class="acc-type-btn" data-type="live"><i class="fas fa-satellite-dish"></i> Live TV</button>
+      <button class="acc-type-btn" data-type="music"><i class="fas fa-music"></i> Music</button>
     </div>
 
     <div id="accTabContent" class="acc-list-grid"></div>
@@ -1854,6 +1913,7 @@ input,select{font-family:inherit}
 
   <!-- AD SLOT: Player (below server picker, never covers the video — highest natural engagement zone) -->
   <div class="ad-slot" id="adSlotPlayer" style="display:none"></div>
+  <div class="ad-slot-adsterra" id="adsterraSlot468x60" style="display:none"></div>
 
   <!-- Series Episode Bar -->
   <div class="episodes-section" id="episodesSection" style="display:none">
@@ -2910,6 +2970,7 @@ const S = {
   activeItem: null, activeServer: 'server1', defaultServer: 'server1',
   activeSeason: 1, activeEpisode: 1, seriesMeta: null,
   likedSongs: {}, // synced from Firebase once signed in — see initMusicView()
+  accountTypeFilter: 'all', // all | movie | series | live | music — see renderAccountView()
   moviesFilter: 'all', moviesSkip: 0, moviesSeenIds: new Set(),
   seriesFilter: 'all', seriesSkip: 0, seriesSeenIds: new Set(),
   channels: [], customChannels: [], activeCountry: 'PK',
@@ -3149,6 +3210,85 @@ async function loadRows(retry = true) {
       if (el) el.innerHTML = `<div style="padding:20px;color:var(--text3);font-size:12px">Couldn't load — <a href="#" onclick="loadRows();return false;" style="color:var(--accent)">tap to retry</a></div>`;
     });
   }
+
+  loadHomeLiveAndMusicPreviews();
+}
+
+/* ---- HOME PAGE: LIVE TV + MUSIC PREVIEW ROWS (v6) ----
+   Previously #livePrevRow existed in the HTML but nothing ever populated
+   it — the Home page's "Live Channels" row was a permanently-empty
+   placeholder. This fills it from S.customChannels (Admin-configured
+   channels, already live-synced via the custom_channels Firebase listener
+   at page load — see near the bottom of this file — so it's available
+   almost immediately without waiting on an M3U fetch), and adds an
+   equivalent Music preview row so Home surfaces all four content types
+   (Movies, Series, Live TV, Music) the way Muaaz asked for, instead of
+   Music having zero presence on the main landing page. */
+async function loadHomeLiveAndMusicPreviews() {
+  const liveRow = document.getElementById('livePrevRow');
+  if (liveRow) {
+    const preview = (S.customChannels || []).slice(0, 12);
+    if (preview.length) {
+      liveRow.innerHTML = preview.map(ch => {
+        const key = registerItem(ch);
+        ch._key = key;
+        return `
+        <div class="channel-card" data-key="${key}" style="flex-shrink:0;width:150px;scroll-snap-align:start" data-home-live-key="${key}">
+          <div class="channel-logo-wrap">
+            ${ch.logo ? `<img class="channel-logo" src="${esc(ch.logo)}" alt="${esc(ch.name)}" onerror="this.style.display='none'">` : ''}
+            <div class="channel-logo-fallback">${esc((ch.name || '?').slice(0, 3).toUpperCase())}</div>
+            <div class="channel-live-badge">LIVE</div>
+          </div>
+          <div class="channel-info">
+            <div class="channel-name">${esc(ch.name)}</div>
+            <div class="channel-country">${esc(ch.country || '')} • Live Stream</div>
+          </div>
+        </div>
+      `;
+      }).join('');
+      liveRow.querySelectorAll('[data-home-live-key]').forEach(el => {
+        el.addEventListener('click', () => {
+          const ch = getRegisteredItem(el.dataset.homeLiveKey);
+          if (ch) { switchView('live'); setTimeout(() => openLivePlayer(ch), 50); }
+        });
+      });
+    } else {
+      liveRow.innerHTML = `<div style="padding:14px;color:var(--text3);font-size:11.5px">No channels configured yet — check back soon.</div>`;
+    }
+  }
+
+  const musicRow = document.getElementById('musicPrevRow');
+  if (musicRow) {
+    try {
+      const seeds = ['Bollywood hits 2026', 'Punjabi hits 2026', 'Pakistani hits'];
+      const seed = seeds[Math.floor(Math.random() * seeds.length)];
+      const data = await musicApiGet(`/search/songs?query=${encodeURIComponent(seed)}&limit=12`);
+      const results = data?.data?.results || data?.results || [];
+      const songs = results.map(normalizeSong).filter(s => s.audioUrl);
+      if (songs.length) {
+        musicRow.innerHTML = songs.map((s, i) => `
+          <div class="music-card" data-home-music-idx="${i}" style="scroll-snap-align:start">
+            <div class="music-card-art-wrap">
+              <img src="${esc(s.image)}" alt="" onerror="this.style.opacity=0">
+              <div class="music-card-playbtn"><i class="fas fa-play"></i></div>
+            </div>
+            <div class="music-card-title">${esc(s.title)}</div>
+            <div class="music-card-artist">${esc(s.artist)}</div>
+          </div>
+        `).join('');
+        musicRow.querySelectorAll('[data-home-music-idx]').forEach(el => {
+          el.addEventListener('click', () => {
+            switchView('music');
+            setTimeout(() => { musicState.queue = songs; playMusicAt(+el.dataset.homeMusicIdx); }, 50);
+          });
+        });
+      } else {
+        musicRow.innerHTML = `<div style="padding:14px;color:var(--text3);font-size:11.5px">Music preview unavailable right now.</div>`;
+      }
+    } catch (e) {
+      musicRow.innerHTML = `<div style="padding:14px;color:var(--text3);font-size:11.5px">Music preview unavailable right now.</div>`;
+    }
+  }
 }
 
 /* ---- GRIDS ----
@@ -3369,6 +3509,18 @@ function openLivePlayer(ch) {
     </div>
   `;
   S.activeLiveChannel = ch;
+
+  // Save to per-account Live TV watch history (mirrors how movie/series
+  // history works) so it can show up in Account → History alongside
+  // movies/series/music — this is what Muaaz asked for: everything the
+  // person has watched/listened to, in one unified account view, not just
+  // movies. Guests can still watch Live TV freely; this only records for
+  // signed-in accounts, same as movie history.
+  if (S.user) {
+    db.ref(`users/${S.user.uid}/liveHistory/${ch.id || ch.name.replace(/[.#$/\[\]]/g, '_')}`).set({
+      name: ch.name, logo: ch.logo || '', country: ch.country || '', watchedAt: firebase.database.ServerValue.TIMESTAMP
+    }).catch(() => {});
+  }
 
   // Track which live channels people actually watch — powers the Live TV
   // breakdown in Admin → Analytics.
@@ -5537,12 +5689,29 @@ function refreshAccountCounts() {
   if (lk) lk.textContent = Object.keys(S.likes || {}).length;
 }
 
-function renderAccountView() {
+/* ---- UNIFIED ACCOUNT VIEW (v6) ----
+   Previously Account → History/Watchlist/Likes/Searches only ever showed
+   movies and series — Live TV and Music had no presence here at all, even
+   though both have their own like/history/search data elsewhere in the
+   app (users/{uid}/liveHistory, users/{uid}/music/liked,
+   users/{uid}/music/searchHistory). This unifies all four content types
+   into the same History/Likes/Searches tabs, with an "All / Movies /
+   Series / Live TV / Music" filter row so a person can see everything
+   they've watched or listened to in one place, or narrow to just one
+   content type — matching how a real account/profile page works rather
+   than treating music and live TV as second-class, invisible-in-account
+   features. */
+async function renderAccountView() {
   const contentEl = document.getElementById('accTabContent');
   const sub = S.accountSubTab;
+  const typeFilterEl = document.getElementById('accTypeFilter');
 
   // Settings (theme, autoplay, etc) are device-level, not account-bound —
-  // guests can use these freely without signing in.
+  // guests can use these freely without signing in. Invite also has its
+  // own dedicated layout. Neither needs the content-type filter row.
+  const showsTypeFilter = !['settings', 'invite'].includes(sub);
+  if (typeFilterEl) typeFilterEl.style.display = showsTypeFilter ? 'flex' : 'none';
+
   if (sub === 'settings') { renderSettingsTab(contentEl); return; }
 
   if (!S.user) {
@@ -5562,26 +5731,139 @@ function renderAccountView() {
 
   if (sub === 'invite') { renderInviteTab(contentEl); return; }
 
-  let items = [];
-  if (sub === 'history') items = Object.values(S.history || {}).reverse();
-  else if (sub === 'watchlist') items = Object.values(S.watchlist || {}).reverse();
-  else if (sub === 'likes') items = Object.values(S.likes || {}).reverse();
-  else if (sub === 'searches') {
-    contentEl.innerHTML = S.searches.map(s => `
-      <div style="padding:10px;background:var(--bg4);border-radius:8px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px">
-        <i class="fas fa-search" style="color:var(--accent)"></i> ${esc(s.query)}
-      </div>
-    `).join('') || '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text3)">No searches yet</div>';
+  const typeFilter = S.accountTypeFilter;
+  contentEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px"><div class="spinner" style="margin:0 auto"></div></div>`;
+
+  if (sub === 'searches') { renderUnifiedSearches(contentEl, typeFilter); return; }
+
+  // History/Watchlist/Likes: gather each content type's items (skipping
+  // any fetch for a type the filter has excluded, to avoid unnecessary
+  // Firebase reads), tag each with its type, then merge and sort by
+  // recency so "All" gives one genuinely unified, time-ordered feed rather
+  // than movies-then-live-then-music stacked in separate unrelated blocks.
+  let combined = [];
+
+  if (typeFilter === 'all' || typeFilter === 'movie' || typeFilter === 'series') {
+    let items = [];
+    if (sub === 'history') items = Object.values(S.history || {});
+    else if (sub === 'watchlist') items = Object.values(S.watchlist || {});
+    else if (sub === 'likes') items = Object.values(S.likes || {});
+    items = items.filter(i => typeFilter === 'all' || i.type === typeFilter || (typeFilter === 'movie' && !i.type));
+    combined.push(...items.map(i => ({ ...i, _kind: i.type === 'series' ? 'series' : 'movie', _sortTime: i.watchedAt || i.addedAt || i.likedAt || 0 })));
+  }
+
+  if ((typeFilter === 'all' || typeFilter === 'live') && sub === 'history') {
+    // Live TV only has a watch history (no separate "watchlist" or "like"
+    // concept for a channel — you either watch it or you don't), so it
+    // only appears under the History tab, not Watchlist/Likes.
+    const snap = await db.ref(`users/${S.user.uid}/liveHistory`).get();
+    const liveItems = Object.values(snap.val() || {});
+    combined.push(...liveItems.map(ch => ({
+      id: `live-${ch.name}`, title: ch.name, poster: ch.logo, _kind: 'live',
+      _sortTime: ch.watchedAt || 0, _liveChannel: ch
+    })));
+  }
+
+  if (typeFilter === 'all' || typeFilter === 'music') {
+    let musicItems = [];
+    if (sub === 'history') {
+      // Music has no dedicated "play history" node (only search history +
+      // liked songs) — the most useful "history"-equivalent for music is
+      // recently liked, since that's what's actually saved per-song.
+      const snap = await db.ref(`users/${S.user.uid}/music/liked`).orderByChild('likedAt').limitToLast(30).get();
+      musicItems = Object.values(snap.val() || {}).map(s => ({ ...s, _sortTime: s.likedAt || 0 }));
+    } else if (sub === 'likes') {
+      const snap = await db.ref(`users/${S.user.uid}/music/liked`).get();
+      musicItems = Object.values(snap.val() || {}).map(s => ({ ...s, _sortTime: s.likedAt || 0 }));
+    }
+    combined.push(...musicItems.map(s => ({ ...s, id: s.id, title: s.title, poster: s.image, _kind: 'music', _song: s })));
+  }
+
+  combined.sort((a, b) => (b._sortTime || 0) - (a._sortTime || 0));
+
+  if (!combined.length) {
+    contentEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text3)">No items saved in ${esc(sub)}${typeFilter !== 'all' ? ` (${esc(typeFilter)})` : ''} yet.</div>`;
     return;
   }
 
-  if (!items.length) {
-    contentEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text3)">No items saved in ${sub} yet.</div>`;
-    return;
-  }
-
-  contentEl.innerHTML = items.map(i => buildCard(i, 'standard')).join('');
+  contentEl.innerHTML = combined.map(i => renderAccountItemCard(i)).join('');
+  attachAccountItemHandlers(contentEl, combined);
 }
+
+/* Renders one card in the unified account grid — visually consistent
+   regardless of content type (movie/series poster card, a live-TV logo
+   card, or a music art card), each with a small badge indicating which
+   type it is so "All" view stays scannable. */
+function renderAccountItemCard(item) {
+  if (item._kind === 'live') {
+    return `
+      <div class="acc-unified-card" data-live-replay="${esc(item._liveChannel ? JSON.stringify(item._liveChannel) : '')}">
+        <div class="acc-unified-art" style="display:flex;align-items:center;justify-content:center;background:var(--bg4)">
+          ${item.poster ? `<img src="${esc(item.poster)}" style="width:70%;height:70%;object-fit:contain">` : '<i class="fas fa-satellite-dish" style="font-size:22px;color:var(--text3)"></i>'}
+        </div>
+        <div class="acc-unified-badge" style="background:#ff6b6b">LIVE TV</div>
+        <div class="acc-unified-title">${esc(item.title)}</div>
+      </div>
+    `;
+  }
+  if (item._kind === 'music') {
+    return `
+      <div class="acc-unified-card" data-music-play="${esc(JSON.stringify(item._song))}">
+        <div class="acc-unified-art"><img src="${esc(item.poster)}" onerror="this.style.opacity=0"></div>
+        <div class="acc-unified-badge" style="background:var(--cyan)">MUSIC</div>
+        <div class="acc-unified-title">${esc(item.title)}</div>
+      </div>
+    `;
+  }
+  // Movie/Series — reuse the app's existing standard card builder so
+  // clicking it opens the player exactly like it does everywhere else.
+  return buildCard(item, 'standard');
+}
+
+function attachAccountItemHandlers(container, combined) {
+  container.querySelectorAll('[data-live-replay]').forEach(el => {
+    el.addEventListener('click', () => {
+      try {
+        const ch = JSON.parse(el.dataset.liveReplay);
+        switchView('live');
+        setTimeout(() => openLivePlayer(ch), 50);
+      } catch (e) { toast('Could not reopen this channel', 'error'); }
+    });
+  });
+  container.querySelectorAll('[data-music-play]').forEach(el => {
+    el.addEventListener('click', () => {
+      try {
+        const song = JSON.parse(el.dataset.musicPlay);
+        switchView('music');
+        setTimeout(() => { musicState.queue = [song]; playMusicAt(0); }, 50);
+      } catch (e) { toast('Could not play this song', 'error'); }
+    });
+  });
+}
+
+/* Searches tab: merges movie/series search history (S.searches, already
+   loaded) with music search history (users/{uid}/music/searchHistory),
+   respecting the same type filter. */
+async function renderUnifiedSearches(contentEl, typeFilter) {
+  let rows = [];
+  if (typeFilter === 'all' || typeFilter === 'movie' || typeFilter === 'series') {
+    rows.push(...(S.searches || []).map(s => ({ query: s.query, time: s.time, _kind: 'movie' })));
+  }
+  if (typeFilter === 'all' || typeFilter === 'music') {
+    const musicHistory = await getMusicSearchHistory();
+    rows.push(...musicHistory.map(h => ({ query: h.query, time: h.time, _kind: 'music' })));
+  }
+  rows.sort((a, b) => (b.time || 0) - (a.time || 0));
+
+  contentEl.innerHTML = rows.length ? rows.map(s => `
+    <div style="padding:10px;background:var(--bg4);border-radius:8px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px">
+      <i class="fas ${s._kind === 'music' ? 'fa-music' : 'fa-search'}" style="color:${s._kind === 'music' ? 'var(--cyan)' : 'var(--accent)'}"></i>
+      ${esc(s.query)}
+      <span style="margin-left:auto;font-size:9px;color:var(--text3);text-transform:uppercase">${s._kind}</span>
+    </div>
+  `).join('') : '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text3)">No searches yet</div>';
+}
+
 
 /* ---- REFERRAL CREDITING ----
    Called on every sign-in. Only actually credits points once per account —
@@ -5746,6 +6028,17 @@ function renderSettingsTab(contentEl) {
         <a href="${esc(apkUrl)}" download class="btn btn-primary" style="flex-shrink:0;padding:9px 14px"><i class="fas fa-download"></i></a>
       </div>
       ` : ''}
+
+      <a href="#" id="supportUsSmartlink" target="_blank" rel="noopener" style="display:none;align-items:center;gap:10px;background:linear-gradient(135deg,var(--bg3),var(--bg4));border:1px solid var(--border-active);border-radius:14px;padding:14px 16px;text-decoration:none;color:inherit">
+        <div style="width:38px;height:38px;border-radius:10px;background:rgba(255,182,72,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="fas fa-heart" style="font-size:16px;color:var(--gold)"></i>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:800">Support MINEXUS TV</div>
+          <div style="font-size:11px;color:var(--text3)">Tap here to help keep the app free — no signup, just a click</div>
+        </div>
+        <i class="fas fa-arrow-up-right-from-square" style="color:var(--text3);flex-shrink:0"></i>
+      </a>
 
       <div class="settings-row">
         <div class="settings-row-text">
@@ -5975,6 +6268,111 @@ db.ref('app_config/monetag').on('value', snap => {
   else loadMonetagScript(cfg.vignetteZone, 'vignette');
   if (cfg.ippRaw) loadMonetagRaw(cfg.ippRaw, 'ipp');
   else loadMonetagScript(cfg.ippZone, 'ipp');
+});
+
+/* ---- ADSTERRA (Banner sizes, Native Banner, Social Bar, SmartLink) ----
+   Adsterra's classic banner script sets a SHARED global variable
+   (`atOptions`) right before loading invoke.js, which reads that global
+   the instant it executes. Placing more than one banner directly in the
+   page — which this app needs, since Admin can configure up to three
+   banner sizes plus a Native Banner at once — means the second script's
+   atOptions silently overwrites the first's before the first's invoke.js
+   has necessarily finished reading it, so only the last banner (or
+   whichever wins the race) actually renders; the others just show blank
+   space with no visible error. This is a well-documented Adsterra
+   integration pitfall, not a bug in this app's code.
+
+   FIX: each banner renders inside its own same-origin-safe iframe via
+   `srcdoc`, so every banner's atOptions lives in that iframe's own
+   isolated `window` — completely independent globals, zero collision,
+   regardless of how many banner sizes are active on the same page at once. */
+function renderAdsterraBanner(container, key, width, height) {
+  if (!container || !key) { if (container) container.style.display = 'none'; return; }
+  // NOTE: the closing tag markers below are deliberately split across a
+  // string concatenation ('</scr' + 'ipt>'). This entire srcdoc string is
+  // embedded inside this file's own script tag — if a literal closing
+  // script-tag sequence appeared here unescaped, the BROWSER'S HTML PARSER
+  // (which tokenizes script boundaries before any JavaScript ever runs)
+  // would treat it as the end of THIS OUTER script block, silently
+  // truncating and breaking every function defined after this point in
+  // the file. Splitting the closing tag is the standard, necessary
+  // workaround any time HTML containing nested script tags must be built
+  // as a string literal inside another script block.
+  const closeTag = '</scr' + 'ipt>';
+  const srcdoc = `
+    <html><head><style>body{margin:0;display:flex;align-items:center;justify-content:center;background:transparent}</style></head>
+    <body>
+      <script type="text/javascript">
+        atOptions = { 'key': '${key}', 'format': 'iframe', 'height': ${height}, 'width': ${width}, 'params': {} };
+      ${closeTag}
+      <script type="text/javascript" src="//www.highperformanceformat.com/${key}/invoke.js">${closeTag}
+    </body></html>
+  `;
+  const iframe = document.createElement('iframe');
+  iframe.srcdoc = srcdoc;
+  iframe.style.cssText = `width:${width}px;height:${height}px;border:none;overflow:hidden;max-width:100%`;
+  iframe.setAttribute('scrolling', 'no');
+  container.innerHTML = '';
+  container.appendChild(iframe);
+  container.style.display = 'flex';
+  container.style.justifyContent = 'center';
+}
+
+/* Native Banner and Social Bar use a DIFFERENT domain than the sized
+   Banner formats above (revenuecpmgate.com, not highperformanceformat.com)
+   and Adsterra issues each as a complete, ready-to-paste <script src="...">
+   tag rather than a short numeric/hex key — the "key" for these formats is
+   really the full subdomain+path Adsterra generates per publisher account,
+   which can't be reliably reconstructed from a short ID the way the sized
+   banners' atOptions.key can. So these two fields store the FULL script
+   src URL the admin copies straight from their Adsterra dashboard, not a
+   short key — that's why the Admin Panel labels them "script URL" rather
+   than "key" for just these two formats. */
+function renderAdsterraDirectScript(container, scriptSrc) {
+  if (!container || !scriptSrc) { if (container) container.style.display = 'none'; return; }
+  if (container.dataset.adsterraLoaded === scriptSrc) return; // already loaded this exact unit
+  container.innerHTML = '';
+  const script = document.createElement('script');
+  script.async = true;
+  script.setAttribute('data-cfasync', 'false');
+  script.src = scriptSrc;
+  container.appendChild(script);
+  container.dataset.adsterraLoaded = scriptSrc;
+  container.style.display = 'block';
+}
+
+/* Social Bar is meant to appear ONCE, site-wide, as a small floating
+   element — not per-page-section like the banners. It's injected directly
+   into <body> rather than into any specific ad-slot div. */
+let _adsterraSocialBarLoaded = false;
+function loadAdsterraSocialBar(scriptSrc) {
+  if (!scriptSrc || _adsterraSocialBarLoaded) return;
+  _adsterraSocialBarLoaded = true;
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = scriptSrc;
+  script.setAttribute('data-cfasync', 'false');
+  document.body.appendChild(script);
+}
+
+db.ref('app_config/adsterra').on('value', snap => {
+  const cfg = snap.val() || {};
+
+  renderAdsterraBanner(document.getElementById('adsterraSlot320x50'), cfg.key320x50, 320, 50);
+  renderAdsterraBanner(document.getElementById('adsterraSlot468x60'), cfg.key468x60, 468, 60);
+  renderAdsterraBanner(document.getElementById('adsterraSlot160x300'), cfg.key160x300, 160, 300);
+  renderAdsterraDirectScript(document.getElementById('adsterraSlotNative'), cfg.nativeScriptSrc);
+  loadAdsterraSocialBar(cfg.socialBarScriptSrc);
+
+  // SmartLink is never auto-shown as a popup/redirect (that would be the
+  // intrusive "bhari" experience Muaaz specifically wants to avoid) — it's
+  // only ever attached as the href of an explicit, clearly-labeled
+  // "Support Us" link the visitor chooses to tap themselves.
+  const supportLink = document.getElementById('supportUsSmartlink');
+  if (supportLink) {
+    if (cfg.smartlinkUrl) { supportLink.href = cfg.smartlinkUrl; supportLink.style.display = 'inline-flex'; }
+    else supportLink.style.display = 'none';
+  }
 });
 
 /* ---- CUSTOM AD SLOTS (AdSense or other verified banner embeds) ----
@@ -6314,6 +6712,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!stab) return;
     S.accountSubTab = stab.dataset.sub;
     document.querySelectorAll('.acc-stab').forEach(t => t.classList.toggle('active', t === stab));
+    renderAccountView();
+  });
+
+  // ---- Account Content-Type Filter (All/Movies/Series/Live TV/Music) ----
+  document.getElementById('accTypeFilter')?.addEventListener('click', e => {
+    const btn = e.target.closest('.acc-type-btn');
+    if (!btn) return;
+    S.accountTypeFilter = btn.dataset.type;
+    document.querySelectorAll('.acc-type-btn').forEach(t => t.classList.toggle('active', t === btn));
     renderAccountView();
   });
 

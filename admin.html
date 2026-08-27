@@ -875,6 +875,64 @@ tr:hover td{background:var(--bg-card-hover)}
 
       <div class="card" style="margin-top:16px">
         <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-chart-line" style="color:#00d9ff"></i> Adsterra — Banner, Native & Social Bar</h2>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.7">
+          Enter the <b>Key</b> for the three sized Banner units — this is the value inside <code>atOptions.key</code>
+          in the script Adsterra gives you (Adsterra dashboard → your zone → e.g. "468x60" → copy the value after
+          <code>'key':</code>). Each banner is rendered inside its own isolated iframe automatically, which matters
+          because Adsterra's banner script uses one shared global variable (<code>atOptions</code>) — without
+          isolation, placing more than one banner size on the same page makes them silently overwrite each other and
+          only the last one loads. This app handles that isolation for you, so all three sizes can run together safely.
+          <br><br>
+          For <b>Native Banner</b> and <b>Social Bar</b>, paste the <b>entire <code>&lt;script src="..."&gt;</code>
+          tag's URL</b> instead — these two formats use a different domain (<code>revenuecpmgate.com</code>) and a
+          full unique path per your account rather than a short key, so copy the whole <code>src="..."</code> value
+          from the script Adsterra gives you for each.
+          <br><br>
+          <b>Recommended placement</b> (balances real earnings against not overwhelming the page):
+          <br>• <b>320x50</b> → Home Top (mobile-width banner, fits naturally under the hero)
+          <br>• <b>468x60</b> → Player page (below the server picker, highest engagement moment)
+          <br>• <b>160x300</b> → Home Middle (works well in a scroll-break, skip on very narrow phones)
+          <br>• <b>Native Banner</b> → blends into the Home feed like a content card — least intrusive, strong CPM
+          <br>• <b>Social Bar</b> → a small floating bar; one is plenty — a second copy anywhere else just competes with itself
+          <br><br>
+          Leave any field blank to disable that unit completely.
+        </p>
+        <form id="adsterraForm" class="form-grid">
+          <div class="form-group">
+            <label>320x50 Banner — Key</label>
+            <input type="text" class="form-control" id="adsterra320x50" placeholder="e.g. a1b2c3d4e5f6...">
+          </div>
+          <div class="form-group">
+            <label>468x60 Banner — Key</label>
+            <input type="text" class="form-control" id="adsterra468x60" placeholder="e.g. a1b2c3d4e5f6...">
+          </div>
+          <div class="form-group">
+            <label>160x300 Banner — Key</label>
+            <input type="text" class="form-control" id="adsterra160x300" placeholder="e.g. a1b2c3d4e5f6...">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Native Banner — full script URL (from the <code>src="..."</code> Adsterra gives you)</label>
+            <input type="text" class="form-control" id="adsterraNative" placeholder="//pl12345678.revenuecpmgate.com/xx/xx/xx/invoke.js">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Social Bar — full script URL (from the <code>src="..."</code> Adsterra gives you)</label>
+            <input type="text" class="form-control" id="adsterraSocialBar" placeholder="//pl12345678.revenuecpmgate.com/xx/xx/xx/invoke.js">
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Direct Link / SmartLink — full URL (optional, used on a "Support Us" button rather than auto-shown)</label>
+            <input type="text" class="form-control" id="adsterraSmartlink" placeholder="https://...">
+          </div>
+          <div style="grid-column:1/-1">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Adsterra Units</button>
+            <span id="adsterraStatus" style="font-size:11px;color:var(--text-muted);margin-left:10px"></span>
+          </div>
+        </form>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-header">
           <h2 class="card-title"><i class="fas fa-rectangle-ad" style="color:var(--cyan)"></i> Custom AdSense / Banner Slots</h2>
         </div>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.7">
@@ -1559,6 +1617,39 @@ document.getElementById('adSlotsForm').onsubmit = async (e) => {
   if (ippZone && !/^\d+$/.test(ippZone)) { toast('In-Page Push Zone ID should be numbers only', 'error'); return; }
   await db.ref('app_config/monetag').set({ vignetteZone, ippZone, vignetteRaw, ippRaw });
   toast('Monetag Zones Saved — live for all visitors now!');
+};
+
+// Monetization — Adsterra ad units (Banner sizes, Native, Social Bar, SmartLink)
+const ADSTERRA_FIELDS = {
+  adsterra320x50: 'key320x50',
+  adsterra468x60: 'key468x60',
+  adsterra160x300: 'key160x300',
+  adsterraNative: 'nativeScriptSrc',
+  adsterraSocialBar: 'socialBarScriptSrc',
+  adsterraSmartlink: 'smartlinkUrl'
+};
+
+db.ref('app_config/adsterra').on('value', snap => {
+  const cfg = snap.val() || {};
+  let activeCount = 0;
+  Object.entries(ADSTERRA_FIELDS).forEach(([elId, cfgKey]) => {
+    const el = document.getElementById(elId);
+    if (el) el.value = cfg[cfgKey] || '';
+    if ((cfg[cfgKey] || '').trim()) activeCount++;
+  });
+  document.getElementById('adsterraStatus').textContent = activeCount
+    ? `${activeCount} of ${Object.keys(ADSTERRA_FIELDS).length} Adsterra units active`
+    : 'No Adsterra units configured yet';
+});
+
+document.getElementById('adsterraForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const payload = {};
+  Object.entries(ADSTERRA_FIELDS).forEach(([elId, cfgKey]) => {
+    payload[cfgKey] = document.getElementById(elId).value.trim();
+  });
+  await db.ref('app_config/adsterra').set(payload);
+  toast('Adsterra Units Saved — live for all visitors now!');
 };
 
 // Monetization — Custom AdSense / banner embed slots (separate, optional)
