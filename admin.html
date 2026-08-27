@@ -1153,10 +1153,17 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
 
-function toast(msg) {
+function toast(msg, type) {
+  // BUG FIX: this always showed a green checkmark, even for error/info
+  // calls — sendRealPushNotification() (see notifications tab) needed a
+  // real distinction so a failed push doesn't visually look identical to
+  // a successful one, which would hide real failures from the admin.
+  const icon = type === 'error' ? { cls: 'fa-circle-exclamation', color: '#ff4757' }
+    : type === 'info' ? { cls: 'fa-circle-info', color: 'var(--text2)' }
+    : { cls: 'fa-check-circle', color: 'var(--green)' };
   const t = document.createElement('div');
   t.className = 'toast';
-  t.innerHTML = `<i class="fas fa-check-circle" style="color:var(--green);margin-right:6px"></i> ${msg}`;
+  t.innerHTML = `<i class="fas ${icon.cls}" style="color:${icon.color};margin-right:6px"></i> ${msg}`;
   document.getElementById('toastBox').appendChild(t);
   setTimeout(() => t.remove(), 3000);
 }
@@ -1809,6 +1816,33 @@ function renderDevContactsAdmin() {
 // Notifications
 let notifEditingId = null;
 
+// Calls /api/send-notification (see api/send-notification.js) so this
+// notification also becomes a REAL OS-level push to every device that's
+// enabled notifications — not just the in-app banner written to
+// db.ref('notifications') below, which only ever shows to someone who
+// already has the site open in a tab. Runs AFTER the Firebase write so
+// the in-app banner/history always saves even if the push call itself
+// has a transient network hiccup — a failed push is unfortunate, a lost
+// notification-history entry would be worse.
+async function sendRealPushNotification(title, message, target, notifId) {
+  try {
+    const idToken = await auth.currentUser.getIdToken();
+    const resp = await fetch('/api/send-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, message, target, notifId, idToken })
+    });
+    const data = await resp.json();
+    if (data.success) {
+      toast(data.sent > 0 ? `📲 Pushed to ${data.sent} device(s)` : 'Saved — no devices registered for push yet', data.sent > 0 ? 'success' : 'info');
+    } else {
+      toast(`⚠️ Push failed: ${data.error || 'unknown error'}`, 'error');
+    }
+  } catch (e) {
+    toast(`⚠️ Push failed: ${e.message || 'network error'}`, 'error');
+  }
+}
+
 document.getElementById('notifForm').onsubmit = async (e) => {
   e.preventDefault();
   const title = document.getElementById('notifTitle').value.trim();
@@ -1818,12 +1852,16 @@ document.getElementById('notifForm').onsubmit = async (e) => {
   if (notifEditingId) {
     // Editing an existing notification — update() so we don't lose the
     // original timestamp, and keep it in place in the history list.
+    // Intentionally does NOT re-push — a device that already received
+    // the original push shouldn't be re-notified just because the admin
+    // fixed a typo in the history record.
     await db.ref(`notifications/${notifEditingId}`).update({ title, target, message });
     toast('Notification Updated!');
     exitNotifEditMode();
   } else {
-    await db.ref('notifications').push({ title, target, message, time: firebase.database.ServerValue.TIMESTAMP });
+    const ref = await db.ref('notifications').push({ title, target, message, time: firebase.database.ServerValue.TIMESTAMP });
     toast('Push Notification Broadcasted!');
+    sendRealPushNotification(title, message, target, ref.key);
   }
   document.getElementById('notifForm').reset();
 };
@@ -1864,7 +1902,7 @@ function renderNotifHistory(items) {
   el.innerHTML = items.map(([id, n]) => `
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
       <div style="min-width:0">
-        <div style="font-weight:700;font-size:13px;margin-bottom:3px">${escapeHtml(n.title || '(untitled)')}</div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:3px">${escapeHtml(n.title || '(untitled)')}${n.auto ? ' <span style="font-size:9.5px;font-weight:700;color:var(--accent);background:rgba(255,255,255,.08);padding:2px 6px;border-radius:6px;vertical-align:middle">AUTO</span>' : ''}</div>
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">${escapeHtml(n.message || '')}</div>
         <div style="font-size:10.5px;color:var(--text-muted)">
           ${n.target ? `Target: ${escapeHtml(n.target)} • ` : ''}${n.time ? new Date(n.time).toLocaleString() : ''}

@@ -25,6 +25,20 @@
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }
       ]
+    },
+    {
+      "source": "/api/send-notification",
+      "headers": [
+        { "key": "Access-Control-Allow-Methods", "value": "POST, OPTIONS" }
+      ]
+    },
+    {
+      "source": "/firebase-messaging-sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" },
+        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
     }
   ],
   "rewrites": [
@@ -35,6 +49,7 @@
     { "source": "/terms-of-service.html", "destination": "/terms-of-service.html" },
     { "source": "/terms", "destination": "/terms-of-service.html" },
     { "source": "/sw.js", "destination": "/sw.js" },
+    { "source": "/firebase-messaging-sw.js", "destination": "/firebase-messaging-sw.js" },
     { "source": "/manifest.json", "destination": "/manifest.json" },
     { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
     { "source": "/robots.txt", "destination": "/robots.txt" },
@@ -43,6 +58,14 @@
     { "source": "/watch/:id", "destination": "/api/watch" },
     { "source": "/api/music", "destination": "/api/music" },
     { "source": "/api/stream", "destination": "/api/stream" },
+    { "source": "/api/send-notification", "destination": "/api/send-notification" },
+    { "source": "/api/cron-check-releases", "destination": "/api/cron-check-releases" },
     { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron-check-releases",
+      "schedule": "0 15 * * *"
+    }
   ]
 }
