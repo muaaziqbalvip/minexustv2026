@@ -456,6 +456,27 @@ tr:hover td{background:var(--bg-card-hover)}
       </div>
 
       <div class="card" style="margin-top:16px">
+        <div class="card-header"><h2 class="card-title"><i class="fas fa-shield-halved" style="color:var(--gold)"></i> Ad Reliability — Proof of Delivery</h2></div>
+        <p style="padding:0 16px;font-size:11.5px;color:var(--text-muted)">Every ad slot (Monetag, Adsterra, custom AdSense) is monitored by the shared ads-engine.js — a "load" is only counted after real content (an iframe or ad element) is confirmed to have actually appeared in the slot, not just that a script tag was inserted. This is genuine proof ads are rendering, not just an attempt log.</p>
+        <div class="stats-grid" style="padding:0 16px 16px">
+          <div class="stat-card">
+            <div class="stat-icon" style="color:var(--green)"><i class="fas fa-circle-check"></i></div>
+            <div><div class="stat-val" id="adStatConfirmedLoads">0</div><div class="stat-label">Confirmed Ad Loads (7d)</div></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="color:#ff6b6b"><i class="fas fa-triangle-exclamation"></i></div>
+            <div><div class="stat-val" id="adStatErrors">0</div><div class="stat-label">Ad Errors (7d)</div></div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Time</th><th>Type</th><th>Slot / Context</th><th>Page</th></tr></thead>
+            <tbody id="adReliabilityTable"><tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
         <div class="card-header"><h2 class="card-title"><i class="fas fa-fire" style="color:#ff6b6b"></i> Most Watched Movies/Series</h2></div>
         <div class="table-wrap">
           <table>
@@ -2074,6 +2095,7 @@ async function loadAnalyticsRange(days) {
 
   _analyticsLoaded = true;
   loadServerReliability();
+  loadAdReliability();
 }
 
 /* Server reliability isn't time-ranged like the rest of Analytics — it's a
@@ -2107,6 +2129,51 @@ async function loadServerReliability() {
     `).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No server data recorded yet — this fills in as real viewers watch movies/series</td></tr>';
   } catch (e) {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Couldn\'t load server data</td></tr>';
+  }
+}
+
+/* Reads the last 7 days' worth of ad load-confirmations and errors from
+   adAnalytics (written by ads-engine.js — see that file's _confirmOrRetry
+   and _logError). This is deliberately a bounded, recent-only read
+   (limitToLast) rather than scanning the whole node forever, since every
+   page view across every ad slot on every page (including Privacy Policy
+   and Terms of Service) writes here continuously. */
+async function loadAdReliability() {
+  const tbody = document.getElementById('adReliabilityTable');
+  const confirmedEl = document.getElementById('adStatConfirmedLoads');
+  const errorsEl = document.getElementById('adStatErrors');
+  if (!tbody) return;
+
+  try {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const [loadsSnap, errorsSnap] = await Promise.all([
+      db.ref('adAnalytics/loads').limitToLast(200).once('value'),
+      db.ref('adAnalytics/errors').limitToLast(200).once('value')
+    ]);
+
+    const loads = Object.values(loadsSnap.val() || {}).filter(l => l.ts && l.ts > cutoff);
+    const errors = Object.values(errorsSnap.val() || {}).filter(e => e.ts && e.ts > cutoff);
+
+    if (confirmedEl) confirmedEl.textContent = loads.length.toLocaleString();
+    if (errorsEl) errorsEl.textContent = errors.length.toLocaleString();
+
+    const combined = [
+      ...loads.map(l => ({ ...l, _type: 'load' })),
+      ...errors.map(e => ({ ...e, _type: 'error' }))
+    ].sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 30);
+
+    tbody.innerHTML = combined.length ? combined.map(entry => `
+      <tr>
+        <td style="font-size:11px;color:var(--text-muted)">${new Date(entry.ts).toLocaleString()}</td>
+        <td>${entry._type === 'load'
+          ? '<span style="color:var(--green);font-weight:700"><i class="fas fa-circle-check"></i> Confirmed</span>'
+          : '<span style="color:#ff6b6b;font-weight:700"><i class="fas fa-triangle-exclamation"></i> Error</span>'}</td>
+        <td>${escapeHtml(entry.slot || entry.context || '—')}${entry.message ? ` — <span style="color:var(--text-muted);font-size:11px">${escapeHtml(entry.message)}</span>` : ''}</td>
+        <td style="font-size:11px;color:var(--text-muted)">${escapeHtml(entry.page || '—')}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No ad activity recorded yet — this fills in as visitors load pages with ads enabled</td></tr>';
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Couldn\'t load ad reliability data</td></tr>';
   }
 }
 

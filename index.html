@@ -923,6 +923,14 @@ input,select{font-family:inherit}
 }
 @media(min-width:769px){ .mini-player{bottom:0} }
 .mini-player-progress{width:100%;height:2.5px;background:var(--bg4);cursor:pointer}
+.mini-player-download-progress{
+  height:3px;background:linear-gradient(90deg,var(--green),var(--cyan));
+  transition:width .3s linear;position:relative;
+}
+.mini-player-download-progress::after{
+  content:'⬇ Downloading song...';position:absolute;top:4px;left:8px;font-size:8.5px;
+  font-weight:700;color:var(--text2);white-space:nowrap;
+}
 .mini-player-progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--cyan),var(--accent));transition:width .2s linear}
 .mini-player-body{display:flex;align-items:center;gap:6px;padding:7px 8px}
 .mini-player-art{width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--bg4)}
@@ -2048,6 +2056,7 @@ input,select{font-family:inherit}
 <!-- ===== MINI MUSIC PLAYER (persistent, floats above bottom bar) ===== -->
 <div class="mini-player" id="miniPlayer" style="display:none">
   <div class="mini-player-progress" id="miniPlayerProgressBar"><div class="mini-player-progress-fill" id="miniPlayerProgressFill"></div></div>
+  <div class="mini-player-download-progress" id="miniPlayerDownloadProgress" style="display:none;width:0%"></div>
   <div class="mini-player-body">
     <img class="mini-player-art" id="miniPlayerArt" src="" alt="">
     <div class="mini-player-info" id="miniPlayerInfo">
@@ -2119,7 +2128,16 @@ const auth = firebase.auth();
 const db = firebase.database();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
 </script>
-
+<script src="/ads-engine.js"></script>
+<script>
+// Wire up the shared ads engine (see ads-engine.js) now that Firebase is
+// ready — this replaces the old inline Monetag/Adsterra loading logic
+// that used to live directly in this file, so Privacy Policy and Terms of
+// Service (which load the same ads-engine.js) stay in sync automatically
+// whenever ad logic is updated, instead of three separate copies drifting
+// apart over time.
+if (window.MinexusAdsEngine) window.MinexusAdsEngine.init(db);
+</script>
 <script>
 'use strict';
 
@@ -2971,6 +2989,7 @@ const S = {
   activeSeason: 1, activeEpisode: 1, seriesMeta: null,
   likedSongs: {}, // synced from Firebase once signed in — see initMusicView()
   accountTypeFilter: 'all', // all | movie | series | live | music — see renderAccountView()
+  _accountRenderToken: 0, // race-condition guard — see renderAccountView()
   moviesFilter: 'all', moviesSkip: 0, moviesSeenIds: new Set(),
   seriesFilter: 'all', seriesSkip: 0, seriesSeenIds: new Set(),
   channels: [], customChannels: [], activeCountry: 'PK',
@@ -3941,21 +3960,39 @@ function buildPlayerUI() {
   const inWl = !!(S.watchlist && S.watchlist[item.id]);
   wlBtn.className = 'player-act-btn' + (inWl ? ' active' : '');
   wlBtn.innerHTML = inWl ? '<i class="fas fa-bookmark"></i> Saved' : '<i class="far fa-bookmark"></i> Watchlist';
-  wlBtn.onclick = null;
-  wlBtn.addEventListener('click', function() { toggleWatchlist(item, wlBtn); }, { once: false });
+  // BUG FIX: buildPlayerUI() runs every time a title/episode opens or the
+  // player refreshes (including from the smart-server-cascade's own
+  // re-render), and `wlBtn.onclick = null` only ever cleared the .onclick
+  // PROPERTY — it did nothing to remove listeners previously attached via
+  // addEventListener. Each re-run was silently STACKING an additional
+  // click listener onto the same persistent DOM element (playerWlBtn is
+  // never recreated, only reused), so after opening a second title the
+  // button had 2 listeners, a third title gave it 3, and so on — a single
+  // tap fired toggleWatchlist() that many times in a row, which is
+  // exactly what looked like "double-click toggles it back off again."
+  // Cloning the node (cloneNode without deep children changes) discards
+  // every previously attached listener at once, guaranteeing exactly one
+  // listener is ever active regardless of how many times this re-runs.
+  const freshWlBtn = wlBtn.cloneNode(true);
+  wlBtn.replaceWith(freshWlBtn);
+  freshWlBtn.addEventListener('click', () => toggleWatchlist(item, freshWlBtn));
 
   // Like button
   const lkBtn = document.getElementById('playerLikeBtn');
   const inLike = !!(S.likes && S.likes[item.id]);
   lkBtn.className = 'player-act-btn' + (inLike ? ' active' : '');
   lkBtn.innerHTML = inLike ? '<i class="fas fa-heart"></i> Liked' : '<i class="far fa-heart"></i> Like';
-  lkBtn.onclick = null;
-  lkBtn.addEventListener('click', function() { toggleLike(item, lkBtn); }, { once: false });
+  // Same duplicate-listener bug and same fix as the watchlist button above.
+  const freshLkBtn = lkBtn.cloneNode(true);
+  lkBtn.replaceWith(freshLkBtn);
+  freshLkBtn.addEventListener('click', () => toggleLike(item, freshLkBtn));
 
   // Share button — copies a direct link (or opens native share sheet on mobile)
+  // Same duplicate-listener bug and fix as the watchlist/like buttons above.
   const shBtn = document.getElementById('playerShareBtn');
-  shBtn.onclick = null;
-  shBtn.addEventListener('click', function() { copyShareLink(item); }, { once: false });
+  const freshShBtn = shBtn.cloneNode(true);
+  shBtn.replaceWith(freshShBtn);
+  freshShBtn.addEventListener('click', () => copyShareLink(item));
 
   initServerButtons();
 }
@@ -4281,13 +4318,51 @@ async function isSongOffline(id) {
    download doesn't look frozen. Once complete, the song is fully playable
    with the device offline — attemptPlayback() checks IndexedDB first,
    before ever touching the network, for any song that's been downloaded. */
+/* Tracks in-progress downloads by song ID (not by DOM element reference)
+   so progress survives tab switches, list re-renders, or downloading from
+   a different screen than where the song is currently displayed (e.g.
+   starting a download from the mini-player while browsing a totally
+   different tab). Previously progress was written directly onto whichever
+   DOM row element was passed in at call time — if that element got
+   removed or replaced by a re-render (very common: switching sub-tabs,
+   a new search overwriting the results list, etc.), the download kept
+   running with NO visible progress anywhere, which is what looked like
+   "the progress bar never shows up." */
+const _activeDownloads = {}; // songId -> { received, total, title }
+
+function updateDownloadProgressUI(songId) {
+  const info = _activeDownloads[songId];
+  // Update ANY currently-rendered row/card for this song, wherever it
+  // happens to be on screen right now — not just the one that started it.
+  document.querySelectorAll(`[data-song-id="${songId}"] .music-item-dl-progress`).forEach(bar => {
+    bar.style.width = info && info.total ? `${Math.round((info.received / info.total) * 100)}%` : '0%';
+  });
+  // Also drive a persistent, always-visible indicator in the mini-player
+  // itself — this is the "reliable, always somewhere on screen" fallback
+  // that doesn't depend on any particular row still being in the DOM.
+  const miniProgress = document.getElementById('miniPlayerDownloadProgress');
+  if (miniProgress) {
+    const anyActive = Object.keys(_activeDownloads).length > 0;
+    miniProgress.style.display = anyActive ? 'block' : 'none';
+    if (info && info.total) {
+      miniProgress.style.width = `${Math.round((info.received / info.total) * 100)}%`;
+    }
+  }
+}
+
 async function downloadSongOffline(song, rowEl) {
   if (await isSongOffline(song.id)) { toast('Already downloaded', 'info'); return; }
+  if (_activeDownloads[song.id]) { toast('Already downloading...', 'info'); return; }
+
+  _activeDownloads[song.id] = { received: 0, total: 0, title: song.title };
+  updateDownloadProgressUI(song.id);
   toast(`⬇️ Downloading "${song.title}"...`, 'info');
+
   try {
     const resp = await fetch(song.audioUrl);
     if (!resp.ok || !resp.body) throw new Error('download failed');
     const total = Number(resp.headers.get('content-length')) || 0;
+    _activeDownloads[song.id].total = total;
     const reader = resp.body.getReader();
     const chunks = [];
     let received = 0;
@@ -4296,9 +4371,18 @@ async function downloadSongOffline(song, rowEl) {
       if (done) break;
       chunks.push(value);
       received += value.length;
-      if (rowEl && total) {
-        const bar = rowEl.querySelector('.music-item-dl-progress');
-        if (bar) bar.style.width = `${Math.round((received / total) * 100)}%`;
+      _activeDownloads[song.id].received = received;
+      // No content-length from the upstream CDN (happens with some
+      // chunked/streamed responses) means we genuinely can't compute a
+      // percentage — show an indeterminate "still downloading" state
+      // instead of a bar frozen at 0%, so it's honest about what's known.
+      if (!total) {
+        document.querySelectorAll(`[data-song-id="${song.id}"] .music-item-dl-progress`).forEach(bar => {
+          bar.style.width = '100%';
+          bar.style.opacity = String(0.3 + 0.4 * Math.abs(Math.sin(received / 500000)));
+        });
+      } else {
+        updateDownloadProgressUI(song.id);
       }
     }
     const audioBlob = new Blob(chunks, { type: resp.headers.get('content-type') || 'audio/mp4' });
@@ -4314,9 +4398,13 @@ async function downloadSongOffline(song, rowEl) {
 
     await saveSongOffline({ ...song, audioBlob, imageBlob, downloadedAt: Date.now() });
     toast(`✅ "${song.title}" downloaded — available offline`, 'success');
+    delete _activeDownloads[song.id];
+    updateDownloadProgressUI(song.id);
     if (musicState.activeTab === 'downloaded') renderMusicSubtab('downloaded');
     else renderMusicList(musicState.queue); // refresh badge on the row
   } catch (e) {
+    delete _activeDownloads[song.id];
+    updateDownloadProgressUI(song.id);
     toast(`⚠️ Download failed: ${e.message || 'network error'}`, 'error');
   }
 }
@@ -4863,19 +4951,20 @@ function renderMusicGroupBy(mode) {
 function renderSongRow(s, i) {
   const liked = isSongLiked(s.id);
   const offline = !!s.audioBlob; // downloaded-tab entries carry the blob directly
+  const downloading = !!_activeDownloads[s.id];
   return `
-    <div class="music-item${musicState.index === i && musicState.playing ? ' playing' : ''}" data-idx="${i}" style="position:relative;overflow:hidden">
+    <div class="music-item${musicState.index === i && musicState.playing ? ' playing' : ''}" data-idx="${i}" data-song-id="${esc(s.id)}" style="position:relative;overflow:hidden">
       <img class="music-item-art" src="${esc(s.image)}" alt="" onerror="this.style.opacity=0">
       <div class="music-item-info">
         <div class="music-item-title">${esc(s.title)} ${s.isPreviewOnly ? '<span style="font-size:9px;font-weight:800;color:#000;background:var(--gold);border-radius:5px;padding:1px 5px;margin-left:4px;vertical-align:middle">30s PREVIEW</span>' : ''} ${offline ? '<span class="music-item-badge-offline"><i class="fas fa-download"></i> Offline</span>' : ''}</div>
-        <div class="music-item-artist">${esc(s.artist)}</div>
+        <div class="music-item-artist">${esc(s.artist)}${downloading ? ' <span style="color:var(--cyan)">• Downloading...</span>' : ''}</div>
       </div>
       <button class="music-item-more" data-like-idx="${i}" title="Like" style="${liked ? 'color:var(--accent)' : ''}"><i class="${liked ? 'fas' : 'far'} fa-heart"></i></button>
-      <button class="music-item-more" data-download-idx="${i}" title="${offline ? 'Downloaded' : 'Download for offline'}"><i class="fas ${offline ? 'fa-circle-check' : 'fa-download'}" style="${offline ? 'color:var(--green)' : ''}"></i></button>
+      <button class="music-item-more" data-download-idx="${i}" title="${offline ? 'Downloaded' : 'Download for offline'}" ${downloading ? 'disabled' : ''}><i class="fas ${offline ? 'fa-circle-check' : downloading ? 'fa-spinner fa-spin' : 'fa-download'}" style="${offline ? 'color:var(--green)' : ''}"></i></button>
       <button class="music-item-more" data-playlist-idx="${i}" title="Add to playlist"><i class="fas fa-plus"></i></button>
       <button class="music-item-share" data-share-idx="${i}" title="Share"><i class="fas fa-share-nodes"></i></button>
       <div class="music-item-playbtn"><i class="fas ${musicState.index === i && musicState.playing ? 'fa-pause' : 'fa-play'}"></i></div>
-      <div class="music-item-dl-progress" style="width:0%"></div>
+      <div class="music-item-dl-progress" style="width:${downloading ? Math.round((_activeDownloads[s.id].received / (_activeDownloads[s.id].total || 1)) * 100) : 0}%"></div>
     </div>
   `;
 }
@@ -5702,6 +5791,22 @@ function refreshAccountCounts() {
    than treating music and live TV as second-class, invisible-in-account
    features. */
 async function renderAccountView() {
+  // RACE-CONDITION FIX: this function is async with several await points
+  // (liveHistory, music/liked reads). Because S.history/S.watchlist/S.likes
+  // are LIVE Firebase listeners (.on('value')), any of them firing again
+  // — from the person's own actions, another open tab, or simply Firebase
+  // re-syncing — while a previous renderAccountView() call is still
+  // mid-flight can let that OLDER, slower call finish and overwrite the
+  // DOM after a NEWER call already rendered correct content. This is
+  // exactly what "history sometimes shows, sometimes doesn't" looks like
+  // from the outside — it's not that the data isn't there, it's that a
+  // stale in-flight render occasionally wins the race and paints over the
+  // correct one. A monotonically increasing token, checked right before
+  // any DOM write, makes only the MOST RECENTLY STARTED call ever allowed
+  // to actually paint the screen — every older call safely no-ops instead.
+  const myToken = (S._accountRenderToken = (S._accountRenderToken || 0) + 1);
+  const stillCurrent = () => S._accountRenderToken === myToken;
+
   const contentEl = document.getElementById('accTabContent');
   const sub = S.accountSubTab;
   const typeFilterEl = document.getElementById('accTypeFilter');
@@ -5734,7 +5839,7 @@ async function renderAccountView() {
   const typeFilter = S.accountTypeFilter;
   contentEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px"><div class="spinner" style="margin:0 auto"></div></div>`;
 
-  if (sub === 'searches') { renderUnifiedSearches(contentEl, typeFilter); return; }
+  if (sub === 'searches') { renderUnifiedSearches(contentEl, typeFilter, stillCurrent); return; }
 
   // History/Watchlist/Likes: gather each content type's items (skipping
   // any fetch for a type the filter has excluded, to avoid unnecessary
@@ -5756,8 +5861,14 @@ async function renderAccountView() {
     // Live TV only has a watch history (no separate "watchlist" or "like"
     // concept for a channel — you either watch it or you don't), so it
     // only appears under the History tab, not Watchlist/Likes.
-    const snap = await db.ref(`users/${S.user.uid}/liveHistory`).get();
-    const liveItems = Object.values(snap.val() || {});
+    let liveItems = [];
+    try {
+      const snap = await db.ref(`users/${S.user.uid}/liveHistory`).get();
+      liveItems = Object.values(snap.val() || {});
+    } catch (e) {
+      console.warn('[MINEXUS] Failed to load Live TV history:', e);
+    }
+    if (!stillCurrent()) return; // a newer render started while this await was in flight — abandon this one
     combined.push(...liveItems.map(ch => ({
       id: `live-${ch.name}`, title: ch.name, poster: ch.logo, _kind: 'live',
       _sortTime: ch.watchedAt || 0, _liveChannel: ch
@@ -5766,19 +5877,25 @@ async function renderAccountView() {
 
   if (typeFilter === 'all' || typeFilter === 'music') {
     let musicItems = [];
-    if (sub === 'history') {
-      // Music has no dedicated "play history" node (only search history +
-      // liked songs) — the most useful "history"-equivalent for music is
-      // recently liked, since that's what's actually saved per-song.
-      const snap = await db.ref(`users/${S.user.uid}/music/liked`).orderByChild('likedAt').limitToLast(30).get();
-      musicItems = Object.values(snap.val() || {}).map(s => ({ ...s, _sortTime: s.likedAt || 0 }));
-    } else if (sub === 'likes') {
-      const snap = await db.ref(`users/${S.user.uid}/music/liked`).get();
-      musicItems = Object.values(snap.val() || {}).map(s => ({ ...s, _sortTime: s.likedAt || 0 }));
+    try {
+      if (sub === 'history') {
+        // Music has no dedicated "play history" node (only search history +
+        // liked songs) — the most useful "history"-equivalent for music is
+        // recently liked, since that's what's actually saved per-song.
+        const snap = await db.ref(`users/${S.user.uid}/music/liked`).orderByChild('likedAt').limitToLast(30).get();
+        musicItems = Object.values(snap.val() || {}).map(s => ({ ...s, _sortTime: s.likedAt || 0 }));
+      } else if (sub === 'likes') {
+        const snap = await db.ref(`users/${S.user.uid}/music/liked`).get();
+        musicItems = Object.values(snap.val() || {}).map(s => ({ ...s, _sortTime: s.likedAt || 0 }));
+      }
+    } catch (e) {
+      console.warn('[MINEXUS] Failed to load Music history:', e);
     }
+    if (!stillCurrent()) return; // abandon stale render — see token note above
     combined.push(...musicItems.map(s => ({ ...s, id: s.id, title: s.title, poster: s.image, _kind: 'music', _song: s })));
   }
 
+  if (!stillCurrent()) return; // final guard right before painting anything to the DOM
   combined.sort((a, b) => (b._sortTime || 0) - (a._sortTime || 0));
 
   if (!combined.length) {
@@ -5843,18 +5960,23 @@ function attachAccountItemHandlers(container, combined) {
 
 /* Searches tab: merges movie/series search history (S.searches, already
    loaded) with music search history (users/{uid}/music/searchHistory),
-   respecting the same type filter. */
-async function renderUnifiedSearches(contentEl, typeFilter) {
+   respecting the same type filter. `stillCurrent` guards against the same
+   stale-async-overwrite race condition described in renderAccountView(). */
+async function renderUnifiedSearches(contentEl, typeFilter, stillCurrent) {
   let rows = [];
   if (typeFilter === 'all' || typeFilter === 'movie' || typeFilter === 'series') {
     rows.push(...(S.searches || []).map(s => ({ query: s.query, time: s.time, _kind: 'movie' })));
   }
   if (typeFilter === 'all' || typeFilter === 'music') {
-    const musicHistory = await getMusicSearchHistory();
+    let musicHistory = [];
+    try { musicHistory = await getMusicSearchHistory(); }
+    catch (e) { console.warn('[MINEXUS] Failed to load music search history:', e); }
+    if (stillCurrent && !stillCurrent()) return;
     rows.push(...musicHistory.map(h => ({ query: h.query, time: h.time, _kind: 'music' })));
   }
   rows.sort((a, b) => (b.time || 0) - (a.time || 0));
 
+  if (stillCurrent && !stillCurrent()) return;
   contentEl.innerHTML = rows.length ? rows.map(s => `
     <div style="padding:10px;background:var(--bg4);border-radius:8px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px">
       <i class="fas ${s._kind === 'music' ? 'fa-music' : 'fa-search'}" style="color:${s._kind === 'music' ? 'var(--cyan)' : 'var(--accent)'}"></i>
@@ -6206,203 +6328,14 @@ db.ref('custom_servers').on('value', snap => {
   }
 });
 
-/* ---- MONETAG (Vignette Banner + In-Page Push) ----
-   These two formats are page-level scripts, not embed-code-in-a-div like
-   AdSense — Monetag's own SDK decides where/when to render them (a
-   transition-point banner for Vignette, a notification-style card for
-   IPP), so there's no fixed slot element for them the way there is for
-   the custom AdSense slots below. Instead, this loads each script exactly
-   once, sitewide, keyed off the admin-configured Zone ID from Firebase
-   app_config/monetag — the same live-sync pattern as every other
-   Admin-controlled setting in this app, so a new Zone ID goes live for
-   every visitor immediately without needing a redeploy.
+/* ---- ADS ----
+   All Monetag/Adsterra/custom-slot loading now lives in the shared
+   ads-engine.js (see MinexusAdsEngine.init(db) call above, right after
+   Firebase initializes) instead of duplicated inline here — this is what
+   lets Privacy Policy and Terms of Service load real, live ads too,
+   from the exact same Admin-configured Zone IDs, without copy-pasting
+   this logic three times. */
 
-   Loading each script only once (guarded by data-zone-loaded) matters
-   because Monetag's docs warn duplicate script tags for the same zone
-   cause ads to misbehave or simply not fire — a real risk here since
-   Firebase's .on('value') can re-fire this callback (e.g. after any other
-   admin edits app_config, even unrelated fields), and the callback must
-   stay idempotent rather than re-inserting the tag every time. */
-function loadMonetagScript(zoneId, kind) {
-  if (!zoneId) return;
-  const existing = document.querySelector(`script[data-monetag-zone="${zoneId}"]`);
-  if (existing) return; // already loaded — never insert the same zone twice
-
-  const script = document.createElement('script');
-  script.src = `//libtl.com/sdk.js`;
-  script.dataset.zone = zoneId;
-  script.dataset.monetagZone = zoneId;
-  script.dataset.monetagKind = kind;
-  // 'onclick' is Monetag's own attribute name for the auto-triggering
-  // in-page formats (Vignette/IPP show themselves on qualifying
-  // interactions without any extra code on our end) — this is the
-  // documented integration shape for these two specific formats.
-  script.setAttribute('data-cfasync', 'false');
-  document.body.appendChild(script);
-}
-
-/* Some Monetag accounts issue a slightly different tag shape than the
-   generic data-zone pattern above. If the admin pasted an exact raw
-   snippet (Admin Panel → Monetization → Advanced), that takes priority
-   over the generated Zone ID script — inserted exactly once, verbatim. */
-function loadMonetagRaw(html, kind) {
-  if (!html || !html.trim()) return;
-  if (document.querySelector(`[data-monetag-raw="${kind}"]`)) return; // already inserted
-
-  const wrapper = document.createElement('div');
-  wrapper.style.display = 'none';
-  wrapper.setAttribute('data-monetag-raw', kind);
-  wrapper.innerHTML = html;
-  document.body.appendChild(wrapper);
-  wrapper.querySelectorAll('script').forEach(oldScript => {
-    const newScript = document.createElement('script');
-    [...oldScript.attributes].forEach(attr => newScript.setAttribute(attr.name, attr.value));
-    newScript.textContent = oldScript.textContent;
-    oldScript.replaceWith(newScript);
-  });
-}
-
-db.ref('app_config/monetag').on('value', snap => {
-  const cfg = snap.val() || {};
-  if (cfg.vignetteRaw) loadMonetagRaw(cfg.vignetteRaw, 'vignette');
-  else loadMonetagScript(cfg.vignetteZone, 'vignette');
-  if (cfg.ippRaw) loadMonetagRaw(cfg.ippRaw, 'ipp');
-  else loadMonetagScript(cfg.ippZone, 'ipp');
-});
-
-/* ---- ADSTERRA (Banner sizes, Native Banner, Social Bar, SmartLink) ----
-   Adsterra's classic banner script sets a SHARED global variable
-   (`atOptions`) right before loading invoke.js, which reads that global
-   the instant it executes. Placing more than one banner directly in the
-   page — which this app needs, since Admin can configure up to three
-   banner sizes plus a Native Banner at once — means the second script's
-   atOptions silently overwrites the first's before the first's invoke.js
-   has necessarily finished reading it, so only the last banner (or
-   whichever wins the race) actually renders; the others just show blank
-   space with no visible error. This is a well-documented Adsterra
-   integration pitfall, not a bug in this app's code.
-
-   FIX: each banner renders inside its own same-origin-safe iframe via
-   `srcdoc`, so every banner's atOptions lives in that iframe's own
-   isolated `window` — completely independent globals, zero collision,
-   regardless of how many banner sizes are active on the same page at once. */
-function renderAdsterraBanner(container, key, width, height) {
-  if (!container || !key) { if (container) container.style.display = 'none'; return; }
-  // NOTE: the closing tag markers below are deliberately split across a
-  // string concatenation ('</scr' + 'ipt>'). This entire srcdoc string is
-  // embedded inside this file's own script tag — if a literal closing
-  // script-tag sequence appeared here unescaped, the BROWSER'S HTML PARSER
-  // (which tokenizes script boundaries before any JavaScript ever runs)
-  // would treat it as the end of THIS OUTER script block, silently
-  // truncating and breaking every function defined after this point in
-  // the file. Splitting the closing tag is the standard, necessary
-  // workaround any time HTML containing nested script tags must be built
-  // as a string literal inside another script block.
-  const closeTag = '</scr' + 'ipt>';
-  const srcdoc = `
-    <html><head><style>body{margin:0;display:flex;align-items:center;justify-content:center;background:transparent}</style></head>
-    <body>
-      <script type="text/javascript">
-        atOptions = { 'key': '${key}', 'format': 'iframe', 'height': ${height}, 'width': ${width}, 'params': {} };
-      ${closeTag}
-      <script type="text/javascript" src="//www.highperformanceformat.com/${key}/invoke.js">${closeTag}
-    </body></html>
-  `;
-  const iframe = document.createElement('iframe');
-  iframe.srcdoc = srcdoc;
-  iframe.style.cssText = `width:${width}px;height:${height}px;border:none;overflow:hidden;max-width:100%`;
-  iframe.setAttribute('scrolling', 'no');
-  container.innerHTML = '';
-  container.appendChild(iframe);
-  container.style.display = 'flex';
-  container.style.justifyContent = 'center';
-}
-
-/* Native Banner and Social Bar use a DIFFERENT domain than the sized
-   Banner formats above (revenuecpmgate.com, not highperformanceformat.com)
-   and Adsterra issues each as a complete, ready-to-paste <script src="...">
-   tag rather than a short numeric/hex key — the "key" for these formats is
-   really the full subdomain+path Adsterra generates per publisher account,
-   which can't be reliably reconstructed from a short ID the way the sized
-   banners' atOptions.key can. So these two fields store the FULL script
-   src URL the admin copies straight from their Adsterra dashboard, not a
-   short key — that's why the Admin Panel labels them "script URL" rather
-   than "key" for just these two formats. */
-function renderAdsterraDirectScript(container, scriptSrc) {
-  if (!container || !scriptSrc) { if (container) container.style.display = 'none'; return; }
-  if (container.dataset.adsterraLoaded === scriptSrc) return; // already loaded this exact unit
-  container.innerHTML = '';
-  const script = document.createElement('script');
-  script.async = true;
-  script.setAttribute('data-cfasync', 'false');
-  script.src = scriptSrc;
-  container.appendChild(script);
-  container.dataset.adsterraLoaded = scriptSrc;
-  container.style.display = 'block';
-}
-
-/* Social Bar is meant to appear ONCE, site-wide, as a small floating
-   element — not per-page-section like the banners. It's injected directly
-   into <body> rather than into any specific ad-slot div. */
-let _adsterraSocialBarLoaded = false;
-function loadAdsterraSocialBar(scriptSrc) {
-  if (!scriptSrc || _adsterraSocialBarLoaded) return;
-  _adsterraSocialBarLoaded = true;
-  const script = document.createElement('script');
-  script.async = true;
-  script.src = scriptSrc;
-  script.setAttribute('data-cfasync', 'false');
-  document.body.appendChild(script);
-}
-
-db.ref('app_config/adsterra').on('value', snap => {
-  const cfg = snap.val() || {};
-
-  renderAdsterraBanner(document.getElementById('adsterraSlot320x50'), cfg.key320x50, 320, 50);
-  renderAdsterraBanner(document.getElementById('adsterraSlot468x60'), cfg.key468x60, 468, 60);
-  renderAdsterraBanner(document.getElementById('adsterraSlot160x300'), cfg.key160x300, 160, 300);
-  renderAdsterraDirectScript(document.getElementById('adsterraSlotNative'), cfg.nativeScriptSrc);
-  loadAdsterraSocialBar(cfg.socialBarScriptSrc);
-
-  // SmartLink is never auto-shown as a popup/redirect (that would be the
-  // intrusive "bhari" experience Muaaz specifically wants to avoid) — it's
-  // only ever attached as the href of an explicit, clearly-labeled
-  // "Support Us" link the visitor chooses to tap themselves.
-  const supportLink = document.getElementById('supportUsSmartlink');
-  if (supportLink) {
-    if (cfg.smartlinkUrl) { supportLink.href = cfg.smartlinkUrl; supportLink.style.display = 'inline-flex'; }
-    else supportLink.style.display = 'none';
-  }
-});
-
-/* ---- CUSTOM AD SLOTS (AdSense or other verified banner embeds) ----
-   Each slot (adSlotHomeTop, adSlotHomeMid, adSlotPlayer) gets its HTML from
-   Firebase app_config/ad_slots/{slotName}, set from the Admin Panel's
-   Monetization tab. A slot stays hidden until it actually has content, so
-   nothing ever shows an empty box. Paste whatever your ad network (Google
-   AdSense, etc.) gives you as embed code — it's injected as-is. */
-db.ref('app_config/ad_slots').on('value', snap => {
-  const slots = snap.val() || {};
-  ['adSlotHomeTop', 'adSlotHomeMid', 'adSlotPlayer'].forEach(slotId => {
-    const el = document.getElementById(slotId);
-    if (!el) return;
-    const html = slots[slotId] || '';
-    if (html.trim()) {
-      el.innerHTML = html;
-      el.style.display = 'flex';
-      // Re-execute any <script> tags — innerHTML doesn't run them automatically.
-      el.querySelectorAll('script').forEach(oldScript => {
-        const newScript = document.createElement('script');
-        [...oldScript.attributes].forEach(attr => newScript.setAttribute(attr.name, attr.value));
-        newScript.textContent = oldScript.textContent;
-        oldScript.replaceWith(newScript);
-      });
-    } else {
-      el.innerHTML = '';
-      el.style.display = 'none';
-    }
-  });
-});
 
 
 /* ---- AUTH STATE ---- */

@@ -75,6 +75,27 @@
       "totals": {
         ".write": "auth !== null"
       }
+    },
+
+    "serverHealth": {
+      ".read": true,
+      "$titleId": {
+        "lastGood": { ".write": "auth !== null" },
+        "lastGoodAt": { ".write": "auth !== null" },
+        "successCount": { ".write": "auth !== null" },
+        "failCount": { ".write": "auth !== null" }
+      }
+    },
+
+    "adAnalytics": {
+      "_comment": "Written by ads-engine.js from EVERY page that shows ads, including the standalone Privacy Policy and Terms of Service pages — those pages don't run Firebase Auth at all (no sign-in flow, no anonymous auth), so this intentionally allows unauthenticated writes, unlike every other write path in this app. Scoped narrowly (append-only child pushes under 'loads'/'errors' only, never any read) so the worst a bad actor could do is push junk log entries — they can never read anyone's data or affect any other part of the app through this path.",
+      ".read": "auth !== null && root.child('admins').child(auth.uid).val() === true",
+      "loads": {
+        "$entryId": { ".write": "!data.exists()" }
+      },
+      "errors": {
+        "$entryId": { ".write": "!data.exists()" }
+      }
     }
   }
 }

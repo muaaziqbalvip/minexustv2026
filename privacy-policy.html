@@ -22,6 +22,8 @@ p, li{color:#c4c8d6;margin-bottom:10px}
 ul{padding-left:20px;margin-bottom:14px}
 a{color:#00d2ff}
 .contact-box{background:#141724;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;margin-top:20px}
+.ad-slot-policy{margin:24px 0;border-radius:12px;overflow:hidden;background:#141724;border:1px solid rgba(255,255,255,.08);min-height:50px;display:flex;align-items:center;justify-content:center;position:relative;padding-top:14px}
+.ad-slot-policy::before{content:'Advertisement';position:absolute;top:4px;left:8px;font-size:9px;font-weight:700;color:#5d637a;letter-spacing:.5px;text-transform:uppercase;opacity:.6;pointer-events:none}
 </style>
 </head>
 <body>
@@ -30,6 +32,8 @@ a{color:#00d2ff}
 
 <h1>Privacy Policy</h1>
 <p class="updated">Last updated: August 2026</p>
+
+<div class="ad-slot-policy" id="adsterraSlot320x50" style="display:none"></div>
 
 <p>This Privacy Policy explains how MINEXUS TV ("we", "our", "the app") collects, uses, and protects information when you use our website and app. By using MINEXUS TV, you agree to the practices described here.</p>
 
@@ -73,9 +77,30 @@ a{color:#00d2ff}
 <p>We may update this Privacy Policy from time to time. Continued use of the app after changes means you accept the updated policy.</p>
 
 <h2>Contact Us</h2>
+<div class="ad-slot-policy" id="adsterraSlot160x300" style="display:none;min-height:300px"></div>
 <div class="contact-box">
   <p style="margin:0">Questions about this policy or your data? Reach out via the contact links on our <a href="/developer">Developer page</a>.</p>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+// Same Firebase project as the main app — read-only here (only reads
+// app_config for ad settings, writes nothing except ad proof/error logs
+// via ads-engine.js, same as the main app).
+firebase.initializeApp({
+  apiKey: "AIzaSyCe9EAy36fx3RHy_cHOKP9BG8F_zkkTd4c",
+  authDomain: "minexustv-a23ba.firebaseapp.com",
+  databaseURL: "https://minexustv-a23ba-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "minexustv-a23ba",
+  storageBucket: "minexustv-a23ba.firebasestorage.app",
+  messagingSenderId: "33081080111",
+  appId: "1:33081080111:web:cd23b4fe22c0b7c18e09da",
+  measurementId: "G-CRYG4T0FDT"
+});
+const db = firebase.database();
+</script>
+<script src="/ads-engine.js"></script>
+<script>if (window.MinexusAdsEngine) window.MinexusAdsEngine.init(db);</script>
 </body>
 </html>
