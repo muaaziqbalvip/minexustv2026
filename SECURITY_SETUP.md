@@ -67,59 +67,6 @@ Public Analytics (Admin Panel → Analytics tab میں traffic, clicks, graphs) 
 4. اگر "This account does not have admin access" آئے — Step 2 دوبارہ چیک کریں (uid صحیح ہے یا نہیں)
 5. اگر "Could not verify admin access" کوئی error code کے ساتھ آئے — Step 3 دوبارہ چیک کریں (rules publish ہوئیں یا نہیں)
 
-## Step 6: Real Push Notifications (نیا — v7) — فون پر notification آنے کے لیے
-
-پہلے صرف ایک in-app banner تھا (صرف اس وقت نظر آتا جب کوئی پہلے سے website کھولے بیٹھا ہو)۔ اب اصل push notification سسٹم شامل ہے — فون بند/لاک ہونے پر بھی notification آئے گی، بالکل native app کی طرح۔ اسے فعال کرنے کے لیے **دو الگ چیزیں** چاہئیں:
-
-### 6a. VAPID Key (public — یہ فون کو token لینے دیتی ہے)
-
-1. [Firebase Console](https://console.firebase.google.com/) → اپنا project → **Project Settings** (⚙️ icon) → **Cloud Messaging** tab کھولیں
-2. **Web configuration** کے نیچے، **Web Push certificates** میں **Generate key pair** پر click کریں
-3. جو key نظر آئے اسے کاپی کریں
-4. `index.html` میں تلاش کریں: `const VAPID_KEY = 'REPLACE_WITH_YOUR_FIREBASE_VAPID_KEY';`
-5. `REPLACE_WITH_YOUR_FIREBASE_VAPID_KEY` کی جگہ اپنی اصل key paste کریں
-
-⚠️ یہ key **public** ہے — یہ صرف یہ ثابت کرتی ہے کہ کون سا app token مانگ رہا ہے، اس سے کوئی notification نہیں بھیجی جا سکتی، اس لیے یہ کوڈ میں رکھنا محفوظ ہے۔
-
-### 6b. Service Account Key (secret — یہ سرور کو notification بھیجنے دیتی ہے)
-
-یہ وہ اصل چابی ہے جو دراصل notification بھیجتی ہے — یہ **کبھی بھی** کوڈ میں نہیں رکھنی، صرف Vercel کی secret settings میں:
-
-1. Firebase Console → **Project Settings** → **Service Accounts** tab
-2. **Generate new private key** پر click کریں — ایک `.json` file ڈاؤن لوڈ ہوگی
-3. وہ پوری file ایک text editor میں کھولیں، اور *پورا content* (پوری JSON، شروع سے آخر تک) کاپی کریں
-4. [Vercel Dashboard](https://vercel.com/) → آپ کا project → **Settings** → **Environment Variables** کھولیں
-5. ایک نیا variable بنائیں:
-   - Name: `FCM_SERVICE_ACCOUNT_JSON`
-   - Value: وہ پوری JSON جو آپ نے کاپی کی (ایک ہی لائن میں paste کر دیں، Vercel خود سنبھال لے گا)
-6. **Save** کریں، پھر project کو دوبارہ **Deploy** کریں (نیا environment variable صرف نئے deployment پر لاگو ہوتا ہے)
-
-### 6c. Database Rule اپڈیٹ
-
-`database.rules.json` میں `fcmTokens` کا نیا section شامل ہو چکا ہے کوڈ میں — Step 3 کی طرح، یہ پوری updated file دوبارہ Firebase Console → Realtime Database → Rules میں paste کر کے **Publish** کریں۔
-
-### ٹیسٹ کیسے کریں
-
-1. Website کھولیں → Account → Settings → **Push Notifications** toggle آن کریں (پہلی بار browser خود permission مانگے گا — Allow کریں)
-2. Admin Panel → **Push Notifications** میں جا کر ایک notification بھیجیں
-3. اگر سب صحیح سیٹ اپ ہے تو ٹوسٹ میں "📲 Pushed to 1 device(s)" جیسا کچھ نظر آئے گا، اور آپ کے فون/براؤزر پر اصل notification آئے گی — چاہے آپ نے website کا ٹیب بند کر دیا ہو
-
-اگر "FCM_SERVICE_ACCOUNT_JSON is not configured" کا error آئے — Step 6b دوبارہ چیک کریں (Vercel میں environment variable صحیح سے سیٹ ہوا اور نیا deploy ہوا یا نہیں)۔
-
-## Step 7: Automatic New-Release Notifications (نیا — v7)
-
-اب ایک نیا cron job ہر روز خود بخود چیک کرتا ہے کہ کوئی نئی movie release ہوئی یا نہیں — اگر ہوئی تو تمام users کو خود ہی push notification چلی جاتی ہے، آپ کو manually notification بھیجنے کی ضرورت نہیں۔ یہ صرف ایک environment variable سیٹ کرنے سے فعال ہوتا ہے:
-
-1. [Vercel Dashboard](https://vercel.com/) → آپ کا project → **Settings** → **Environment Variables**
-2. ایک نیا variable بنائیں:
-   - Name: `CRON_SECRET`
-   - Value: کوئی بھی لمبی random string (مثلاً کسی password generator سے 32 حروف کی string بنا لیں)
-3. **Save** کریں، پھر project دوبارہ **Deploy** کریں
-
-بس — اس کے بعد Vercel خود ہر روز ایک بار (تقریباً رات 8 بجے پاکستان ٹائم) `/api/cron-check-releases` کو call کرے گا، جو TMDB سے نئی releases چیک کر کے خود بخود notification بھیج دے گا۔ یہ صرف اُن movies کے لیے چلتا ہے جن کی notification پہلے کبھی نہیں بھیجی گئی، تو ایک movie پر دو بار notification نہیں آئے گی۔
-
-⚠️ Vercel کے مفت (Hobby) plan پر cron جابز دن میں صرف ایک بار چل سکتی ہیں — یہ اسی حساب سے سیٹ ہے۔ اگر آپ Vercel Pro پر ہیں تو `vercel.json` میں `schedule` بدل کر زیادہ بار چلا سکتے ہیں۔
-
 ## Password بھول جائیں تو؟
 
 `/admin-recover.html` پر جائیں، اپنا email ڈالیں — Firebase آپ کو password reset link بھیج دے گا۔

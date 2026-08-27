@@ -593,7 +593,7 @@ tr:hover td{background:var(--bg-card-hover)}
             <input type="url" class="form-control" id="chStreamUrl" placeholder="https://domain.com/live.m3u8" required>
           </div>
           <div style="grid-column:1/-1">
-            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Channel</button>
+            <button type="submit" id="addChannelSubmitBtn" class="btn btn-primary"><i class="fas fa-save"></i> Save Channel</button>
           </div>
         </form>
       </div>
@@ -1153,17 +1153,10 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
 
-function toast(msg, type) {
-  // BUG FIX: this always showed a green checkmark, even for error/info
-  // calls — sendRealPushNotification() (see notifications tab) needed a
-  // real distinction so a failed push doesn't visually look identical to
-  // a successful one, which would hide real failures from the admin.
-  const icon = type === 'error' ? { cls: 'fa-circle-exclamation', color: '#ff4757' }
-    : type === 'info' ? { cls: 'fa-circle-info', color: 'var(--text2)' }
-    : { cls: 'fa-check-circle', color: 'var(--green)' };
+function toast(msg) {
   const t = document.createElement('div');
   t.className = 'toast';
-  t.innerHTML = `<i class="fas ${icon.cls}" style="color:${icon.color};margin-right:6px"></i> ${msg}`;
+  t.innerHTML = `<i class="fas fa-check-circle" style="color:var(--green);margin-right:6px"></i> ${msg}`;
   document.getElementById('toastBox').appendChild(t);
   setTimeout(() => t.remove(), 3000);
 }
@@ -1214,10 +1207,27 @@ document.getElementById('addChannelForm').onsubmit = async (e) => {
   const country = document.getElementById('chCountry').value;
   const streamUrl = document.getElementById('chStreamUrl').value.trim();
 
-  const newRef = db.ref('custom_channels').push();
-  await newRef.set({ id: newRef.key, name, country, streamUrl });
-  document.getElementById('addChannelForm').reset();
-  toast('Channel Published!');
+  // Guards against a fast double-click/double-tap on "Save Channel" firing
+  // two submits before the first Firebase write finishes — since this uses
+  // push() (a new random key every call, no idempotency), that used to
+  // silently create two duplicate channel entries from one intended save.
+  // Same disable/re-enable pattern already used just below for the M3U
+  // bulk importer's button.
+  const submitBtn = document.getElementById('addChannelSubmitBtn');
+  if (submitBtn.disabled) return;
+  submitBtn.disabled = true;
+  const originalLabel = submitBtn.innerHTML;
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+  try {
+    const newRef = db.ref('custom_channels').push();
+    await newRef.set({ id: newRef.key, name, country, streamUrl });
+    document.getElementById('addChannelForm').reset();
+    toast('Channel Published!');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalLabel;
+  }
 };
 
 // Bulk M3U Playlist Importer
@@ -1816,54 +1826,42 @@ function renderDevContactsAdmin() {
 // Notifications
 let notifEditingId = null;
 
-// Calls /api/send-notification (see api/send-notification.js) so this
-// notification also becomes a REAL OS-level push to every device that's
-// enabled notifications — not just the in-app banner written to
-// db.ref('notifications') below, which only ever shows to someone who
-// already has the site open in a tab. Runs AFTER the Firebase write so
-// the in-app banner/history always saves even if the push call itself
-// has a transient network hiccup — a failed push is unfortunate, a lost
-// notification-history entry would be worse.
-async function sendRealPushNotification(title, message, target, notifId) {
-  try {
-    const idToken = await auth.currentUser.getIdToken();
-    const resp = await fetch('/api/send-notification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, message, target, notifId, idToken })
-    });
-    const data = await resp.json();
-    if (data.success) {
-      toast(data.sent > 0 ? `📲 Pushed to ${data.sent} device(s)` : 'Saved — no devices registered for push yet', data.sent > 0 ? 'success' : 'info');
-    } else {
-      toast(`⚠️ Push failed: ${data.error || 'unknown error'}`, 'error');
-    }
-  } catch (e) {
-    toast(`⚠️ Push failed: ${e.message || 'network error'}`, 'error');
-  }
-}
-
 document.getElementById('notifForm').onsubmit = async (e) => {
   e.preventDefault();
   const title = document.getElementById('notifTitle').value.trim();
   const target = document.getElementById('notifTargetId').value.trim();
   const message = document.getElementById('notifMsg').value.trim();
 
-  if (notifEditingId) {
-    // Editing an existing notification — update() so we don't lose the
-    // original timestamp, and keep it in place in the history list.
-    // Intentionally does NOT re-push — a device that already received
-    // the original push shouldn't be re-notified just because the admin
-    // fixed a typo in the history record.
-    await db.ref(`notifications/${notifEditingId}`).update({ title, target, message });
-    toast('Notification Updated!');
-    exitNotifEditMode();
-  } else {
-    const ref = await db.ref('notifications').push({ title, target, message, time: firebase.database.ServerValue.TIMESTAMP });
-    toast('Push Notification Broadcasted!');
-    sendRealPushNotification(title, message, target, ref.key);
+  // Guards against a fast double-click on "Send Notification" broadcasting
+  // the same push() entry twice to every user — same double-submit class
+  // of bug as the channel-add form above, fixed the same way.
+  const submitBtn = document.getElementById('notifSubmitBtn');
+  if (submitBtn.disabled) return;
+  submitBtn.disabled = true;
+  const wasEditing = !!notifEditingId;
+  const originalLabel = submitBtn.innerHTML;
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+
+  try {
+    if (notifEditingId) {
+      // Editing an existing notification — update() so we don't lose the
+      // original timestamp, and keep it in place in the history list.
+      await db.ref(`notifications/${notifEditingId}`).update({ title, target, message });
+      toast('Notification Updated!');
+      exitNotifEditMode();
+    } else {
+      await db.ref('notifications').push({ title, target, message, time: firebase.database.ServerValue.TIMESTAMP });
+      toast('Push Notification Broadcasted!');
+    }
+    document.getElementById('notifForm').reset();
+  } finally {
+    submitBtn.disabled = false;
+    // If we were editing, exitNotifEditMode()/toast above already reset
+    // the label to "Send Notification" — only restore the pre-click label
+    // here for the plain "new notification" path so Save Changes mode
+    // doesn't get its icon reverted out from under it.
+    if (!wasEditing) submitBtn.innerHTML = originalLabel;
   }
-  document.getElementById('notifForm').reset();
 };
 
 function enterNotifEditMode(id, data) {
@@ -1902,7 +1900,7 @@ function renderNotifHistory(items) {
   el.innerHTML = items.map(([id, n]) => `
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start">
       <div style="min-width:0">
-        <div style="font-weight:700;font-size:13px;margin-bottom:3px">${escapeHtml(n.title || '(untitled)')}${n.auto ? ' <span style="font-size:9.5px;font-weight:700;color:var(--accent);background:rgba(255,255,255,.08);padding:2px 6px;border-radius:6px;vertical-align:middle">AUTO</span>' : ''}</div>
+        <div style="font-weight:700;font-size:13px;margin-bottom:3px">${escapeHtml(n.title || '(untitled)')}</div>
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">${escapeHtml(n.message || '')}</div>
         <div style="font-size:10.5px;color:var(--text-muted)">
           ${n.target ? `Target: ${escapeHtml(n.target)} • ` : ''}${n.time ? new Date(n.time).toLocaleString() : ''}

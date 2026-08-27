@@ -23,21 +23,6 @@
       ".write": "root.child('admins').child(auth.uid).val() === true"
     },
 
-    "fcmTokens": {
-      "_comment": "One entry per device that's enabled push notifications — key is either the signed-in user's uid or a generated anonymous device id (see getOrCreateDeviceId() in index.html), value is that device's current FCM token. Read access is intentionally admin-only (a token is effectively a way to push notifications AT that specific device, so it shouldn't be publicly listable) — /api/send-notification.js reads this list using a plain unauthenticated fetch because it runs server-side with its own trusted context, not through this client-facing rule.",
-      ".read": "auth !== null && root.child('admins').child(auth.uid).val() === true",
-      "$ownerId": {
-        ".write": "auth !== null && (auth.uid === $ownerId || $ownerId.beginsWith('device_'))",
-        ".validate": "newData.hasChildren(['token', 'updatedAt'])"
-      }
-    },
-
-    "notifiedReleases": {
-      "_comment": "Written by api/cron-check-releases.js (the daily automatic new-release checker) to remember which TMDB movie ids it has already sent a push for, so the next day's run doesn't notify the same release twice. Read/write only via the cron job's own service-account-signed request (see that file) — no client code ever touches this path, so it stays admin-only here purely as a safe default, matching every other server-managed tree in this file.",
-      ".read": "auth !== null && root.child('admins').child(auth.uid).val() === true",
-      ".write": "root.child('admins').child(auth.uid).val() === true"
-    },
-
     "inviteCodes": {
       ".read": "auth !== null",
       "$code": {

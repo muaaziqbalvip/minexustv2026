@@ -61,10 +61,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<!-- firebase-messaging-compat: enables real OS-level push notifications
-     (phone buzzes even with the app closed) — see firebase-messaging-sw.js
-     and registerForPushNotifications() below for the rest of this system. -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 
 <style>
 /* ===== DESIGN SYSTEM ===== */
@@ -2291,107 +2287,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-/* ==================== REAL PUSH NOTIFICATIONS (FCM) ====================
-   BUG FIX / NEW FEATURE: previously "notifications" only meant the
-   in-app banner further down (db.ref('notifications')...) which only
-   ever appears if the user already has a MINEXUS TV tab open — that is
-   NOT a real notification, it's just a banner. This block adds actual
-   OS-level push: the user's phone/desktop shows a native notification
-   (with sound/vibration per their OS settings) even if MINEXUS TV is
-   completely closed, exactly like a native app.
-
-   HOW IT WORKS END TO END:
-   1. registerForPushNotifications() below asks the browser for
-      Notification permission (only if not already asked before —
-      never re-prompts and never blocks the page).
-   2. If granted, it registers firebase-messaging-sw.js as the push
-      service worker and asks Firebase for this device's unique FCM
-      token.
-   3. That token is saved to Firebase Realtime DB under fcmTokens/ —
-      this is the "address" a server can later push to.
-   4. When admin sends a notification (or the automatic new-release
-      check fires — see checkForNewReleasesAndNotify()), it calls
-      /api/send-notification (see api/send-notification.js), a
-      serverless function that holds the ONE credential that must
-      never live in client code (the Firebase service account key)
-      and uses it to actually deliver the push to every saved token.
-   Browsers can only ever push to the CURRENT device — no client-side
-   code, no matter how it's written, can push to a different phone.
-   That's why step 4 has to happen server-side; this is not a
-   limitation specific to this app, it's how push notifications work
-   on the entire web platform. */
-let _fcmMessaging = null;
-
-async function registerForPushNotifications(showPromptUi) {
-  if (!('Notification' in window) || !('serviceWorker' in navigator)) return;
-  try {
-    // Don't re-ask if the user already answered (granted OR denied) —
-    // repeatedly prompting is exactly the kind of nagging that gets
-    // PWAs uninstalled. showPromptUi=true is only passed from an
-    // explicit user action (tapping "Enable Notifications" in Settings).
-    if (Notification.permission === 'default' && !showPromptUi) return;
-    if (Notification.permission === 'denied') return;
-
-    if (Notification.permission === 'default') {
-      const perm = await Notification.requestPermission();
-      if (perm !== 'granted') { toast('Notifications stayed off — you can enable them anytime in Settings', 'info'); return; }
-    }
-
-    const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-    if (!_fcmMessaging) _fcmMessaging = firebase.messaging();
-
-    // NOTE FOR MUAAZ: this VAPID key is PUBLIC (it's meant to be shipped
-    // in client code — unlike the service account key, it can't be used
-    // to send anything, only to prove which app is allowed to request a
-    // token for this Firebase project). Generate yours in Firebase
-    // Console → Project Settings → Cloud Messaging → Web Push
-    // certificates → "Generate key pair", then paste it here.
-    const VAPID_KEY = 'BNcuCsF0c-dyf07TmqG15go6wSX4VmMBnoZr5Tk4Q39OF1cE3xdG-nYKmo2weBg94loqqhzmJ9jq3baLink5wlI';
-    if (VAPID_KEY.startsWith('REPLACE_')) {
-      console.warn('[Push] VAPID key not configured yet — see SECURITY_SETUP.md step 6.');
-      return;
-    }
-
-    const token = await _fcmMessaging.getToken(swReg, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
-    if (!token) return;
-
-    // Save under the signed-in user's uid when available (so a signed-in
-    // user's notification preferences follow them), otherwise under a
-    // stable anonymous device id — either way admin's send function reads
-    // every token under fcmTokens/ and pushes to all of them.
-    const ownerId = (auth.currentUser && !auth.currentUser.isAnonymous) ? auth.currentUser.uid : `device_${await getOrCreateDeviceId()}`;
-    await db.ref(`fcmTokens/${ownerId}`).set({ token, updatedAt: firebase.database.ServerValue.TIMESTAMP, ua: navigator.userAgent.slice(0, 120) });
-    localStorage.setItem('minexus_push_enabled', '1');
-    if (showPromptUi) toast('🔔 Notifications enabled — you\'ll get alerts for new releases!', 'success');
-
-    // Refresh the token if Firebase rotates it (rare, but tokens can
-    // expire/change) — keeps fcmTokens/ from silently going stale.
-    _fcmMessaging.onTokenRefresh && _fcmMessaging.onTokenRefresh(async () => {
-      try {
-        const newToken = await _fcmMessaging.getToken(swReg, { vapidKey: VAPID_KEY });
-        await db.ref(`fcmTokens/${ownerId}`).set({ token: newToken, updatedAt: firebase.database.ServerValue.TIMESTAMP, ua: navigator.userAgent.slice(0, 120) });
-      } catch (e) { /* non-critical — next app open will re-register anyway */ }
-    });
-  } catch (e) {
-    console.warn('[Push] registration failed', e);
-  }
-}
-
-async function getOrCreateDeviceId() {
-  let id = localStorage.getItem('minexus_device_id');
-  if (!id) {
-    id = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-    localStorage.setItem('minexus_device_id', id);
-  }
-  return id;
-}
-
-// Silently re-register on every load ONLY if the user already granted
-// permission before (never auto-prompts) — keeps the saved token fresh.
-if (Notification && Notification.permission === 'granted') {
-  registerForPushNotifications(false);
-}
-
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   deferredPrompt = e;
@@ -3722,7 +3617,24 @@ window.addEventListener('blur', () => {
 });
 
 /* ---- MULTI-SERVER CINEMA PLAYER (MULTISEMBED DEFAULT) ---- */
+/* Guards against double-tap/double-click on a movie/series card (or the
+   Play button) firing openPlayer() twice in a row before the view has even
+   switched. Without this, two fast clicks on the same title used to double
+   -count watchCount/points and the daily topWatched analytics tally for a
+   single intended watch, and could briefly race two playStream() calls
+   against each other. A short cooldown keyed by item id (not a persistent
+   boolean) means a genuine re-open of the SAME title a bit later, or
+   opening a DIFFERENT title right away, is never blocked. */
+let _lastOpenedPlayerKey = null;
+let _lastOpenedPlayerAt = 0;
+
 async function openPlayer(item, forceRestart) {
+  const key = `${item && item.id}:${item && item.type}`;
+  const now = Date.now();
+  if (key === _lastOpenedPlayerKey && (now - _lastOpenedPlayerAt) < 1200) return;
+  _lastOpenedPlayerKey = key;
+  _lastOpenedPlayerAt = now;
+
   S.activeItem = item;
   S.activeServer = S.defaultServer; // Admin-configured default (Firebase app_config/default_server) — used as the very first paint before the smart pick below resolves
   S._triedServers = new Set(); // fresh auto-failover cascade for this title
@@ -4456,25 +4368,11 @@ function updateDownloadProgressUI(songId) {
 }
 
 async function downloadSongOffline(song, rowEl) {
-  // BUG FIX: the in-progress guard used to be set AFTER `await
-  // isSongOffline(...)` resolved. Two rapid clicks/taps on the download
-  // button (very easy to do on mobile) both reached this function before
-  // either one had set _activeDownloads[song.id], so both passed every
-  // guard check and both started downloading the same song at once —
-  // this is what looked like "double click = double download". The fix
-  // is to claim the slot in _activeDownloads SYNCHRONOUSLY, before any
-  // `await`, so the second click sees the flag immediately and bails out.
+  if (await isSongOffline(song.id)) { toast('Already downloaded', 'info'); return; }
   if (_activeDownloads[song.id]) { toast('Already downloading...', 'info'); return; }
+
   _activeDownloads[song.id] = { received: 0, total: 0, title: song.title };
   updateDownloadProgressUI(song.id);
-
-  if (await isSongOffline(song.id)) {
-    delete _activeDownloads[song.id];
-    updateDownloadProgressUI(song.id);
-    toast('Already downloaded', 'info');
-    return;
-  }
-
   toast(`⬇️ Downloading "${song.title}"...`, 'info');
 
   try {
@@ -4543,15 +4441,32 @@ async function removeDownload(id) {
    watchlist/likes for movies elsewhere in the app. */
 function isSongLiked(id) { return !!(S.likedSongs && S.likedSongs[id]); }
 
+/* Guards toggleLikeSong against double-fire: S.likedSongs only updates once
+   Firebase's 'value' listener round-trips back (see initMusicView()), so a
+   fast double-click/double-tap on the heart button used to read the SAME
+   "not liked yet" state twice before the cache refreshed — sending two
+   .set() calls, or two .remove() calls in a row, and firing the toast
+   twice. This mirrors the same in-flight tracking pattern already used for
+   downloads (_activeDownloads): a song id in _pendingLikeToggles means a
+   toggle for it is already in flight, so a second click while it's still
+   pending is ignored instead of racing it. */
+const _pendingLikeToggles = new Set();
+
 async function toggleLikeSong(song) {
   if (!S.user) { toast('Sign in to like songs', 'info'); return; }
-  const ref = db.ref(`users/${S.user.uid}/music/liked/${song.id}`);
-  if (isSongLiked(song.id)) {
-    await ref.remove();
-    toast('Removed from Liked Songs', 'info');
-  } else {
-    await ref.set({ ...song, audioBlob: null, imageBlob: null, likedAt: firebase.database.ServerValue.TIMESTAMP });
-    toast('❤️ Added to Liked Songs', 'success');
+  if (_pendingLikeToggles.has(song.id)) return;
+  _pendingLikeToggles.add(song.id);
+  try {
+    const ref = db.ref(`users/${S.user.uid}/music/liked/${song.id}`);
+    if (isSongLiked(song.id)) {
+      await ref.remove();
+      toast('Removed from Liked Songs', 'info');
+    } else {
+      await ref.set({ ...song, audioBlob: null, imageBlob: null, likedAt: firebase.database.ServerValue.TIMESTAMP });
+      toast('❤️ Added to Liked Songs', 'success');
+    }
+  } finally {
+    _pendingLikeToggles.delete(song.id);
   }
 }
 
@@ -6325,22 +6240,6 @@ function renderSettingsTab(contentEl) {
         </label>
       </div>
 
-      <div class="settings-row">
-        <div class="settings-row-text">
-          <div class="settings-row-title"><i class="fas fa-bell"></i> Push Notifications</div>
-          <div class="settings-row-sub" id="pushNotifSub">${
-            typeof Notification === 'undefined' ? 'Not supported on this browser'
-            : Notification.permission === 'granted' ? 'On — you\'ll get alerts for new movies & series'
-            : Notification.permission === 'denied' ? 'Blocked in browser settings — enable it there to turn this on'
-            : 'Get notified on new releases, even when the app is closed'
-          }</div>
-        </div>
-        <label class="switch">
-          <input type="checkbox" id="setPushNotif" ${typeof Notification !== 'undefined' && Notification.permission === 'granted' ? 'checked' : ''} ${typeof Notification === 'undefined' || Notification.permission === 'denied' ? 'disabled' : ''}>
-          <span class="switch-slider"></span>
-        </label>
-      </div>
-
       <div style="margin-top:8px;padding:14px;background:var(--bg3);border-radius:12px;font-size:11px;color:var(--text3);line-height:1.6">
         <i class="fas fa-circle-info" style="color:var(--accent)"></i>
         Settings are saved on this device. Sign in on another device to set them there too.
@@ -6366,20 +6265,6 @@ function renderSettingsTab(contentEl) {
     S.settings.autoplayNext = e.target.checked;
     localStorage.setItem('minexus_autoplaynext', e.target.checked ? 'on' : 'off');
     toast(e.target.checked ? 'Autoplay next episode enabled' : 'Autoplay next episode disabled', 'info');
-  });
-  document.getElementById('setPushNotif')?.addEventListener('change', async e => {
-    if (!e.target.checked) {
-      // Browsers give websites no API to programmatically revoke a
-      // permission they already granted — only the user can do that,
-      // from their own browser's site settings. Being honest about
-      // that here (instead of silently flipping the toggle back and
-      // pretending it worked) is better than a switch that lies.
-      e.target.checked = true;
-      toast('To turn off notifications, use your browser\'s site settings for this page', 'info');
-      return;
-    }
-    await registerForPushNotifications(true);
-    renderSettingsTab(document.getElementById('accTabContent')); // refresh sub-label to reflect new permission state
   });
   document.getElementById('setDataSaver').addEventListener('change', e => {
     S.settings.dataSaver = e.target.checked;
