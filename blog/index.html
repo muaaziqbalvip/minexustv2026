@@ -1,1 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog — Movie & Streaming Guides | MINEXUS TV</title>
+<meta name="description" content="Guides, recommendations, and how-tos for Pakistani cinema, Bollywood, Hollywood, web series, and free live TV streaming — from the MINEXUS TV team.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://minexustv.vercel.app/blog">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://minexustv.vercel.app/blog">
+<meta property="og:title" content="MINEXUS TV Blog — Movie & Streaming Guides">
+<meta property="og:description" content="Guides, recommendations, and how-tos for Pakistani cinema, Bollywood, Hollywood, web series, and free live TV streaming.">
+<meta property="og:image" content="https://i.ibb.co/0yqS66nD/Chat-GPT-Image-Aug-17-2026-04-45-52-AM.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#07080c;color:#f0f2f8;line-height:1.7;padding:24px 18px 60px;max-width:760px;margin:0 auto;font-size:14px}
+.back-link{display:inline-flex;align-items:center;gap:6px;color:#9ea4b8;text-decoration:none;font-size:13px;font-weight:600;margin-bottom:24px}
+h1{font-size:26px;font-weight:900;margin-bottom:8px}
+.sub{font-size:13px;color:#9ea4b8;margin-bottom:28px}
+.post-card{display:block;background:#141724;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px;margin-bottom:14px;text-decoration:none;transition:.15s}
+.post-card:hover{border-color:rgba(255,255,255,.2)}
+.post-title{font-size:16px;font-weight:800;color:#f0f2f8;margin-bottom:6px}
+.post-desc{font-size:13px;color:#9ea4b8}
+.ad-banner-slot{margin:20px 0;border-radius:12px;overflow:hidden;background:#141724;border:1px solid rgba(255,255,255,.08);min-height:66px;display:none;align-items:center;justify-content:center;position:relative;padding-top:16px}
+.ad-banner-slot.ad-banner-visible{display:flex}
+.ad-banner-slot::before{content:'Sponsored';position:absolute;top:5px;left:10px;font-size:9px;font-weight:800;color:#5d637a;letter-spacing:.6px;text-transform:uppercase;opacity:.65;pointer-events:none}
+</style>
+</head>
+<body>
 
+<a href="/" class="back-link">← Back to MINEXUS TV</a>
+
+<h1>MINEXUS TV Blog</h1>
+<p class="sub">Guides and recommendations for movies, series, and live TV streaming.</p>
+
+<a href="/blog/best-pakistani-movies-2026" class="post-card">
+  <div class="post-title">Best Pakistani Movies to Watch in 2026</div>
+  <div class="post-desc">Our picks for the top Pakistani films of the year — drama, action, and romance — all streaming free on MINEXUS TV.</div>
+</a>
+
+<a href="/blog/best-web-series-2026" class="post-card">
+  <div class="post-title">Best Web Series to Binge in 2026</div>
+  <div class="post-desc">The most talked-about Hindi, Urdu, and international web series this year, ranked and reviewed.</div>
+</a>
+
+<div class="ad-banner-slot"></div>
+
+<a href="/blog/how-to-watch-live-tv-free" class="post-card">
+  <div class="post-title">How to Watch Live TV Online for Free</div>
+  <div class="post-desc">A simple guide to streaming live news, sports, and entertainment channels from Pakistan, India, and around the world — no cable required.</div>
+</a>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="/ads-engine.js"></script>
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyCe9EAy36fx3RHy_cHOKP9BG8F_zkkTd4c",
+  authDomain: "minexustv-a23ba.firebaseapp.com",
+  databaseURL: "https://minexustv-a23ba-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "minexustv-a23ba",
+  storageBucket: "minexustv-a23ba.firebasestorage.app",
+  messagingSenderId: "33081080111",
+  appId: "1:33081080111:web:cd23b4fe22c0b7c18e09da"
+});
+if (window.MinexusAdsEngine) window.MinexusAdsEngine.init(firebase.database());
+</script>
+</body>
+</html>
