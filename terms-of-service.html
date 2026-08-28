@@ -26,6 +26,11 @@ a{color:#00d2ff}
 .ad-banner-slot{margin:20px 0;border-radius:12px;overflow:hidden;background:#141724;border:1px solid rgba(255,255,255,.08);min-height:66px;display:none;align-items:center;justify-content:center;position:relative;padding-top:16px}
 .ad-banner-slot.ad-banner-visible{display:flex}
 .ad-banner-slot::before{content:'Sponsored';position:absolute;top:5px;left:10px;font-size:9px;font-weight:800;color:#5d637a;letter-spacing:.6px;text-transform:uppercase;opacity:.65;pointer-events:none}
+.ad-banner-slot-native{margin:0;border-radius:12px;overflow:hidden;background:#141724;border:1px solid rgba(255,255,255,.08);min-height:90px;display:none;align-items:center;justify-content:center;position:relative;padding-top:16px}
+.ad-banner-slot-native.ad-banner-visible{display:flex}
+.ad-banner-slot-native::before{content:'Sponsored';position:absolute;top:5px;left:10px;font-size:9px;font-weight:800;color:#5d637a;letter-spacing:.6px;text-transform:uppercase;opacity:.65;pointer-events:none}
+.ad-pair{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0}
+.ad-pair .ad-banner-slot, .ad-pair .ad-banner-slot-native{margin:0;flex:1;min-width:240px}
 </style>
 </head>
 <body>
@@ -60,7 +65,10 @@ a{color:#00d2ff}
 <p>Movie posters, titles, and descriptions shown in the app belong to their respective copyright holders and are used for identification/discovery purposes. The MINEXUS TV name, branding, and original app code are the property of the developer and may not be copied, redistributed, or rebranded without permission.</p>
 
 <!-- AD: mid-content -->
-<div class="ad-banner-slot"></div>
+<div class="ad-pair">
+  <div class="ad-banner-slot"></div>
+  <div class="ad-banner-slot-native"></div>
+</div>
 
 <h2>Disclaimer of Warranties</h2>
 <p>The app is provided "as is" without warranties of any kind. We don't guarantee uninterrupted availability, accuracy of metadata, or that any particular title will always be playable.</p>
@@ -72,7 +80,10 @@ a{color:#00d2ff}
 <p>We may update these Terms from time to time. Continued use after changes means you accept the updated Terms.</p>
 
 <!-- AD: below main content, before Contact -->
-<div class="ad-banner-slot"></div>
+<div class="ad-pair">
+  <div class="ad-banner-slot"></div>
+  <div class="ad-banner-slot-native"></div>
+</div>
 
 <h2>Contact</h2>
 <div class="ad-slot-policy" id="adsterraSlot160x300" style="display:none;min-height:300px"></div>

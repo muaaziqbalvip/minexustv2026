@@ -285,6 +285,42 @@
       });
     },
 
+    /* Fills every .ad-banner-slot-native element — the SECOND ad placed
+       next to every .ad-banner-slot across the app (Muaaz asked to double
+       up every existing placement with a different size/format for
+       variety and better overall fill rate). Falls back to a second
+       320x50 banner using the same key if no native script is configured
+       in Admin, so doubling never leaves an empty gap just because Native
+       specifically hasn't been set up yet. */
+    _fillAllNativeSlots(nativeScriptSrc, fallbackKey) {
+      document.querySelectorAll('.ad-banner-slot-native').forEach(el => {
+        if (nativeScriptSrc) {
+          if (el.dataset.nativeLoaded === nativeScriptSrc) return;
+          el.dataset.nativeLoaded = nativeScriptSrc;
+          this.renderDirectScript(el, nativeScriptSrc, 'ad-banner-slot-native');
+          el.classList.add('ad-banner-visible');
+        } else if (fallbackKey) {
+          if (el.dataset.bannerKey === fallbackKey) return;
+          el.dataset.bannerKey = fallbackKey;
+          this.renderBanner(el, fallbackKey, 320, 50);
+          el.classList.add('ad-banner-visible');
+        }
+      });
+    },
+
+    /* Fills every .ad-banner-slot-160x300 element — used where there's
+       enough vertical room for a taller, higher-CPM box format instead of
+       a thin banner (e.g. as the second ad in a two-ad pairing). */
+    _fillAll160x300Slots(key) {
+      if (!key) return;
+      document.querySelectorAll('.ad-banner-slot-160x300').forEach(el => {
+        if (el.dataset.bannerKey === key) return;
+        el.dataset.bannerKey = key;
+        this.renderBanner(el, key, 160, 300);
+        el.classList.add('ad-banner-visible');
+      });
+    },
+
     /* Watches for new .ad-banner-slot elements being added anywhere in the
        page (grid re-renders, tab switches, infinite scroll appending more
        cards) and fills them automatically — without this, a slot added to
@@ -302,15 +338,27 @@
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
           if (this._lastBannerKey) this._fillAllBannerSlots(this._lastBannerKey);
+          this._fillAllNativeSlots(this._lastNativeScriptSrc, this._lastBannerKey);
+          if (this._last160x300Key) this._fillAll160x300Slots(this._last160x300Key);
         }, 150);
       });
       obs.observe(document.body, { childList: true, subtree: true });
-      // Cache the key separately from the Firebase listener closure above
+      // Cache the keys separately from the main config listener's closure
       // so this observer (which fires on unrelated DOM churn constantly)
-      // can re-fill without needing its own Firebase read every time.
+      // can re-fill instantly from cached values instead of needing a
+      // fresh Firebase read every time.
       this._db.ref('app_config/adsterra/key320x50').on('value', snap => {
         this._lastBannerKey = snap.val() || null;
         this._fillAllBannerSlots(this._lastBannerKey);
+        this._fillAllNativeSlots(this._lastNativeScriptSrc, this._lastBannerKey);
+      });
+      this._db.ref('app_config/adsterra/nativeScriptSrc').on('value', snap => {
+        this._lastNativeScriptSrc = snap.val() || null;
+        this._fillAllNativeSlots(this._lastNativeScriptSrc, this._lastBannerKey);
+      });
+      this._db.ref('app_config/adsterra/key160x300').on('value', snap => {
+        this._last160x300Key = snap.val() || null;
+        this._fillAll160x300Slots(this._last160x300Key);
       });
     },
 
