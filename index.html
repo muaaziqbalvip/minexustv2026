@@ -10,6 +10,12 @@
 <meta name="author" content="Muaaz Iqbal">
 <meta name="theme-color" content="#07080c">
 <meta name="monetag" content="0aa473044893e73cfc081326d0e30aad">
+<!-- Canonical tag — tells Google the "real" URL for the home page shell,
+     preventing any query-string variant (e.g. ?watch=, ?ref=) of the home
+     URL from being indexed as separate duplicate-content pages. Individual
+     movie/series pages set their OWN canonical pointing to their real
+     /movie/{id}-{slug} URL — see api/title-page.js. -->
+<link rel="canonical" href="https://minexustv.vercel.app/">
 <!-- PWA Manifest & Icons -->
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
@@ -44,6 +50,16 @@
     "target": "https://minexustv.vercel.app/?q={search_term_string}",
     "query-input": "required name=search_term_string"
   }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "MINEXUS TV",
+  "url": "https://minexustv.vercel.app/",
+  "logo": "https://minexustv.vercel.app/icons/icon-512.png",
+  "sameAs": []
 }
 </script>
 <script>(function(s){s.dataset.zone='11656016',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>

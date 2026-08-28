@@ -36,13 +36,19 @@
     { "source": "/terms", "destination": "/terms-of-service.html" },
     { "source": "/sw.js", "destination": "/sw.js" },
     { "source": "/manifest.json", "destination": "/manifest.json" },
-    { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/robots.txt", "destination": "/robots.txt" },
     { "source": "/google1f4b4bc6b89cbb98.html", "destination": "/google1f4b4bc6b89cbb98.html" },
     { "source": "/icons/:file", "destination": "/icons/:file" },
     { "source": "/watch/:id", "destination": "/api/watch" },
+    { "source": "/movie/:idslug", "destination": "/api/title-page" },
+    { "source": "/series/:idslug", "destination": "/api/title-page" },
     { "source": "/api/music", "destination": "/api/music" },
     { "source": "/api/stream", "destination": "/api/stream" },
+    { "source": "/blog", "destination": "/blog/index.html" },
+    { "source": "/blog/best-pakistani-movies-2026", "destination": "/blog/best-pakistani-movies-2026.html" },
+    { "source": "/blog/how-to-watch-live-tv-free", "destination": "/blog/how-to-watch-live-tv-free.html" },
+    { "source": "/blog/best-web-series-2026", "destination": "/blog/best-web-series-2026.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
