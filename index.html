@@ -62,8 +62,18 @@
   "sameAs": []
 }
 </script>
-<script>(function(s){s.dataset.zone='11656016',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
-<script>(function(s){s.dataset.zone='11656097',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+<!-- REAL BUG FIXED HERE: two hardcoded Monetag loader scripts used to
+     live directly in the HTML head, completely bypassing ads-engine.js
+     and the Admin Panel Ad Controls on/off toggles entirely. That's
+     exactly why switching "Monetag" off in Admin never actually stopped
+     Monetag from loading — those two lines ran on every single page load
+     regardless of what any toggle said, since they never went through the
+     toggle-check code path at all (they weren't part of the
+     ads-engine.js system to begin with). Removed from here; the same
+     two zone IDs (11656016 = vignette, 11656097 = in-page push) should be
+     entered in Admin Panel → Monetization → Monetag Zone IDs instead,
+     where they'll be loaded through ads-engine.js and correctly respect
+     the Ad Controls toggle from now on. -->
 <!-- Fonts & Icons -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -207,6 +217,18 @@ input,select{font-family:inherit}
   padding:5px 10px;border-radius:20px;
   background:rgba(245,197,24,0.12);border:1px solid rgba(245,197,24,0.3);
   color:var(--gold);font-size:11px;font-weight:800;
+}
+.nav-games-btn{
+  background:rgba(0,210,255,0.12);border:1px solid rgba(0,210,255,0.3);
+  color:var(--cyan);
+}
+@media(max-width:480px){
+  /* Keeps the header from feeling crowded on small phones — the Rank
+     badge keeps its text, Games shrinks to icon-only since the label is
+     less essential once Rank + Games + Account avatar are all competing
+     for the same header row. */
+  .nav-games-btn span{display:none}
+  .nav-games-btn{padding:5px 8px}
 }
 .nav-desktop-acc-btn{
   display:none;align-items:center;gap:8px;
@@ -526,6 +548,49 @@ input,select{font-family:inherit}
 
 /* ===== COMMUNITY LEADERBOARD DASHBOARD ===== */
 .leaderboard-wrap{padding:16px;max-width:1400px;margin:0 auto}
+
+/* ===== GAMES VIEW ===== */
+.games-wrap{padding:16px;max-width:1100px;margin:0 auto}
+.games-hero{text-align:center;padding:20px 10px 24px}
+.games-hero-title{font-size:22px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px}
+.games-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.game-card{
+  background:linear-gradient(180deg, var(--bg3), var(--bg2));
+  border:1px solid var(--border);border-radius:16px;overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.game-card-thumb{
+  height:140px;display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+}
+.game-card-thumb-2048{background:linear-gradient(135deg,#f2b179,#edc22e)}
+.game-card-thumb-snake{background:linear-gradient(135deg,#0f5132,#1a8f5c)}
+.game-card-thumb-memory{background:linear-gradient(135deg,#4a1a6b,#8b3fc9)}
+.game-2048-preview{display:grid;grid-template-columns:repeat(2,44px);grid-template-rows:repeat(2,44px);gap:6px}
+.game-2048-preview span{
+  background:rgba(255,255,255,.9);border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:16px;color:#5d4a1f;box-shadow:0 2px 6px rgba(0,0,0,.2);
+}
+.game-snake-preview i, .game-memory-preview i{font-size:52px;color:rgba(255,255,255,.9)}
+.game-card-info{padding:14px;display:flex;flex-direction:column;gap:8px;flex:1}
+.game-card-title{font-size:15px;font-weight:800}
+.game-card-desc{font-size:12px;color:var(--text3);line-height:1.5;flex:1}
+.game-card-actions{display:flex;gap:8px;margin-top:4px}
+.game-play-btn{
+  flex:1;background:var(--accent);color:#fff;border:none;border-radius:10px;
+  padding:10px;font-weight:700;font-size:13px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.game-play-btn:active{transform:scale(.97)}
+.game-dl-btn{
+  background:var(--bg4);border:1px solid var(--border);color:var(--text2);
+  border-radius:10px;width:42px;flex-shrink:0;cursor:pointer;font-size:14px;
+  display:flex;align-items:center;justify-content:center;
+}
+.game-dl-btn.downloaded{color:var(--green);border-color:var(--green)}
+.game-dl-btn:active{transform:scale(.94)}
+.game-dl-progress{height:4px;background:var(--bg4);border-radius:4px;overflow:hidden;margin-top:2px}
+.game-dl-progress-bar{height:100%;width:0%;background:var(--cyan);transition:width .2s}
 
 /* ===== RELEASE CALENDAR ===== */
 .calendar-wrap{padding:16px;max-width:1200px;margin:0 auto}
@@ -1679,12 +1744,21 @@ input,select{font-family:inherit}
         <button class="nav-tab" data-view="music"><i class="fas fa-music" style="color:var(--cyan)"></i>Music</button>
         <button class="nav-tab" data-view="calendar"><i class="fas fa-calendar-days" style="color:var(--gold)"></i>Calendar &amp; News</button>
         <button class="nav-tab" data-view="leaderboard"><i class="fas fa-trophy" style="color:var(--gold)"></i>Leaderboard</button>
+        <button class="nav-tab" data-view="games"><i class="fas fa-gamepad" style="color:var(--cyan)"></i>Games</button>
       </nav>
     </div>
 
     <div class="nav-right">
       <button class="nav-badge-btn" onclick="switchView('leaderboard')">
         <i class="fas fa-crown"></i> <span id="navRankPill">#1 Rank</span>
+      </button>
+
+      <!-- Games — placed right next to the Rank badge in the header so it
+           shows on mobile too, not just the desktop nav-tabs row (which
+           is hidden on narrow screens). Mobile's bottom bar is already
+           full with 7 tabs, so this is the one-tap path to Games there. -->
+      <button class="nav-badge-btn nav-games-btn" onclick="switchView('games')">
+        <i class="fas fa-gamepad"></i> <span>Games</span>
       </button>
 
       <!-- Desktop Account Profile Button -->
@@ -2006,6 +2080,76 @@ input,select{font-family:inherit}
       <div style="text-align:center;padding:20px;color:var(--text3)">Loading leaderboard...</div>
     </div>
     <!-- AD: below Leaderboard list -->
+    <div class="ad-pair">
+      <div class="ad-banner-slot"></div>
+      <div class="ad-banner-slot-native"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== GAMES VIEW ===== -->
+<div class="view" id="viewGames">
+  <div class="games-wrap">
+    <div class="games-hero">
+      <div class="games-hero-title"><i class="fas fa-gamepad" style="color:var(--cyan)"></i> MINEXUS Games</div>
+      <p style="font-size:12px;color:var(--text2)">Free to play — works online or fully offline once downloaded</p>
+    </div>
+
+    <div class="games-grid" id="gamesGrid">
+      <div class="game-card" data-game="2048" data-url="/games/2048.html">
+        <div class="game-card-thumb game-card-thumb-2048">
+          <div class="game-2048-preview">
+            <span>2</span><span>4</span><span>8</span><span>16</span>
+          </div>
+        </div>
+        <div class="game-card-info">
+          <div class="game-card-title">2048 Ultimate</div>
+          <div class="game-card-desc">Merge tiles to reach 2048 and beyond. Smooth swipe controls, best-score tracking.</div>
+          <div class="game-card-actions">
+            <button class="game-play-btn" data-game-launch="/games/2048.html"><i class="fas fa-play"></i> Play Now</button>
+            <button class="game-dl-btn" data-game-download="2048" data-game-url="/games/2048.html" title="Download for offline"><i class="fas fa-download"></i></button>
+          </div>
+          <div class="game-dl-progress" style="display:none"><div class="game-dl-progress-bar"></div></div>
+        </div>
+      </div>
+
+      <div class="game-card" data-game="snake" data-url="/games/snake.html">
+        <div class="game-card-thumb game-card-thumb-snake">
+          <div class="game-snake-preview"><i class="fas fa-worm"></i></div>
+        </div>
+        <div class="game-card-info">
+          <div class="game-card-title">Snake Battle Royale</div>
+          <div class="game-card-desc">Classic snake, reborn — speed levels, obstacles, and a real high-score chase.</div>
+          <div class="game-card-actions">
+            <button class="game-play-btn" data-game-launch="/games/snake.html"><i class="fas fa-play"></i> Play Now</button>
+            <button class="game-dl-btn" data-game-download="snake" data-game-url="/games/snake.html" title="Download for offline"><i class="fas fa-download"></i></button>
+          </div>
+          <div class="game-dl-progress" style="display:none"><div class="game-dl-progress-bar"></div></div>
+        </div>
+      </div>
+
+      <div class="game-card" data-game="memory" data-url="/games/memory-match.html">
+        <div class="game-card-thumb game-card-thumb-memory">
+          <div class="game-memory-preview"><i class="fas fa-clapperboard"></i></div>
+        </div>
+        <div class="game-card-info">
+          <div class="game-card-title">Movie Memory Match</div>
+          <div class="game-card-desc">Flip cards, match movie posters, beat the clock. Multiple difficulty levels.</div>
+          <div class="game-card-actions">
+            <button class="game-play-btn" data-game-launch="/games/memory-match.html"><i class="fas fa-play"></i> Play Now</button>
+            <button class="game-dl-btn" data-game-download="memory" data-game-url="/games/memory-match.html" title="Download for offline"><i class="fas fa-download"></i></button>
+          </div>
+          <div class="game-dl-progress" style="display:none"><div class="game-dl-progress-bar"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <p style="font-size:11px;color:var(--text3);text-align:center;margin-top:16px;line-height:1.6">
+      Tap <i class="fas fa-download"></i> to save a game for offline play — it'll keep working even with no internet,
+      right from this same list.
+    </p>
+
+    <!-- AD: below Games grid -->
     <div class="ad-pair">
       <div class="ad-banner-slot"></div>
       <div class="ad-banner-slot-native"></div>
@@ -3390,6 +3534,7 @@ function switchView(name) {
   if (name === 'account') renderAccountView();
   if (name === 'developer') renderDeveloperPage();
   if (name === 'calendar') renderCalendarView();
+  if (name === 'games') initGamesView();
 
   // Track which section people actually open — powers the "most visited
   // tab" breakdown in Admin → Analytics. Excludes player/livePlayer since
@@ -3399,7 +3544,123 @@ function switchView(name) {
   }
 }
 
-/* ---- CONTENT CARDS ---- */
+/* ---- GAMES VIEW ---- */
+// Tracks which games are already downloaded for offline play, using
+// localStorage as a simple "is this cached" flag — the actual bytes live
+// in the Service Worker's Cache Storage (see the CACHE_GAME message
+// handler in sw.js), this is just so the UI can show the right
+// downloaded/not-downloaded state without needing to ask the SW every
+// single time the Games view renders.
+function _gameDownloadedKey(gameId) { return `minexus_game_dl_${gameId}`; }
+
+function initGamesView() {
+  if (S._gamesViewWired) {
+    // Already wired once — just refresh the downloaded/not-downloaded
+    // visual state in case a download finished while the person was on a
+    // different tab (initGamesView can be called again on revisit).
+    _refreshGameDownloadStates();
+    return;
+  }
+  S._gamesViewWired = true;
+
+  document.querySelectorAll('[data-game-launch]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const url = btn.dataset.gameLaunch;
+      logAnalyticsEvent('game_launch', { game: url });
+      // Games are self-contained standalone pages (own HTML/CSS/JS, no
+      // dependency on the app shell), so a plain new-tab open is simplest
+      // and correctly lets the browser's own back button return here —
+      // opening in an iframe would fight with fullscreen/orientation
+      // APIs some of these games use for a better play experience.
+      window.open(url, '_blank');
+    });
+  });
+
+  document.querySelectorAll('[data-game-download]').forEach(btn => {
+    btn.addEventListener('click', () => downloadGameOffline(btn));
+  });
+
+  // If the Service Worker finishes a download after the button was
+  // clicked, it posts back here — updates the specific button that
+  // requested it rather than re-scanning everything.
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data && e.data.type === 'GAME_CACHED') {
+        const btn = document.querySelector(`[data-game-url="${e.data.url}"]`);
+        if (btn) _setGameDownloadUI(btn, e.data.success ? 'done' : 'error');
+        if (e.data.success) {
+          const gameId = btn && btn.dataset.gameDownload;
+          if (gameId) localStorage.setItem(_gameDownloadedKey(gameId), '1');
+        }
+      }
+    });
+  }
+
+  _refreshGameDownloadStates();
+}
+
+function _refreshGameDownloadStates() {
+  document.querySelectorAll('[data-game-download]').forEach(btn => {
+    const gameId = btn.dataset.gameDownload;
+    if (localStorage.getItem(_gameDownloadedKey(gameId)) === '1') {
+      _setGameDownloadUI(btn, 'done');
+    }
+  });
+}
+
+function _setGameDownloadUI(btn, state) {
+  const card = btn.closest('.game-card');
+  const progressWrap = card && card.querySelector('.game-dl-progress');
+  const progressBar = card && card.querySelector('.game-dl-progress-bar');
+  if (state === 'downloading') {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    if (progressWrap) progressWrap.style.display = 'block';
+    if (progressBar) progressBar.style.width = '40%'; // indeterminate-ish feedback; game files are small/single-request
+  } else if (state === 'done') {
+    btn.disabled = false;
+    btn.classList.add('downloaded');
+    btn.innerHTML = '<i class="fas fa-circle-check"></i>';
+    btn.title = 'Downloaded — available offline';
+    if (progressBar) progressBar.style.width = '100%';
+    setTimeout(() => { if (progressWrap) progressWrap.style.display = 'none'; }, 600);
+  } else if (state === 'error') {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-rotate-right"></i>';
+    btn.title = 'Download failed — tap to retry';
+    if (progressWrap) progressWrap.style.display = 'none';
+    toast('Could not download game — check your connection and try again', 'error');
+  }
+}
+
+async function downloadGameOffline(btn) {
+  if (btn.disabled) return;
+  const url = btn.dataset.gameUrl;
+  const gameId = btn.dataset.gameDownload;
+  if (!url) return;
+
+  if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
+    // No active Service Worker (e.g. first visit before it's finished
+    // installing) — fall back to just letting the browser's own HTTP
+    // cache hold it from a normal fetch, which still helps somewhat but
+    // can't guarantee offline access the way the SW's Cache Storage can.
+    toast('Offline download needs a moment — try again in a few seconds', 'error');
+    return;
+  }
+
+  _setGameDownloadUI(btn, 'downloading');
+  logAnalyticsEvent('game_download', { game: gameId });
+  navigator.serviceWorker.controller.postMessage({ type: 'CACHE_GAME', url });
+
+  // Safety timeout — if the SW never responds for some reason (shouldn't
+  // happen, but message-passing has no built-in timeout), don't leave the
+  // button stuck in a spinner forever.
+  setTimeout(() => {
+    if (btn.disabled) _setGameDownloadUI(btn, 'error');
+  }, 15000);
+}
+
+
 const _fallbackPosterSvg = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450"><rect width="300" height="450" fill="%23151822"/><text x="150" y="225" font-family="sans-serif" font-size="16" fill="%235d637a" text-anchor="middle">No Poster</text></svg>')}`;
 
 /* Builds a grid's full HTML by interleaving a native ad card after every
@@ -7226,7 +7487,8 @@ document.addEventListener('DOMContentLoaded', () => {
     '/leaderboard': 'leaderboard',
     '/music': 'music',
     '/calendar': 'calendar',
-    '/account': 'account'
+    '/account': 'account',
+    '/games': 'games'
   };
   const directView = pathViewMap[window.location.pathname];
   if (directView) switchView(directView);

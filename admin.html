@@ -943,16 +943,22 @@ tr:hover td{background:var(--bg-card-hover)}
           as a browser-level popup; works on iOS too, unlike classic push notifications.
           <br><br>
           <b style="color:#ff6b6b">⚠️ Safety note:</b> only ever use Zone IDs from your own verified Monetag account.
+          <br><br>
+          <b style="color:var(--green)">ℹ️ Currently active:</b> Zone <code>11656016</code> (Vignette) and <code>11656097</code>
+          (In-Page Push) are running right now as a built-in fallback — these used to be hardcoded directly into the
+          site and bypassed the Ad Controls toggle above entirely, which is why turning Monetag off didn't actually
+          stop it before. They now go through the same toggle-respecting path as everything else. Leave the fields
+          below empty to keep using these, or enter your own Zone IDs to replace them.
         </p>
 
         <form id="adSlotsForm" class="form-grid">
           <div class="form-group">
             <label>🎬 Vignette Banner — Zone ID</label>
-            <input type="text" class="form-control" id="monetagVignetteZone" placeholder="e.g. 9876543" inputmode="numeric">
+            <input type="text" class="form-control" id="monetagVignetteZone" placeholder="e.g. 11656016 (currently active as fallback)" inputmode="numeric">
           </div>
           <div class="form-group">
             <label>📌 In-Page Push — Zone ID</label>
-            <input type="text" class="form-control" id="monetagIppZone" placeholder="e.g. 9876544" inputmode="numeric">
+            <input type="text" class="form-control" id="monetagIppZone" placeholder="e.g. 11656097 (currently active as fallback)" inputmode="numeric">
           </div>
           <div style="grid-column:1/-1">
             <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Monetag Zones</button>

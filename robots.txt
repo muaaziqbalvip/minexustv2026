@@ -3,6 +3,7 @@ Allow: /
 Allow: /movie/
 Allow: /series/
 Allow: /blog/
+Allow: /games/
 Disallow: /admin
 Disallow: /admin-recover.html
 

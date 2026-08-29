@@ -331,10 +331,19 @@
         try {
           if (!this._isOn('monetag')) return; // Admin toggle: Monetag off
           const cfg = snap.val() || {};
+          // Fallback to the zone IDs that used to be hardcoded directly in
+          // index.html's <head> (11656016 = vignette, 11656097 = in-page
+          // push) — only used when Admin hasn't saved anything yet, so
+          // ad revenue keeps flowing exactly as before while this now
+          // goes through the toggle-respecting path instead of bypassing
+          // it entirely like the old hardcoded <script> tags did. Once
+          // Muaaz saves real values in Admin, those take over completely.
+          const vignetteZone = cfg.vignetteZone || (cfg.vignetteRaw ? '' : '11656016');
+          const ippZone = cfg.ippZone || (cfg.ippRaw ? '' : '11656097');
           if (cfg.vignetteRaw) this._loadMonetagRaw(cfg.vignetteRaw, 'vignette');
-          else this._loadMonetagScript(cfg.vignetteZone, 'vignette');
+          else this._loadMonetagScript(vignetteZone, 'vignette');
           if (cfg.ippRaw) this._loadMonetagRaw(cfg.ippRaw, 'ipp');
-          else this._loadMonetagScript(cfg.ippZone, 'ipp');
+          else this._loadMonetagScript(ippZone, 'ipp');
         } catch (e) { this._logError('monetag-config-listener', e); }
       }, err => this._logError('monetag-firebase-read', err));
     },

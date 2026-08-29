@@ -107,4 +107,28 @@ self.addEventListener('fetch', e => {
 // Allow the page to force-activate a new SW immediately after deploy
 self.addEventListener('message', e => {
   if (e.data === 'SKIP_WAITING') self.skipWaiting();
+
+  // Explicit "Download for offline" request from the Games hub (see
+  // initGamesView()/downloadGameOffline() in index.html) — caches a
+  // game's HTML file (and it's self-contained, so no other assets are
+  // needed) directly, rather than waiting for the person to have already
+  // opened it once via normal navigation for the network-first branch
+  // above to have cached it as a side effect. Responds with a
+  // postMessage back to whichever tab asked, so the UI can show a real
+  // "downloaded" state instead of just assuming success.
+  if (e.data && e.data.type === 'CACHE_GAME' && e.data.url) {
+    e.waitUntil(
+      fetch(e.data.url, { cache: 'no-store' })
+        .then(res => {
+          if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+          return caches.open(STATIC_CACHE).then(cache => cache.put(e.data.url, res.clone()));
+        })
+        .then(() => {
+          if (e.source) e.source.postMessage({ type: 'GAME_CACHED', url: e.data.url, success: true });
+        })
+        .catch(err => {
+          if (e.source) e.source.postMessage({ type: 'GAME_CACHED', url: e.data.url, success: false, error: String(err) });
+        })
+    );
+  }
 });
