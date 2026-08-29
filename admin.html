@@ -183,6 +183,23 @@ input,select,textarea{font-family:inherit;border:none;outline:none}
 
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
 .form-group{display:flex;flex-direction:column;gap:6px}
+/* Ad Controls toggle switches */
+.ad-toggle-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:#161924;border:1px solid var(--border);border-radius:10px;
+  padding:12px 14px;cursor:pointer;font-size:13px;
+}
+.ad-toggle-switch{
+  appearance:none;-webkit-appearance:none;width:42px;height:24px;
+  border-radius:20px;background:#2a2f3d;position:relative;flex-shrink:0;
+  cursor:pointer;transition:.2s;outline:none;
+}
+.ad-toggle-switch::before{
+  content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;
+  border-radius:50%;background:#8e94a8;transition:.2s;
+}
+.ad-toggle-switch:checked{background:var(--green)}
+.ad-toggle-switch:checked::before{left:21px;background:#fff}
 .form-group label{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase}
 .form-control{
   background:#161924;border:1px solid var(--border);
@@ -873,6 +890,43 @@ tr:hover td{background:var(--bg-card-hover)}
     <div class="tab-content" id="tab-monetization">
       <div class="card">
         <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-toggle-on" style="color:var(--green)"></i> Ad Controls — Turn Formats On/Off</h2>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.7">
+          Switch any ad format off instantly, without touching keys or deleting anything below — useful for isolating
+          which specific placement is causing a problem, or pausing a network entirely if something's misbehaving.
+          Takes effect live for everyone already on the site, no redeploy needed. Flip it back on any time — your
+          saved keys underneath are untouched either way.
+        </p>
+        <div id="adTogglesGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+          <label class="ad-toggle-row">
+            <span><strong>Monetag</strong><br><span style="font-size:11px;color:var(--text-muted)">Vignette + In-Page Push</span></span>
+            <input type="checkbox" class="ad-toggle-switch" id="toggle-monetag" checked>
+          </label>
+          <label class="ad-toggle-row">
+            <span><strong>Adsterra Banners</strong><br><span style="font-size:11px;color:var(--text-muted)">320x50, 468x60, 160x300</span></span>
+            <input type="checkbox" class="ad-toggle-switch" id="toggle-adsterraBanners" checked>
+          </label>
+          <label class="ad-toggle-row">
+            <span><strong>Adsterra Native</strong><br><span style="font-size:11px;color:var(--text-muted)">In-feed native banner</span></span>
+            <input type="checkbox" class="ad-toggle-switch" id="toggle-adsterraNative" checked>
+          </label>
+          <label class="ad-toggle-row">
+            <span><strong>Adsterra Social Bar</strong><br><span style="font-size:11px;color:var(--text-muted)">Floating bar (needs refresh to fully remove once loaded)</span></span>
+            <input type="checkbox" class="ad-toggle-switch" id="toggle-adsterraSocialBar" checked>
+          </label>
+          <label class="ad-toggle-row">
+            <span><strong>Custom Slots</strong><br><span style="font-size:11px;color:var(--text-muted)">Home Top/Mid, Player embeds</span></span>
+            <input type="checkbox" class="ad-toggle-switch" id="toggle-customSlots" checked>
+          </label>
+        </div>
+        <div style="margin-top:14px">
+          <span id="adTogglesStatus" style="font-size:11px;color:var(--text-muted)"></span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-header">
           <h2 class="card-title"><i class="fas fa-dollar-sign" style="color:var(--gold)"></i> Monetag — Vignette & In-Page Push</h2>
         </div>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.7">
@@ -1202,10 +1256,13 @@ if (window.MinexusAdsEngine) window.MinexusAdsEngine.init(db);
 </script>
 <script>
 
-function toast(msg) {
+function toast(msg, type) {
   const t = document.createElement('div');
   t.className = 'toast';
-  t.innerHTML = `<i class="fas fa-check-circle" style="color:var(--green);margin-right:6px"></i> ${msg}`;
+  const isError = type === 'error';
+  const icon = isError ? 'fa-circle-exclamation' : 'fa-check-circle';
+  const color = isError ? '#ff6b6b' : 'var(--green)';
+  t.innerHTML = `<i class="fas ${icon}" style="color:${color};margin-right:6px"></i> ${msg}`;
   document.getElementById('toastBox').appendChild(t);
   setTimeout(() => t.remove(), 3000);
 }
@@ -1673,6 +1730,41 @@ db.ref('custom_servers').on('value', snap => {
   _customServersCache = snap.val() || {};
   rebuildDefaultServerOptions();
   renderCustomServerList();
+});
+
+// ---- Ad Controls (per-format on/off toggles) ----
+// Reads/writes app_config/adToggles, which ads-engine.js checks before
+// rendering each ad format (see _isOn() in ads-engine.js) — flipping a
+// switch here takes effect live for everyone already on the site, no
+// redeploy needed, since ads-engine.js listens to this same path.
+const AD_TOGGLE_KEYS = ['monetag', 'adsterraBanners', 'adsterraNative', 'adsterraSocialBar', 'customSlots'];
+let _adTogglesSuppressChange = false;
+db.ref('app_config/adToggles').on('value', snap => {
+  const toggles = snap.val() || {};
+  _adTogglesSuppressChange = true;
+  AD_TOGGLE_KEYS.forEach(key => {
+    const el = document.getElementById(`toggle-${key}`);
+    if (el) el.checked = toggles[key] !== false; // default ON unless explicitly saved as false
+  });
+  _adTogglesSuppressChange = false;
+  const offCount = AD_TOGGLE_KEYS.filter(k => toggles[k] === false).length;
+  document.getElementById('adTogglesStatus').textContent = offCount
+    ? `${offCount} of ${AD_TOGGLE_KEYS.length} formats currently switched off`
+    : 'All ad formats currently on';
+});
+AD_TOGGLE_KEYS.forEach(key => {
+  const el = document.getElementById(`toggle-${key}`);
+  if (!el) return;
+  el.addEventListener('change', async () => {
+    if (_adTogglesSuppressChange) return; // ignore the programmatic set above firing its own 'change'
+    try {
+      await db.ref(`app_config/adToggles/${key}`).set(el.checked);
+      toast(`${key} ${el.checked ? 'enabled' : 'disabled'} — live now`);
+    } catch (e) {
+      toast('Could not save toggle — try again', 'error');
+      el.checked = !el.checked; // revert the visual state since the save failed
+    }
+  });
 });
 
 // Monetization — Monetag Zone IDs (Vignette + In-Page Push)

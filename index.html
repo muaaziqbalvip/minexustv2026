@@ -7206,6 +7206,31 @@ document.addEventListener('DOMContentLoaded', () => {
   initHero();
   loadRows();
 
+  // ---- DIRECT URL ROUTING: /movies, /series, /live, /leaderboard ----
+  // REAL BUG FIXED HERE: this app never had ANY code that read
+  // window.location.pathname to decide which view to show — S.view always
+  // hardcoded to 'home' (see the S state object above) regardless of what
+  // URL was actually requested. That's why a direct link to
+  // https://minexustv.vercel.app/series (from the sitemap, a shared link,
+  // a bookmark, or someone just typing the URL) always landed on the Home
+  // view instead of Series — vercel.json's catch-all correctly served
+  // index.html for that path, but nothing inside index.html ever looked at
+  // the path once loaded, so it silently ignored /series and just booted
+  // to Home like any other visit. Fixed by mapping the path to the same
+  // view names switchView() already accepts, matching exactly the routes
+  // vercel.json and sitemap.xml advertise as real, direct-linkable URLs.
+  const pathViewMap = {
+    '/movies': 'movies',
+    '/series': 'series',
+    '/live': 'live',
+    '/leaderboard': 'leaderboard',
+    '/music': 'music',
+    '/calendar': 'calendar',
+    '/account': 'account'
+  };
+  const directView = pathViewMap[window.location.pathname];
+  if (directView) switchView(directView);
+
   // ---- DEEP LINK: open shared "?watch=ttXXXXXXX&type=movie" links directly ----
   const params = new URLSearchParams(window.location.search);
   const watchId = params.get('watch');

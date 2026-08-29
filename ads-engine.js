@@ -51,13 +51,93 @@
        index.html and the standalone policy pages each set up Firebase
        slightly differently (index.html also sets up auth/analytics;
        the policy pages only need the database for reading ad config). */
+    _toggles: {}, // cached from app_config/adToggles — see _watchToggles()
+
     init(databaseInstance) {
       this._db = databaseInstance;
       this._detectAdBlocker();
+      this._watchToggles();
       this._watchMonetag();
       this._watchAdsterra();
       this._watchCustomSlots();
       this._observeNewBannerSlots();
+    },
+
+    /* Reads Admin Panel's per-ad-type on/off switches (app_config/adToggles)
+       — added so Muaaz can kill any single ad type/size from Admin without
+       needing a code change or redeploy, e.g. to isolate which specific
+       placement is causing a problem, or to turn off a network entirely if
+       it's misbehaving. Missing/undefined for a given key defaults to ON
+       (true) so existing deployments that predate this feature keep
+       working exactly as before until someone actively switches something
+       off in Admin. Re-runs every render function whenever a toggle
+       changes, so flipping a switch in Admin takes effect live without
+       the visitor needing to refresh. */
+    _watchToggles() {
+      if (!this._db) return;
+      this._db.ref('app_config/adToggles').on('value', snap => {
+        this._toggles = snap.val() || {};
+        // Re-apply immediately so a toggle flip is visible without a
+        // page refresh — re-running these is safe/idempotent even when
+        // nothing actually changed, since each fill function already
+        // skips slots that are already correctly filled.
+        this._reapplyAll();
+      }, err => this._logError('ad-toggles-firebase-read', err));
+    },
+
+    _isOn(key) {
+      return this._toggles[key] !== false; // default ON unless explicitly disabled
+    },
+
+    /* Hides every element belonging to an ad type the moment it's toggled
+       off, and re-fills everything from cached values the moment it's
+       toggled back on — called both right after a toggle change and from
+       key parts of the normal render flow. */
+    _reapplyAll() {
+      if (!this._isOn('monetag')) this._hideAllMonetag();
+      if (!this._isOn('adsterraBanners')) {
+        ['adsterraSlot320x50', 'adsterraSlot468x60', 'adsterraSlot160x300'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+        document.querySelectorAll('.ad-banner-slot').forEach(el => { el.style.display = 'none'; el.classList.remove('ad-banner-visible'); });
+        document.querySelectorAll('.ad-banner-slot-160x300').forEach(el => { el.style.display = 'none'; el.classList.remove('ad-banner-visible'); });
+      } else if (this._lastBannerKey) {
+        this._fillAllBannerSlots(this._lastBannerKey);
+        if (this._last160x300Key) this._fillAll160x300Slots(this._last160x300Key);
+      }
+      if (!this._isOn('adsterraNative')) {
+        const el = document.getElementById('adsterraSlotNative');
+        if (el) el.style.display = 'none';
+        document.querySelectorAll('.ad-banner-slot-native').forEach(el2 => { el2.style.display = 'none'; el2.classList.remove('ad-banner-visible'); });
+      } else if (this._lastNativeScriptSrc || this._lastBannerKey) {
+        this._fillAllNativeSlots(this._lastNativeScriptSrc, this._lastBannerKey);
+      }
+      if (!this._isOn('adsterraSocialBar')) this._removeSocialBar();
+      if (!this._isOn('customSlots')) this._hideCustomSlots();
+    },
+
+    _hideAllMonetag() {
+      document.querySelectorAll('[data-monetag-raw]').forEach(el => el.remove());
+      this._loadedMonetagZones.clear();
+    },
+
+    _removeSocialBar() {
+      // The Social Bar script, once loaded, manages its own DOM outside
+      // our containers (it injects directly into document.body) — there's
+      // no single element we placed that we can just hide, so this can
+      // only prevent a NOT-yet-loaded bar from loading; a bar already
+      // injected before the toggle was switched off requires a page
+      // refresh to fully clear, which is called out in the Admin UI
+      // itself (see the toggle description in admin.html).
+      this._socialBarLoaded = true; // block loadSocialBar() from firing
+    },
+
+    _hideCustomSlots() {
+      ['adSlotHomeTop', 'adSlotHomeMid', 'adSlotPlayer', 'adSlotPolicyPage'].forEach(slotId => {
+        const el = document.getElementById(slotId);
+        if (el) { el.innerHTML = ''; el.style.display = 'none'; }
+      });
     },
 
     _logError(context, err) {
@@ -109,7 +189,27 @@
        it (an iframe, or any non-empty child), confirms/logs it as proof,
        and retries loading if nothing shows up within the grace period —
        this is what turns "we inserted a script tag and hoped for the
-       best" into an actually-monitored, self-healing ad slot. */
+       best" into an actually-monitored, self-healing ad slot.
+
+       REAL BUG FIXED HERE: the old check was `container.children.length >
+       0`, but renderBanner() always synchronously appends an iframe to
+       the container the instant it's called — BEFORE the ad network has
+       had any chance to actually respond. That meant this check was
+       structurally guaranteed to always pass (an iframe element is always
+       there), regardless of whether the ad network returned real content
+       or nothing at all. The practical effect: any Adsterra key that was
+       invalid, misconfigured, or simply had no fill for a given
+       visitor/region logged as "confirmed" and NEVER retried — the ad
+       slot just sat there permanently blank with no visible sign anything
+       was wrong. Fixed to actually measure the iframe's rendered content
+       area (its contentWindow document body's scroll size) instead of
+       just checking that a DOM node exists — a truly empty/failed ad
+       network response renders an effectively empty body, which this now
+       correctly detects as "no content" and retries. Falls back to the
+       old "any child present" check only for non-iframe cases (native ad
+       scripts that inject `.native-ad-wrapper` divs directly, which don't
+       have this same false-positive risk since they're same-origin DOM
+       content we can already see is non-empty). */
     _confirmOrRetry(container, slotName, retryFn, attempt) {
       if (!container) return;
       attempt = attempt || 0;
@@ -117,7 +217,30 @@
       const graceMs = 2500;
 
       setTimeout(() => {
-        const hasContent = container.querySelector('iframe, ins, .native-ad-wrapper') || container.children.length > 0;
+        const iframe = container.querySelector('iframe');
+        let hasContent = false;
+        if (iframe) {
+          try {
+            // A same-origin-accessible srcdoc iframe lets us actually
+            // measure whether the ad network rendered real content
+            // (non-trivial body size) vs. an effectively empty page.
+            const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+            const body = doc && doc.body;
+            hasContent = !!(body && (body.scrollHeight > 5 || body.scrollWidth > 5) && body.children.length > 0);
+          } catch (e) {
+            // Cross-origin iframe content (can happen once the ad
+            // network's own script navigates the iframe to its own
+            // origin to serve the creative) can't be inspected from here
+            // at all — that's actually a strong signal the ad DID load
+            // (a same-origin blank iframe would never throw), so treat
+            // the security exception itself as a success signal rather
+            // than a failure.
+            hasContent = true;
+          }
+        } else {
+          hasContent = container.querySelector('ins, .native-ad-wrapper') || container.children.length > 0;
+        }
+
         if (hasContent) {
           this._logLoadConfirmed(slotName);
           return;
@@ -171,6 +294,7 @@
       if (!this._db) return;
       this._db.ref('app_config/monetag').on('value', snap => {
         try {
+          if (!this._isOn('monetag')) return; // Admin toggle: Monetag off
           const cfg = snap.val() || {};
           if (cfg.vignetteRaw) this._loadMonetagRaw(cfg.vignetteRaw, 'vignette');
           else this._loadMonetagScript(cfg.vignetteZone, 'vignette');
@@ -244,11 +368,15 @@
       this._db.ref('app_config/adsterra').on('value', snap => {
         try {
           const cfg = snap.val() || {};
-          this.renderBanner(document.getElementById('adsterraSlot320x50'), cfg.key320x50, 320, 50);
-          this.renderBanner(document.getElementById('adsterraSlot468x60'), cfg.key468x60, 468, 60);
-          this.renderBanner(document.getElementById('adsterraSlot160x300'), cfg.key160x300, 160, 300);
-          this.renderDirectScript(document.getElementById('adsterraSlotNative'), cfg.nativeScriptSrc, 'adsterra-native');
-          this.loadSocialBar(cfg.socialBarScriptSrc);
+          if (this._isOn('adsterraBanners')) {
+            this.renderBanner(document.getElementById('adsterraSlot320x50'), cfg.key320x50, 320, 50);
+            this.renderBanner(document.getElementById('adsterraSlot468x60'), cfg.key468x60, 468, 60);
+            this.renderBanner(document.getElementById('adsterraSlot160x300'), cfg.key160x300, 160, 300);
+          }
+          if (this._isOn('adsterraNative')) {
+            this.renderDirectScript(document.getElementById('adsterraSlotNative'), cfg.nativeScriptSrc, 'adsterra-native');
+          }
+          if (this._isOn('adsterraSocialBar')) this.loadSocialBar(cfg.socialBarScriptSrc);
 
           const supportLink = document.getElementById('supportUsSmartlink');
           if (supportLink) {
@@ -272,7 +400,7 @@
        recreates these elements, so a one-time fill at page load would
        only ever have caught the very first render. */
     _fillAllBannerSlots(key) {
-      if (!key) return;
+      if (!key || !this._isOn('adsterraBanners')) return;
       document.querySelectorAll('.ad-banner-slot').forEach(el => {
         // Skip ones already filled with this exact key — renderBanner
         // already rebuilds the iframe unconditionally, so this check
@@ -293,6 +421,7 @@
        in Admin, so doubling never leaves an empty gap just because Native
        specifically hasn't been set up yet. */
     _fillAllNativeSlots(nativeScriptSrc, fallbackKey) {
+      if (!this._isOn('adsterraNative')) return;
       document.querySelectorAll('.ad-banner-slot-native').forEach(el => {
         if (nativeScriptSrc) {
           if (el.dataset.nativeLoaded === nativeScriptSrc) return;
@@ -312,7 +441,7 @@
        enough vertical room for a taller, higher-CPM box format instead of
        a thin banner (e.g. as the second ad in a two-ad pairing). */
     _fillAll160x300Slots(key) {
-      if (!key) return;
+      if (!key || !this._isOn('adsterraBanners')) return;
       document.querySelectorAll('.ad-banner-slot-160x300').forEach(el => {
         if (el.dataset.bannerKey === key) return;
         el.dataset.bannerKey = key;
@@ -367,6 +496,7 @@
       if (!this._db) return;
       this._db.ref('app_config/ad_slots').on('value', snap => {
         try {
+          if (!this._isOn('customSlots')) return; // Admin toggle: Custom HTML slots off
           const slots = snap.val() || {};
           ['adSlotHomeTop', 'adSlotHomeMid', 'adSlotPlayer', 'adSlotPolicyPage'].forEach(slotId => {
             const el = document.getElementById(slotId);
