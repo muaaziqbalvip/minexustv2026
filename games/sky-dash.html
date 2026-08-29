@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Sky Dash — MINEXUS Games</title>
+<meta name="theme-color" content="#4ec0e0">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,sans-serif;background:#0a0e14;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:12px;touch-action:none;user-select:none}
+.top-bar{width:100%;max-width:380px;display:flex;justify-content:space-between;margin-bottom:10px}
+.stat-box{background:rgba(255,255,255,.08);border-radius:8px;padding:6px 14px;text-align:center;min-width:60px}
+.stat-label{font-size:9px;opacity:.7;text-transform:uppercase;font-weight:700}
+.stat-val{font-size:16px;font-weight:900}
+.board-wrap{position:relative;width:100%;max-width:380px;aspect-ratio:3/4;border-radius:12px;overflow:hidden;border:2px solid rgba(255,255,255,.15)}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;background:rgba(0,0,0,.6);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.overlay-text{font-size:24px;font-weight:900}
+.overlay-sub{font-size:13px;opacity:.8}
+.overlay-btn{background:#ffca28;color:#3a2a00;border:none;border-radius:10px;padding:11px 24px;font-weight:900;cursor:pointer;font-size:14px}
+.hint{margin-top:14px;font-size:12px;opacity:.7;text-align:center;max-width:320px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="stat-box"><div class="stat-label">Score</div><div class="stat-val" id="score">0</div></div>
+  <div class="stat-box"><div class="stat-label">Best</div><div class="stat-val" id="best">0</div></div>
+</div>
+
+<div class="board-wrap" id="boardWrap">
+  <canvas id="canvas"></canvas>
+  <div class="overlay" id="overlay">
+    <div class="overlay-text" id="overlayText">Sky Dash</div>
+    <div class="overlay-sub" id="overlaySub">Tap or press Space to fly</div>
+    <button class="overlay-btn" id="overlayBtn">Start</button>
+  </div>
+</div>
+
+<p class="hint">Tap the screen, click, or press Space/Up to flap. Avoid the pipes. Works fully offline once downloaded.</p>
+
+<script>
+(function(){
+'use strict';
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+const boardWrap=document.getElementById('boardWrap');
+const scoreEl=document.getElementById('score');
+const bestEl=document.getElementById('best');
+const overlay=document.getElementById('overlay');
+const overlayText=document.getElementById('overlayText');
+const overlaySub=document.getElementById('overlaySub');
+const overlayBtn=document.getElementById('overlayBtn');
+
+const STORAGE_BEST='minexus_skydash_best';
+function loadBest(){ try{return parseInt(localStorage.getItem(STORAGE_BEST)||'0',10)||0;}catch(e){return 0;} }
+function saveBest(v){ try{localStorage.setItem(STORAGE_BEST,String(v));}catch(e){} }
+
+let W,H,scale;
+function resize(){
+  const rect=boardWrap.getBoundingClientRect();
+  W=canvas.width=rect.width; H=canvas.height=rect.height;
+  scale=W/380;
+}
+
+let bird, pipes, score, best, running, gravity, flapPower, pipeGap, pipeSpeed, frame;
+
+function reset(){
+  bird = { x: 70, y: H/2, vy: 0, r: 14*scale };
+  pipes = [];
+  score = 0;
+  frame = 0;
+  gravity = 0.45*scale;
+  flapPower = -8*scale;
+  pipeGap = 150*scale;
+  pipeSpeed = 2.6*scale;
+  running = true;
+  scoreEl.textContent='0';
+  overlay.style.display='none';
+}
+
+function flap(){
+  if(!running) return;
+  bird.vy = flapPower;
+}
+
+function spawnPipe(){
+  const margin = 60*scale;
+  const top = margin + Math.random()*(H - pipeGap - margin*2);
+  pipes.push({ x: W+30, top, passed:false });
+}
+
+function update(){
+  if(!running) return;
+  frame++;
+  bird.vy += gravity;
+  bird.y += bird.vy;
+
+  if(frame % 90 === 0) spawnPipe();
+  pipes.forEach(p=> p.x -= pipeSpeed);
+  pipes = pipes.filter(p=> p.x > -60*scale);
+
+  pipes.forEach(p=>{
+    if(!p.passed && p.x + 30*scale < bird.x){ p.passed=true; score++; scoreEl.textContent=score; }
+    const dx = bird.x - (p.x+15*scale);
+    const withinX = Math.abs(dx) < 15*scale + bird.r;
+    const hitsTop = bird.y - bird.r < p.top;
+    const hitsBottom = bird.y + bird.r > p.top + pipeGap;
+    if(withinX && (hitsTop || hitsBottom)) die();
+  });
+
+  if(bird.y + bird.r > H || bird.y - bird.r < 0) die();
+}
+
+function die(){
+  running=false;
+  if(score>best){ best=score; saveBest(best); bestEl.textContent=best; }
+  overlayText.textContent='Game Over';
+  overlaySub.textContent = `Score: ${score}`;
+  overlayBtn.textContent='Try Again';
+  overlay.style.display='flex';
+}
+
+function draw(){
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'#4ec0e0'); grad.addColorStop(1,'#1a5f7a');
+  ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
+
+  ctx.fillStyle='#3cb043';
+  pipes.forEach(p=>{
+    ctx.fillRect(p.x, 0, 30*scale, p.top);
+    ctx.fillRect(p.x, p.top+pipeGap, 30*scale, H-(p.top+pipeGap));
+  });
+
+  ctx.save();
+  ctx.translate(bird.x, bird.y);
+  ctx.rotate(Math.max(-0.5, Math.min(0.9, bird.vy/10)));
+  ctx.fillStyle='#ffca28';
+  ctx.beginPath(); ctx.arc(0,0,bird.r,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#3a2a00';
+  ctx.beginPath(); ctx.arc(bird.r*0.35, -bird.r*0.25, bird.r*0.2, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+document.addEventListener('keydown', e=>{
+  if(e.code==='Space' || e.key==='ArrowUp'){ e.preventDefault(); if(!running && overlay.style.display!=='none'){} flap(); }
+});
+boardWrap.addEventListener('pointerdown', ()=>{
+  if(!running && overlay.style.display==='flex') return;
+  flap();
+});
+overlayBtn.addEventListener('click', reset);
+
+resize();
+window.addEventListener('resize', resize);
+reset();
+running=false;
+overlay.style.display='flex';
+best=loadBest(); bestEl.textContent=best;
+loop();
+})();
+</script>
+</body>
+</html>

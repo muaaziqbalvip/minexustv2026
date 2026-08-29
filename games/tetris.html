@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Tetris Blocks — MINEXUS Games</title>
+<meta name="theme-color" content="#0a0a14">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,sans-serif;background:#0a0a14;color:#eef;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:12px 12px 30px;touch-action:none;user-select:none}
+.top-bar{width:100%;max-width:360px;display:flex;justify-content:space-between;margin-bottom:10px}
+.stat-box{background:#161629;border:1px solid #2a2a45;border-radius:8px;padding:6px 12px;text-align:center;min-width:56px}
+.stat-label{font-size:9px;color:#8888b0;text-transform:uppercase;font-weight:700}
+.stat-val{font-size:16px;font-weight:900}
+.game-area{display:flex;gap:12px;align-items:flex-start;justify-content:center;width:100%;max-width:420px}
+.board-wrap{position:relative;background:#12122a;border:2px solid #2a2a45;border-radius:8px}
+canvas{display:block}
+.side-panel{display:flex;flex-direction:column;gap:10px;width:80px}
+.next-box{background:#161629;border:1px solid #2a2a45;border-radius:8px;padding:8px;text-align:center}
+.next-label{font-size:9px;color:#8888b0;text-transform:uppercase;font-weight:700;margin-bottom:6px}
+.overlay{position:absolute;inset:0;background:rgba(10,10,20,.9);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;border-radius:8px}
+.overlay.show{display:flex}
+.overlay-text{font-size:22px;font-weight:900}
+.overlay-btn{background:#7c5cff;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-weight:800;cursor:pointer}
+.controls{display:grid;grid-template-columns:repeat(4,56px);gap:6px;margin-top:16px}
+.ctrl-btn{background:#161629;border:1px solid #2a2a45;border-radius:10px;color:#eef;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;height:52px}
+.ctrl-btn:active{background:#7c5cff}
+.hint{margin-top:12px;font-size:11.5px;color:#8888b0;text-align:center;max-width:320px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="stat-box"><div class="stat-label">Score</div><div class="stat-val" id="score">0</div></div>
+  <div class="stat-box"><div class="stat-label">Lines</div><div class="stat-val" id="lines">0</div></div>
+  <div class="stat-box"><div class="stat-label">Level</div><div class="stat-val" id="level">1</div></div>
+</div>
+
+<div class="game-area">
+  <div class="board-wrap" id="boardWrap">
+    <canvas id="canvas"></canvas>
+    <div class="overlay" id="overlay">
+      <div class="overlay-text" id="overlayText">Game Over</div>
+      <button class="overlay-btn" id="overlayBtn">Play Again</button>
+    </div>
+  </div>
+  <div class="side-panel">
+    <div class="next-box"><div class="next-label">Next</div><canvas id="nextCanvas" width="64" height="64"></canvas></div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="ctrl-btn" data-act="left">◀</button>
+  <button class="ctrl-btn" data-act="rotate">⟳</button>
+  <button class="ctrl-btn" data-act="right">▶</button>
+  <button class="ctrl-btn" data-act="drop">⬇</button>
+</div>
+
+<p class="hint">Arrow keys or buttons to move/rotate. Down = soft drop, tap ⬇ hold for hard drop. Works fully offline once downloaded.</p>
+
+<script>
+(function(){
+'use strict';
+const COLS=10, ROWS=18;
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const nextCanvas = document.getElementById('nextCanvas');
+const nctx = nextCanvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const linesEl = document.getElementById('lines');
+const levelEl = document.getElementById('level');
+const overlay = document.getElementById('overlay');
+const overlayText = document.getElementById('overlayText');
+
+let cell;
+function resize(){
+  const maxW = Math.min(300, window.innerWidth - 120);
+  cell = Math.floor(maxW / COLS);
+  canvas.width = cell*COLS; canvas.height = cell*ROWS;
+  draw();
+}
+
+const SHAPES = {
+  I:[[1,1,1,1]], O:[[1,1],[1,1]], T:[[0,1,0],[1,1,1]],
+  S:[[0,1,1],[1,1,0]], Z:[[1,1,0],[0,1,1]], J:[[1,0,0],[1,1,1]], L:[[0,0,1],[1,1,1]]
+};
+const COLORS = { I:'#4dd0e1', O:'#ffd54f', T:'#ba68c8', S:'#81c784', Z:'#e57373', J:'#64b5f6', L:'#ffb74d' };
+const KEYS = Object.keys(SHAPES);
+
+let grid, cur, curX, curY, next, score, lines, level, dropInterval, dropTimer, running;
+
+function newGrid(){ return Array.from({length:ROWS},()=>Array(COLS).fill(null)); }
+function randPiece(){ return KEYS[Math.floor(Math.random()*KEYS.length)]; }
+
+function rotateMatrix(m){
+  const rows=m.length, cols=m[0].length;
+  const res = Array.from({length:cols},()=>Array(rows).fill(0));
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) res[c][rows-1-r]=m[r][c];
+  return res;
+}
+
+function spawn(){
+  cur = { key: next || randPiece(), shape: null };
+  cur.shape = SHAPES[cur.key].map(r=>r.slice());
+  next = randPiece();
+  curX = Math.floor((COLS - cur.shape[0].length)/2);
+  curY = 0;
+  if (collides(cur.shape, curX, curY)) { gameOver(); }
+  drawNext();
+}
+
+function collides(shape, x, y){
+  for(let r=0;r<shape.length;r++) for(let c=0;c<shape[r].length;c++){
+    if(!shape[r][c]) continue;
+    const gx=x+c, gy=y+r;
+    if(gx<0||gx>=COLS||gy>=ROWS) return true;
+    if(gy>=0 && grid[gy][gx]) return true;
+  }
+  return false;
+}
+
+function merge(){
+  cur.shape.forEach((row,r)=>row.forEach((v,c)=>{
+    if(v){ const gy=curY+r, gx=curX+c; if(gy>=0) grid[gy][gx]=cur.key; }
+  }));
+}
+
+function clearLines(){
+  let cleared=0;
+  for(let r=ROWS-1;r>=0;r--){
+    if(grid[r].every(cell=>cell)){
+      grid.splice(r,1);
+      grid.unshift(Array(COLS).fill(null));
+      cleared++; r++;
+    }
+  }
+  if(cleared){
+    const points=[0,100,300,500,800][cleared]||1000;
+    score += points * level;
+    lines += cleared;
+    level = Math.floor(lines/10)+1;
+    scoreEl.textContent=score; linesEl.textContent=lines; levelEl.textContent=level;
+    dropInterval = Math.max(120, 800 - (level-1)*60);
+  }
+}
+
+function hardDrop(){
+  while(!collides(cur.shape,curX,curY+1)) curY++;
+  lockPiece();
+}
+
+function lockPiece(){
+  merge();
+  clearLines();
+  spawn();
+  draw();
+}
+
+function tick(){
+  if(!running) return;
+  if(!collides(cur.shape,curX,curY+1)) curY++;
+  else lockPiece();
+  draw();
+}
+
+function move(dx){
+  if(!collides(cur.shape,curX+dx,curY)) { curX+=dx; draw(); }
+}
+function rotate(){
+  const rotated = rotateMatrix(cur.shape);
+  if(!collides(rotated,curX,curY)) { cur.shape=rotated; draw(); }
+  else if(!collides(rotated,curX-1,curY)) { cur.shape=rotated; curX--; draw(); }
+  else if(!collides(rotated,curX+1,curY)) { cur.shape=rotated; curX++; draw(); }
+}
+
+function draw(){
+  ctx.fillStyle='#12122a'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+    if(grid[r][c]) drawCell(c,r,COLORS[grid[r][c]]);
+  }
+  if(cur) cur.shape.forEach((row,r)=>row.forEach((v,c)=>{
+    if(v) drawCell(curX+c,curY+r,COLORS[cur.key]);
+  }));
+  ctx.strokeStyle='rgba(255,255,255,.04)';
+  for(let c=0;c<=COLS;c++){ ctx.beginPath(); ctx.moveTo(c*cell,0); ctx.lineTo(c*cell,canvas.height); ctx.stroke(); }
+  for(let r=0;r<=ROWS;r++){ ctx.beginPath(); ctx.moveTo(0,r*cell); ctx.lineTo(canvas.width,r*cell); ctx.stroke(); }
+}
+function drawCell(c,r,color){
+  ctx.fillStyle=color;
+  ctx.fillRect(c*cell+1,r*cell+1,cell-2,cell-2);
+}
+function drawNext(){
+  nctx.clearRect(0,0,64,64);
+  const shape = SHAPES[next];
+  const s = 14;
+  const offX = (64 - shape[0].length*s)/2, offY = (64-shape.length*s)/2;
+  nctx.fillStyle = COLORS[next];
+  shape.forEach((row,r)=>row.forEach((v,c)=>{ if(v) nctx.fillRect(offX+c*s+1,offY+r*s+1,s-2,s-2); }));
+}
+
+function gameOver(){
+  running=false;
+  clearInterval(dropTimer);
+  overlayText.textContent='Game Over';
+  overlay.classList.add('show');
+}
+
+function newGame(){
+  grid=newGrid(); score=0; lines=0; level=1; next=null; running=true;
+  scoreEl.textContent='0'; linesEl.textContent='0'; levelEl.textContent='1';
+  overlay.classList.remove('show');
+  dropInterval=800;
+  spawn();
+  clearInterval(dropTimer);
+  dropTimer=setInterval(tick,dropInterval);
+  draw();
+}
+
+document.addEventListener('keydown', e=>{
+  if(!running) return;
+  if(e.key==='ArrowLeft'){ e.preventDefault(); move(-1); }
+  else if(e.key==='ArrowRight'){ e.preventDefault(); move(1); }
+  else if(e.key==='ArrowDown'){ e.preventDefault(); tick(); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); rotate(); }
+  else if(e.code==='Space'){ e.preventDefault(); hardDrop(); draw(); }
+});
+
+document.querySelectorAll('.ctrl-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    if(!running) return;
+    const act = btn.dataset.act;
+    if(act==='left') move(-1);
+    else if(act==='right') move(1);
+    else if(act==='rotate') rotate();
+    else if(act==='drop') { hardDrop(); draw(); }
+  });
+});
+
+document.getElementById('overlayBtn').addEventListener('click', newGame);
+window.addEventListener('resize', resize);
+
+resize();
+newGame();
+})();
+</script>
+</body>
+</html>

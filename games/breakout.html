@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Brick Breaker — MINEXUS Games</title>
+<meta name="theme-color" content="#0a0a1e">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,sans-serif;background:#0a0a1e;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:12px;touch-action:none;user-select:none}
+.top-bar{width:100%;max-width:400px;display:flex;justify-content:space-between;margin-bottom:10px}
+.stat-box{background:rgba(255,255,255,.08);border-radius:8px;padding:6px 14px;text-align:center;min-width:60px}
+.stat-label{font-size:9px;opacity:.7;text-transform:uppercase;font-weight:700}
+.stat-val{font-size:16px;font-weight:900}
+.board-wrap{position:relative;width:100%;max-width:400px;aspect-ratio:3/4;border-radius:10px;overflow:hidden;border:2px solid rgba(255,255,255,.15);background:#0f0f28}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;background:rgba(0,0,0,.7);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.overlay-text{font-size:24px;font-weight:900}
+.overlay-btn{background:#ff6b6b;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-weight:900;cursor:pointer}
+.hint{margin-top:14px;font-size:12px;opacity:.7;text-align:center;max-width:320px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <div class="stat-box"><div class="stat-label">Score</div><div class="stat-val" id="score">0</div></div>
+  <div class="stat-box"><div class="stat-label">Lives</div><div class="stat-val" id="lives">3</div></div>
+  <div class="stat-box"><div class="stat-label">Best</div><div class="stat-val" id="best">0</div></div>
+</div>
+<div class="board-wrap" id="boardWrap">
+  <canvas id="canvas"></canvas>
+  <div class="overlay" id="overlay">
+    <div class="overlay-text" id="overlayText">Brick Breaker</div>
+    <button class="overlay-btn" id="overlayBtn">Start</button>
+  </div>
+</div>
+<p class="hint">Drag left/right (or use arrow keys) to move the paddle. Break every brick without losing all your lives. Works fully offline once downloaded.</p>
+<script>
+(function(){
+'use strict';
+const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d');
+const boardWrap=document.getElementById('boardWrap');
+const scoreEl=document.getElementById('score'), livesEl=document.getElementById('lives'), bestEl=document.getElementById('best');
+const overlay=document.getElementById('overlay'), overlayText=document.getElementById('overlayText'), overlayBtn=document.getElementById('overlayBtn');
+const STORAGE_BEST='minexus_breakout_best';
+function loadBest(){try{return parseInt(localStorage.getItem(STORAGE_BEST)||'0',10)||0;}catch(e){return 0;}}
+function saveBest(v){try{localStorage.setItem(STORAGE_BEST,String(v));}catch(e){}}
+
+let W,H,scale;
+function resize(){ const r=boardWrap.getBoundingClientRect(); W=canvas.width=r.width; H=canvas.height=r.height; scale=W/400; }
+
+let paddle, ball, bricks, score, lives, best, running, rows=6, cols=8;
+const BRICK_COLORS=['#ff6b6b','#ffa94d','#ffd43b','#69db7c','#4dabf7','#9775fa'];
+
+function initBricks(){
+  bricks=[];
+  const padTop=50*scale, padSide=10*scale, gap=4*scale;
+  const bw=(W-padSide*2-gap*(cols-1))/cols, bh=16*scale;
+  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+    bricks.push({ x: padSide+c*(bw+gap), y: padTop+r*(bh+gap), w:bw, h:bh, alive:true, color:BRICK_COLORS[r%BRICK_COLORS.length] });
+  }
+}
+
+function reset(){
+  paddle = { w: 70*scale, h: 10*scale, x: W/2-35*scale, y: H-30*scale };
+  ball = { x: W/2, y: H-50*scale, r: 6*scale, vx: 3*scale, vy: -3.4*scale };
+  score=0; lives=3; running=true;
+  scoreEl.textContent='0'; livesEl.textContent='3';
+  initBricks();
+  overlay.style.display='none';
+}
+
+function update(){
+  if(!running) return;
+  ball.x+=ball.vx; ball.y+=ball.vy;
+  if(ball.x-ball.r<0||ball.x+ball.r>W) ball.vx*=-1;
+  if(ball.y-ball.r<0) ball.vy*=-1;
+  if(ball.y+ball.r>H){
+    lives--; livesEl.textContent=lives;
+    if(lives<=0){ endGame(); return; }
+    ball.x=W/2; ball.y=H-50*scale; ball.vx=3*scale; ball.vy=-3.4*scale;
+  }
+  if(ball.y+ball.r>paddle.y && ball.y-ball.r<paddle.y+paddle.h && ball.x>paddle.x && ball.x<paddle.x+paddle.w){
+    ball.vy=-Math.abs(ball.vy);
+    const hitPos=(ball.x-(paddle.x+paddle.w/2))/(paddle.w/2);
+    ball.vx = hitPos*4*scale;
+  }
+  let aliveCount=0;
+  bricks.forEach(b=>{
+    if(!b.alive) return;
+    aliveCount++;
+    if(ball.x+ball.r>b.x && ball.x-ball.r<b.x+b.w && ball.y+ball.r>b.y && ball.y-ball.r<b.y+b.h){
+      b.alive=false; ball.vy*=-1; score+=10; scoreEl.textContent=score;
+    }
+  });
+  if(aliveCount===0){ overlayText.textContent='🎉 You Win!'; overlayBtn.textContent='Play Again'; overlay.style.display='flex'; running=false; if(score>best){best=score;saveBest(best);bestEl.textContent=best;} }
+}
+
+function endGame(){
+  running=false;
+  if(score>best){ best=score; saveBest(best); bestEl.textContent=best; }
+  overlayText.textContent='Game Over';
+  overlayBtn.textContent='Try Again';
+  overlay.style.display='flex';
+}
+
+function draw(){
+  ctx.fillStyle='#0f0f28'; ctx.fillRect(0,0,W,H);
+  bricks.forEach(b=>{ if(b.alive){ ctx.fillStyle=b.color; ctx.fillRect(b.x,b.y,b.w,b.h); } });
+  ctx.fillStyle='#fff'; ctx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h);
+  ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.fillStyle='#ffd43b'; ctx.fill();
+}
+
+function loop(){ update(); draw(); requestAnimationFrame(loop); }
+
+function movePaddleTo(clientX){
+  const rect=boardWrap.getBoundingClientRect();
+  let x=(clientX-rect.left)*(W/rect.width) - paddle.w/2;
+  paddle.x=Math.max(0,Math.min(W-paddle.w,x));
+}
+boardWrap.addEventListener('pointermove', e=>{ if(running) movePaddleTo(e.clientX); });
+boardWrap.addEventListener('pointerdown', e=>{ if(running) movePaddleTo(e.clientX); });
+document.addEventListener('keydown', e=>{
+  if(!running) return;
+  if(e.key==='ArrowLeft'){ e.preventDefault(); paddle.x=Math.max(0,paddle.x-20*scale); }
+  else if(e.key==='ArrowRight'){ e.preventDefault(); paddle.x=Math.min(W-paddle.w,paddle.x+20*scale); }
+});
+overlayBtn.addEventListener('click', reset);
+window.addEventListener('resize', ()=>{ resize(); });
+
+resize();
+best=loadBest(); bestEl.textContent=best;
+reset(); running=false; overlay.style.display='flex'; overlayText.textContent='Brick Breaker';
+loop();
+})();
+</script>
+</body>
+</html>

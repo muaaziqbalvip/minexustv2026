@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Color Match — MINEXUS Games</title>
+<meta name="theme-color" content="#1a1a2e">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,sans-serif;background:#1a1a2e;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:16px;user-select:none}
+.top-bar{width:100%;max-width:380px;display:flex;justify-content:space-between;margin-bottom:20px}
+.stat-box{background:rgba(255,255,255,.08);border-radius:8px;padding:8px 16px;text-align:center;min-width:60px}
+.stat-label{font-size:9px;opacity:.7;text-transform:uppercase;font-weight:700}
+.stat-val{font-size:18px;font-weight:900}
+.prompt-word{font-size:42px;font-weight:900;margin:20px 0 30px;text-align:center;min-height:56px}
+.color-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;width:100%;max-width:340px}
+.color-btn{aspect-ratio:2;border-radius:14px;border:none;cursor:pointer;font-size:16px;font-weight:900;color:rgba(255,255,255,.0)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:5}
+.overlay.show{display:flex}
+.overlay-text{font-size:26px;font-weight:900}
+.overlay-sub{font-size:14px;opacity:.8}
+.overlay-btn{background:#ff6bcb;color:#2a0a1e;border:none;border-radius:10px;padding:12px 26px;font-weight:900;cursor:pointer;font-size:15px}
+.hint{margin-top:20px;font-size:12px;opacity:.7;text-align:center;max-width:320px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <div class="stat-box"><div class="stat-label">Score</div><div class="stat-val" id="score">0</div></div>
+  <div class="stat-box"><div class="stat-label">Time</div><div class="stat-val" id="timer">30</div></div>
+  <div class="stat-box"><div class="stat-label">Best</div><div class="stat-val" id="best">0</div></div>
+</div>
+<div class="prompt-word" id="promptWord">READY?</div>
+<div class="color-grid" id="colorGrid"></div>
+<p class="hint">The WORD names a color, but is shown in a different ink color. Tap the button matching the INK COLOR, not the word. Works fully offline once downloaded.</p>
+<div class="overlay" id="overlay">
+  <div class="overlay-text">🎨 Color Match</div>
+  <div class="overlay-sub">Tap the ink color, not the word — 30 seconds!</div>
+  <button class="overlay-btn" id="overlayBtn">Start</button>
+</div>
+<script>
+(function(){
+'use strict';
+const STORAGE_BEST='minexus_colormatch_best';
+function loadBest(){try{return parseInt(localStorage.getItem(STORAGE_BEST)||'0',10)||0;}catch(e){return 0;}}
+function saveBest(v){try{localStorage.setItem(STORAGE_BEST,String(v));}catch(e){}}
+
+const COLORS=[
+  {name:'RED', hex:'#e53935'}, {name:'BLUE', hex:'#1e88e5'},
+  {name:'GREEN', hex:'#43a047'}, {name:'YELLOW', hex:'#fdd835'}
+];
+
+const promptWord=document.getElementById('promptWord');
+const scoreEl=document.getElementById('score'), timerEl=document.getElementById('timer'), bestEl=document.getElementById('best');
+const colorGrid=document.getElementById('colorGrid');
+const overlay=document.getElementById('overlay'), overlayBtn=document.getElementById('overlayBtn');
+
+let score=0, best=0, timeLeft=30, targetColor=null, gameTimer=null, running=false;
+
+COLORS.forEach(c=>{
+  const btn=document.createElement('button');
+  btn.className='color-btn';
+  btn.style.background=c.hex;
+  btn.dataset.name=c.name;
+  btn.addEventListener('click', ()=>checkAnswer(c.name));
+  colorGrid.appendChild(btn);
+});
+
+function nextRound(){
+  const wordObj = COLORS[Math.floor(Math.random()*COLORS.length)];
+  let inkObj = COLORS[Math.floor(Math.random()*COLORS.length)];
+  // Occasionally let word and ink match for genuine variety/difficulty.
+  if(Math.random()<0.2) inkObj = wordObj;
+  promptWord.textContent = wordObj.name;
+  promptWord.style.color = inkObj.hex;
+  targetColor = inkObj.name;
+}
+
+function checkAnswer(name){
+  if(!running) return;
+  if(name===targetColor){ score++; scoreEl.textContent=score; }
+  else { score=Math.max(0,score-1); scoreEl.textContent=score; }
+  nextRound();
+}
+
+function startGame(){
+  score=0; timeLeft=30; running=true;
+  scoreEl.textContent='0'; timerEl.textContent='30';
+  overlay.classList.remove('show');
+  nextRound();
+  clearInterval(gameTimer);
+  gameTimer=setInterval(()=>{
+    timeLeft--; timerEl.textContent=timeLeft;
+    if(timeLeft<=0) endGame();
+  },1000);
+}
+
+function endGame(){
+  running=false;
+  clearInterval(gameTimer);
+  promptWord.textContent='DONE!';
+  promptWord.style.color='#fff';
+  if(score>best){ best=score; saveBest(best); bestEl.textContent=best; }
+  overlay.querySelector('.overlay-sub').textContent = `Final score: ${score}`;
+  overlayBtn.textContent='Play Again';
+  overlay.classList.add('show');
+}
+
+overlayBtn.addEventListener('click', startGame);
+best=loadBest(); bestEl.textContent=best;
+overlay.classList.add('show');
+})();
+</script>
+</body>
+</html>

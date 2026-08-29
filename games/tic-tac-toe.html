@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tic-Tac-Toe — MINEXUS Games</title>
+<meta name="theme-color" content="#0d1117">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,sans-serif;background:#0d1117;color:#eee;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:16px;user-select:none}
+.top-bar{width:100%;max-width:360px;display:flex;justify-content:space-between;margin-bottom:14px}
+.stat-box{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:8px 16px;text-align:center;min-width:60px}
+.stat-label{font-size:9px;color:#8b949e;text-transform:uppercase;font-weight:700}
+.stat-val{font-size:16px;font-weight:900}
+.mode-select{display:flex;gap:6px;margin-bottom:14px}
+.mode-btn{background:#161b22;border:1px solid #30363d;color:#8b949e;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer}
+.mode-btn.active{background:#238636;color:#fff;border-color:#238636}
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;max-width:300px}
+.cell{aspect-ratio:1;background:#161b22;border:1px solid #30363d;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;cursor:pointer}
+.cell.x{color:#4dabf7}
+.cell.o{color:#ff6b6b}
+.cell.win{background:#238636}
+.status{margin-top:16px;font-size:15px;font-weight:800;text-align:center;min-height:20px}
+.new-game-btn{margin-top:12px;background:#238636;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-weight:800;cursor:pointer}
+.hint{margin-top:16px;font-size:12px;color:#8b949e;text-align:center;max-width:300px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <div class="stat-box"><div class="stat-label">You (X)</div><div class="stat-val" id="xWins">0</div></div>
+  <div class="stat-box"><div class="stat-label">Draws</div><div class="stat-val" id="draws">0</div></div>
+  <div class="stat-box"><div class="stat-label">CPU (O)</div><div class="stat-val" id="oWins">0</div></div>
+</div>
+<div class="mode-select">
+  <button class="mode-btn active" data-diff="easy">Easy</button>
+  <button class="mode-btn" data-diff="hard">Unbeatable</button>
+</div>
+<div class="board" id="board"></div>
+<div class="status" id="status">Your turn — pick a square</div>
+<button class="new-game-btn" id="newGameBtn">New Round</button>
+<p class="hint">You're X, CPU is O. Unbeatable mode uses perfect play — the best you can do is draw. Works fully offline once downloaded.</p>
+<script>
+(function(){
+'use strict';
+const boardEl=document.getElementById('board');
+const statusEl=document.getElementById('status');
+const xWinsEl=document.getElementById('xWins'), oWinsEl=document.getElementById('oWins'), drawsEl=document.getElementById('draws');
+
+let cells=Array(9).fill(null), gameOver=false, difficulty='easy';
+let xWins=0, oWins=0, draws=0;
+
+const WIN_LINES=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+function render(){
+  boardEl.innerHTML='';
+  cells.forEach((v,i)=>{
+    const c=document.createElement('div');
+    c.className='cell'+(v?' '+v.toLowerCase():'');
+    c.textContent=v||'';
+    c.addEventListener('click', ()=>playerMove(i));
+    boardEl.appendChild(c);
+  });
+}
+
+function checkWinner(bd){
+  for(const line of WIN_LINES){
+    const [a,b,c]=line;
+    if(bd[a] && bd[a]===bd[b] && bd[a]===bd[c]) return { winner: bd[a], line };
+  }
+  if(bd.every(v=>v)) return { winner:'draw' };
+  return null;
+}
+
+function playerMove(i){
+  if(gameOver || cells[i]) return;
+  cells[i]='X';
+  render();
+  const result=checkWinner(cells);
+  if(result){ endRound(result); return; }
+  statusEl.textContent='CPU thinking...';
+  setTimeout(cpuMove, 350);
+}
+
+function cpuMove(){
+  if(gameOver) return;
+  const move = difficulty==='hard' ? bestMove(cells) : randomMove(cells);
+  if(move!=null) cells[move]='O';
+  render();
+  const result=checkWinner(cells);
+  if(result){ endRound(result); return; }
+  statusEl.textContent='Your turn';
+}
+
+function randomMove(bd){
+  // Easy mode: mostly random, but still blocks an immediate loss sometimes for basic challenge.
+  const empties=bd.map((v,i)=>v?null:i).filter(v=>v!=null);
+  if(Math.random()<0.35){
+    for(const i of empties){
+      const test=bd.slice(); test[i]='O';
+      if(checkWinner(test)?.winner==='O') return i;
+    }
+  }
+  return empties[Math.floor(Math.random()*empties.length)];
+}
+
+function bestMove(bd){
+  let bestScore=-Infinity, move=null;
+  bd.forEach((v,i)=>{
+    if(v) return;
+    const test=bd.slice(); test[i]='O';
+    const score=minimax(test,0,false);
+    if(score>bestScore){ bestScore=score; move=i; }
+  });
+  return move;
+}
+
+function minimax(bd, depth, isMax){
+  const result=checkWinner(bd);
+  if(result){
+    if(result.winner==='O') return 10-depth;
+    if(result.winner==='X') return depth-10;
+    return 0;
+  }
+  if(isMax){
+    let best=-Infinity;
+    bd.forEach((v,i)=>{ if(!v){ const t=bd.slice(); t[i]='O'; best=Math.max(best,minimax(t,depth+1,false)); } });
+    return best;
+  } else {
+    let best=Infinity;
+    bd.forEach((v,i)=>{ if(!v){ const t=bd.slice(); t[i]='X'; best=Math.min(best,minimax(t,depth+1,true)); } });
+    return best;
+  }
+}
+
+function endRound(result){
+  gameOver=true;
+  if(result.winner==='draw'){
+    draws++; drawsEl.textContent=draws;
+    statusEl.textContent="It's a draw!";
+  } else if(result.winner==='X'){
+    xWins++; xWinsEl.textContent=xWins;
+    statusEl.textContent='🎉 You win!';
+    highlightLine(result.line);
+  } else {
+    oWins++; oWinsEl.textContent=oWins;
+    statusEl.textContent='CPU wins this round.';
+    highlightLine(result.line);
+  }
+}
+
+function highlightLine(line){
+  if(!line) return;
+  const els=boardEl.children;
+  line.forEach(i=>els[i].classList.add('win'));
+}
+
+function newRound(){
+  cells=Array(9).fill(null); gameOver=false;
+  statusEl.textContent='Your turn — pick a square';
+  render();
+}
+
+document.querySelectorAll('.mode-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    difficulty=btn.dataset.diff;
+    newRound();
+  });
+});
+document.getElementById('newGameBtn').addEventListener('click', newRound);
+
+render();
+})();
+</script>
+</body>
+</html>

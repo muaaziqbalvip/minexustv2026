@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ping Pong — MINEXUS Games</title>
+<meta name="theme-color" content="#0a0a0a">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:12px;touch-action:none;user-select:none}
+.top-bar{width:100%;max-width:420px;display:flex;justify-content:space-between;margin-bottom:10px}
+.stat-box{background:rgba(255,255,255,.08);border-radius:8px;padding:8px 18px;text-align:center;min-width:60px}
+.stat-label{font-size:9px;opacity:.7;text-transform:uppercase;font-weight:700}
+.stat-val{font-size:20px;font-weight:900}
+.board-wrap{position:relative;width:100%;max-width:420px;aspect-ratio:4/3;border-radius:10px;overflow:hidden;border:2px solid rgba(255,255,255,.15);background:#111}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;background:rgba(0,0,0,.75);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.overlay-text{font-size:24px;font-weight:900}
+.overlay-btn{background:#4dd0e1;color:#032;border:none;border-radius:10px;padding:11px 24px;font-weight:900;cursor:pointer}
+.hint{margin-top:14px;font-size:12px;opacity:.7;text-align:center;max-width:320px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <div class="stat-box"><div class="stat-label">You</div><div class="stat-val" id="playerScore">0</div></div>
+  <div class="stat-box"><div class="stat-label">CPU</div><div class="stat-val" id="cpuScore">0</div></div>
+</div>
+<div class="board-wrap" id="boardWrap">
+  <canvas id="canvas"></canvas>
+  <div class="overlay" id="overlay">
+    <div class="overlay-text">🏓 Ping Pong</div>
+    <button class="overlay-btn" id="overlayBtn">Start Match</button>
+  </div>
+</div>
+<p class="hint">Drag up/down on the board (or use arrow keys) to move your paddle. First to 7 wins. Works fully offline once downloaded.</p>
+<script>
+(function(){
+'use strict';
+const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d');
+const boardWrap=document.getElementById('boardWrap');
+const playerScoreEl=document.getElementById('playerScore'), cpuScoreEl=document.getElementById('cpuScore');
+const overlay=document.getElementById('overlay'), overlayBtn=document.getElementById('overlayBtn');
+
+let W,H,scale;
+function resize(){ const r=boardWrap.getBoundingClientRect(); W=canvas.width=r.width; H=canvas.height=r.height; scale=W/420; }
+
+let player, cpu, ball, playerScore, cpuScore, running;
+
+function reset(){
+  player={ y:H/2-40*scale, h:80*scale, w:10*scale, x:14*scale };
+  cpu={ y:H/2-40*scale, h:80*scale, w:10*scale, x:W-24*scale };
+  ball={ x:W/2, y:H/2, r:7*scale, vx:4*scale*(Math.random()<0.5?1:-1), vy:(Math.random()*4-2)*scale };
+  playerScore=0; cpuScore=0; running=true;
+  playerScoreEl.textContent='0'; cpuScoreEl.textContent='0';
+  overlay.style.display='none';
+}
+
+function serve(dir){
+  ball={ x:W/2, y:H/2, r:7*scale, vx:4*scale*dir, vy:(Math.random()*4-2)*scale };
+}
+
+function update(){
+  if(!running) return;
+  ball.x+=ball.vx; ball.y+=ball.vy;
+  if(ball.y-ball.r<0||ball.y+ball.r>H) ball.vy*=-1;
+
+  if(ball.x-ball.r<player.x+player.w && ball.y>player.y && ball.y<player.y+player.h && ball.vx<0){
+    ball.vx*=-1.05;
+    ball.vy += (ball.y-(player.y+player.h/2))*0.05;
+  }
+  if(ball.x+ball.r>cpu.x && ball.y>cpu.y && ball.y<cpu.y+cpu.h && ball.vx>0){
+    ball.vx*=-1.05;
+    ball.vy += (ball.y-(cpu.y+cpu.h/2))*0.05;
+  }
+
+  const cpuCenter=cpu.y+cpu.h/2;
+  const cpuSpeed=3.2*scale;
+  if(cpuCenter < ball.y-10*scale) cpu.y+=cpuSpeed;
+  else if(cpuCenter > ball.y+10*scale) cpu.y-=cpuSpeed;
+  cpu.y=Math.max(0,Math.min(H-cpu.h,cpu.y));
+
+  if(ball.x<0){ cpuScore++; cpuScoreEl.textContent=cpuScore; checkWin(); if(running) serve(1); }
+  if(ball.x>W){ playerScore++; playerScoreEl.textContent=playerScore; checkWin(); if(running) serve(-1); }
+}
+
+function checkWin(){
+  if(playerScore>=7 || cpuScore>=7){
+    running=false;
+    overlay.querySelector('.overlay-text').textContent = playerScore>=7 ? '🎉 You Win!' : 'CPU Wins';
+    overlayBtn.textContent='Play Again';
+    overlay.style.display='flex';
+  }
+}
+
+function draw(){
+  ctx.fillStyle='#111'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(255,255,255,.2)'; ctx.setLineDash([6,10]);
+  ctx.beginPath(); ctx.moveTo(W/2,0); ctx.lineTo(W/2,H); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='#4dd0e1'; ctx.fillRect(player.x,player.y,player.w,player.h);
+  ctx.fillStyle='#ff6b6b'; ctx.fillRect(cpu.x,cpu.y,cpu.w,cpu.h);
+  ctx.beginPath(); ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+}
+
+function loop(){ update(); draw(); requestAnimationFrame(loop); }
+
+function movePlayerTo(clientY){
+  const rect=boardWrap.getBoundingClientRect();
+  let y=(clientY-rect.top)*(H/rect.height)-player.h/2;
+  player.y=Math.max(0,Math.min(H-player.h,y));
+}
+boardWrap.addEventListener('pointermove', e=>{ if(running) movePlayerTo(e.clientY); });
+document.addEventListener('keydown', e=>{
+  if(!running) return;
+  if(e.key==='ArrowUp'){ e.preventDefault(); player.y=Math.max(0,player.y-24*scale); }
+  else if(e.key==='ArrowDown'){ e.preventDefault(); player.y=Math.min(H-player.h,player.y+24*scale); }
+});
+overlayBtn.addEventListener('click', reset);
+window.addEventListener('resize', resize);
+
+resize();
+reset(); running=false; overlay.style.display='flex';
+loop();
+})();
+</script>
+</body>
+</html>

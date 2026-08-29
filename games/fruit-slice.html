@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fruit Slice — MINEXUS Games</title>
+<meta name="theme-color" content="#1a1000">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,sans-serif;background:#1a1000;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:12px;touch-action:none;user-select:none}
+.top-bar{width:100%;max-width:400px;display:flex;justify-content:space-between;margin-bottom:10px}
+.stat-box{background:rgba(255,255,255,.1);border-radius:8px;padding:8px 16px;text-align:center;min-width:64px}
+.stat-label{font-size:9px;opacity:.7;text-transform:uppercase;font-weight:700}
+.stat-val{font-size:18px;font-weight:900}
+.board-wrap{position:relative;width:100%;max-width:400px;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:linear-gradient(180deg,#3a2410,#1a1000)}
+canvas{display:block;width:100%;height:100%}
+.overlay{position:absolute;inset:0;background:rgba(0,0,0,.75);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.overlay-text{font-size:26px;font-weight:900}
+.overlay-sub{font-size:13px;opacity:.8}
+.overlay-btn{background:#ffb300;color:#3a1f00;border:none;border-radius:10px;padding:11px 24px;font-weight:900;cursor:pointer;font-size:14px}
+.hint{margin-top:14px;font-size:12px;opacity:.7;text-align:center;max-width:320px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <div class="stat-box"><div class="stat-label">Score</div><div class="stat-val" id="score">0</div></div>
+  <div class="stat-box"><div class="stat-label">Lives</div><div class="stat-val" id="lives">3</div></div>
+  <div class="stat-box"><div class="stat-label">Best</div><div class="stat-val" id="best">0</div></div>
+</div>
+<div class="board-wrap" id="boardWrap">
+  <canvas id="canvas"></canvas>
+  <div class="overlay" id="overlay">
+    <div class="overlay-text">🍉 Fruit Slice</div>
+    <div class="overlay-sub">Swipe across fruit to slice them. Avoid bombs!</div>
+    <button class="overlay-btn" id="overlayBtn">Start</button>
+  </div>
+</div>
+<p class="hint">Drag your finger/mouse across fruit to slice. Missing 3 fruit or hitting a bomb ends the game. Works fully offline once downloaded.</p>
+<script>
+(function(){
+'use strict';
+const canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d');
+const boardWrap=document.getElementById('boardWrap');
+const scoreEl=document.getElementById('score'), livesEl=document.getElementById('lives'), bestEl=document.getElementById('best');
+const overlay=document.getElementById('overlay'), overlayBtn=document.getElementById('overlayBtn');
+const STORAGE_BEST='minexus_fruitslice_best';
+function loadBest(){try{return parseInt(localStorage.getItem(STORAGE_BEST)||'0',10)||0;}catch(e){return 0;}}
+function saveBest(v){try{localStorage.setItem(STORAGE_BEST,String(v));}catch(e){}}
+
+let W,H,scale;
+function resize(){ const r=boardWrap.getBoundingClientRect(); W=canvas.width=r.width; H=canvas.height=r.height; scale=W/400; }
+
+const FRUITS=[{c:'#e53935',e:'🍎'},{c:'#fdd835',e:'🍋'},{c:'#43a047',e:'🍏'},{c:'#8e24aa',e:'🍇'},{c:'#fb8c00',e:'🍊'}];
+let items=[], score, lives, best, running, spawnTimer, trail=[];
+
+function reset(){
+  items=[]; score=0; lives=3; running=true; trail=[];
+  scoreEl.textContent='0'; livesEl.textContent='3';
+  overlay.style.display='none';
+  clearInterval(spawnTimer);
+  spawnTimer=setInterval(spawnItem, 900);
+}
+
+function spawnItem(){
+  if(!running) return;
+  const isBomb = Math.random()<0.15;
+  const fruit = FRUITS[Math.floor(Math.random()*FRUITS.length)];
+  items.push({
+    x: 40*scale + Math.random()*(W-80*scale),
+    y: H+20*scale,
+    vx: (Math.random()-0.5)*2*scale,
+    vy: -(9+Math.random()*3)*scale,
+    r: 22*scale,
+    isBomb,
+    emoji: isBomb ? '💣' : fruit.e,
+    sliced: false,
+    missed: false
+  });
+}
+
+function update(){
+  if(!running) return;
+  items.forEach(it=>{
+    it.vy += 0.22*scale;
+    it.x += it.vx; it.y += it.vy;
+    if(!it.sliced && !it.missed && it.y>H+30*scale && it.vy>0 === false){}
+  });
+  items.forEach(it=>{
+    if(!it.sliced && !it.missed && it.y>H+40*scale){
+      it.missed=true;
+      if(!it.isBomb){
+        lives--; livesEl.textContent=lives;
+        if(lives<=0) endGame();
+      }
+    }
+  });
+  items = items.filter(it=> it.y < H+80*scale && (it.y>-80*scale || it.vy<0));
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const g=ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#3a2410'); g.addColorStop(1,'#1a1000');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+  items.forEach(it=>{
+    if(it.missed && it.isBomb) return;
+    ctx.save();
+    ctx.globalAlpha = it.sliced ? 0.4 : 1;
+    ctx.font = `${it.r*2}px sans-serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(it.emoji, it.x, it.y);
+    ctx.restore();
+  });
+
+  if(trail.length>1){
+    ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.lineWidth=3*scale; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(trail[0].x,trail[0].y);
+    trail.forEach(p=>ctx.lineTo(p.x,p.y));
+    ctx.stroke();
+  }
+}
+
+function loop(){ update(); draw(); requestAnimationFrame(loop); }
+
+function pointFromEvent(e){
+  const rect=boardWrap.getBoundingClientRect();
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x:(cx-rect.left)*(W/rect.width), y:(cy-rect.top)*(H/rect.height) };
+}
+
+function trySlice(pt){
+  items.forEach(it=>{
+    if(it.sliced || it.missed) return;
+    const dx=pt.x-it.x, dy=pt.y-it.y;
+    if(Math.sqrt(dx*dx+dy*dy) < it.r){
+      it.sliced=true;
+      if(it.isBomb){ lives=0; livesEl.textContent='0'; endGame(); }
+      else { score++; scoreEl.textContent=score; }
+    }
+  });
+}
+
+let dragging=false;
+function handleStart(e){ dragging=true; trail=[pointFromEvent(e)]; }
+function handleMove(e){
+  if(!dragging || !running) return;
+  const pt=pointFromEvent(e);
+  trail.push(pt);
+  if(trail.length>12) trail.shift();
+  trySlice(pt);
+}
+function handleEnd(){ dragging=false; trail=[]; }
+
+boardWrap.addEventListener('pointerdown', handleStart);
+boardWrap.addEventListener('pointermove', handleMove);
+boardWrap.addEventListener('pointerup', handleEnd);
+boardWrap.addEventListener('pointerleave', handleEnd);
+
+function endGame(){
+  running=false;
+  clearInterval(spawnTimer);
+  if(score>best){ best=score; saveBest(best); bestEl.textContent=best; }
+  overlay.querySelector('.overlay-text').textContent='Game Over';
+  overlay.querySelector('.overlay-sub').textContent=`Score: ${score}`;
+  overlayBtn.textContent='Play Again';
+  overlay.style.display='flex';
+}
+
+overlayBtn.addEventListener('click', reset);
+window.addEventListener('resize', resize);
+
+resize();
+best=loadBest(); bestEl.textContent=best;
+running=false; overlay.style.display='flex';
+loop();
+})();
+</script>
+</body>
+</html>
