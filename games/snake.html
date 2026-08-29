@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Snake Battle Royale — MINEXUS Games</title>
+<meta name="description" content="Play Snake Battle Royale free — speed levels, obstacles, real high scores. Works fully offline.">
+<meta name="theme-color" content="#0a0e0a">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+  background:#0a0e0a;color:#eafff0;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;padding:16px 12px 40px;
+  touch-action:none;overscroll-behavior:none;user-select:none;
+}
+.top-bar{width:100%;max-width:420px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.back-btn{color:#7fd99a;text-decoration:none;font-weight:700;font-size:13px}
+.scores{display:flex;gap:8px}
+.score-box{background:#132118;border:1px solid #1f5c38;border-radius:8px;padding:8px 14px;text-align:center;min-width:64px}
+.score-label{font-size:10px;font-weight:700;text-transform:uppercase;color:#7fd99a;opacity:.8}
+.score-val{font-size:18px;font-weight:900;color:#fff}
+.title-row{width:100%;max-width:420px;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.title{font-size:26px;font-weight:900;background:linear-gradient(135deg,#1a8f5c,#7fd99a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.speed-select{display:flex;gap:6px}
+.speed-btn{
+  background:#132118;border:1px solid #1f5c38;color:#7fd99a;border-radius:8px;
+  padding:6px 10px;font-size:11px;font-weight:800;cursor:pointer;
+}
+.speed-btn.active{background:#1a8f5c;color:#fff}
+.board-wrap{
+  position:relative;width:100%;max-width:420px;aspect-ratio:1;
+  background:#0f1a11;border:2px solid #1f5c38;border-radius:12px;overflow:hidden;
+}
+canvas{width:100%;height:100%;display:block}
+.overlay{
+  position:absolute;inset:0;background:rgba(10,14,10,.88);
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+}
+.overlay.show{display:flex}
+.overlay-text{font-size:24px;font-weight:900;color:#fff}
+.overlay-sub{font-size:13px;color:#7fd99a}
+.overlay-btn{background:#1a8f5c;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-weight:800;font-size:14px;cursor:pointer}
+.dpad{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(3,56px);gap:6px;margin-top:20px}
+.dpad-btn{
+  background:#132118;border:1px solid #1f5c38;border-radius:10px;color:#7fd99a;
+  display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;
+}
+.dpad-btn:active{background:#1a8f5c;color:#fff}
+.hint{margin-top:14px;font-size:12px;color:#7fd99a;text-align:center;max-width:340px;line-height:1.6;opacity:.8}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="/?view=games" class="back-btn" onclick="window.close(); return true;">← Back</a>
+  <div class="scores">
+    <div class="score-box"><div class="score-label">Score</div><div class="score-val" id="score">0</div></div>
+    <div class="score-box"><div class="score-label">Best</div><div class="score-val" id="best">0</div></div>
+  </div>
+</div>
+
+<div class="title-row">
+  <div class="title">SNAKE</div>
+  <div class="speed-select" id="speedSelect">
+    <button class="speed-btn" data-speed="120">Easy</button>
+    <button class="speed-btn active" data-speed="90">Normal</button>
+    <button class="speed-btn" data-speed="60">Hard</button>
+  </div>
+</div>
+
+<div class="board-wrap" id="boardWrap">
+  <canvas id="canvas"></canvas>
+  <div class="overlay" id="overlay">
+    <div class="overlay-text" id="overlayText">Game Over</div>
+    <div class="overlay-sub" id="overlaySub"></div>
+    <button class="overlay-btn" id="overlayBtn">Play Again</button>
+  </div>
+</div>
+
+<div class="dpad" id="dpad">
+  <div></div>
+  <button class="dpad-btn" data-dir="up">▲</button>
+  <div></div>
+  <button class="dpad-btn" data-dir="left">◀</button>
+  <div></div>
+  <button class="dpad-btn" data-dir="right">▶</button>
+  <div></div>
+  <button class="dpad-btn" data-dir="down">▼</button>
+  <div></div>
+</div>
+
+<p class="hint">Swipe on the board or use the D-pad / arrow keys. Obstacles appear as you level up. Works fully offline once downloaded.</p>
+
+<script>
+(function(){
+  'use strict';
+
+  const STORAGE_BEST = 'minexus_snake_best';
+  const GRID = 20;
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const boardWrap = document.getElementById('boardWrap');
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+  const overlay = document.getElementById('overlay');
+  const overlayText = document.getElementById('overlayText');
+  const overlaySub = document.getElementById('overlaySub');
+
+  let cellSize, snake, dir, nextDir, food, obstacles, score, best, tickMs, loopHandle, running, level;
+
+  function loadBest() { try { return parseInt(localStorage.getItem(STORAGE_BEST) || '0', 10) || 0; } catch (e) { return 0; } }
+  function saveBest(v) { try { localStorage.setItem(STORAGE_BEST, String(v)); } catch (e) {} }
+
+  function resizeCanvas() {
+    const rect = boardWrap.getBoundingClientRect();
+    const size = Math.floor(rect.width);
+    canvas.width = size; canvas.height = size;
+    cellSize = size / GRID;
+    draw();
+  }
+
+  function randCell(exclude) {
+    let cell;
+    do {
+      cell = { x: Math.floor(Math.random() * GRID), y: Math.floor(Math.random() * GRID) };
+    } while (exclude.some(c => c.x === cell.x && c.y === cell.y));
+    return cell;
+  }
+
+  function placeFood() {
+    food = randCell([...snake, ...obstacles]);
+  }
+
+  function addObstacleIfDue() {
+    const targetObstacleCount = Math.min(Math.floor(level / 2), 8);
+    while (obstacles.length < targetObstacleCount) {
+      obstacles.push(randCell([...snake, food, ...obstacles]));
+    }
+  }
+
+  function reset(speedMs) {
+    tickMs = speedMs || tickMs || 90;
+    snake = [{ x: 9, y: 10 }, { x: 8, y: 10 }, { x: 7, y: 10 }];
+    dir = 'right'; nextDir = 'right';
+    obstacles = [];
+    score = 0; level = 1;
+    placeFood();
+    scoreEl.textContent = '0';
+    overlay.classList.remove('show');
+    running = true;
+    if (loopHandle) clearInterval(loopHandle);
+    loopHandle = setInterval(tick, tickMs);
+    draw();
+  }
+
+  function tick() {
+    if (!running) return;
+    dir = nextDir;
+    const head = { ...snake[0] };
+    if (dir === 'up') head.y--; else if (dir === 'down') head.y++;
+    else if (dir === 'left') head.x--; else if (dir === 'right') head.x++;
+
+    // Wrap around edges rather than instant death — feels better on mobile
+    // where precise timing near walls is harder to control via swipe.
+    if (head.x < 0) head.x = GRID - 1; if (head.x >= GRID) head.x = 0;
+    if (head.y < 0) head.y = GRID - 1; if (head.y >= GRID) head.y = 0;
+
+    const hitsSelf = snake.some(s => s.x === head.x && s.y === head.y);
+    const hitsObstacle = obstacles.some(o => o.x === head.x && o.y === head.y);
+    if (hitsSelf || hitsObstacle) { gameOver(); return; }
+
+    snake.unshift(head);
+
+    if (head.x === food.x && head.y === food.y) {
+      score += 10;
+      scoreEl.textContent = score;
+      if (score > best) { best = score; saveBest(best); bestEl.textContent = best; }
+      level = Math.floor(score / 50) + 1;
+      addObstacleIfDue();
+      placeFood();
+      // Speed ramps up slightly every level for genuine difficulty
+      // progression, capped so it never becomes literally unplayable.
+      const newTick = Math.max(45, tickMs - level * 0.6);
+      if (newTick !== tickMs) { tickMs = newTick; clearInterval(loopHandle); loopHandle = setInterval(tick, tickMs); }
+    } else {
+      snake.pop();
+    }
+
+    draw();
+  }
+
+  function gameOver() {
+    running = false;
+    clearInterval(loopHandle);
+    overlayText.textContent = 'Game Over';
+    overlaySub.textContent = `Score: ${score} · Level ${level}`;
+    overlay.classList.add('show');
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#0f1a11';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Obstacles
+    ctx.fillStyle = '#8a3b3b';
+    obstacles.forEach(o => ctx.fillRect(o.x * cellSize + 1, o.y * cellSize + 1, cellSize - 2, cellSize - 2));
+
+    // Food
+    ctx.fillStyle = '#ffcf4d';
+    ctx.beginPath();
+    ctx.arc(food.x * cellSize + cellSize / 2, food.y * cellSize + cellSize / 2, cellSize * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Snake
+    snake.forEach((s, i) => {
+      ctx.fillStyle = i === 0 ? '#7fd99a' : '#1a8f5c';
+      ctx.fillRect(s.x * cellSize + 1, s.y * cellSize + 1, cellSize - 2, cellSize - 2);
+    });
+  }
+
+  function setDir(newDir) {
+    const opposite = { up: 'down', down: 'up', left: 'right', right: 'left' };
+    if (opposite[newDir] === dir) return; // no instant U-turn into self
+    nextDir = newDir;
+  }
+
+  document.addEventListener('keydown', e => {
+    const map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+    if (map[e.key]) { e.preventDefault(); setDir(map[e.key]); }
+  });
+
+  document.querySelectorAll('.dpad-btn').forEach(btn => {
+    btn.addEventListener('click', () => setDir(btn.dataset.dir));
+  });
+
+  let touchStartX = 0, touchStartY = 0;
+  boardWrap.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  boardWrap.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    if (Math.abs(dx) < 16 && Math.abs(dy) < 16) return;
+    if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 'right' : 'left');
+    else setDir(dy > 0 ? 'down' : 'up');
+  }, { passive: true });
+
+  document.querySelectorAll('.speed-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      reset(parseInt(btn.dataset.speed, 10));
+    });
+  });
+
+  document.getElementById('overlayBtn').addEventListener('click', () => reset());
+
+  window.addEventListener('resize', resizeCanvas);
+
+  best = loadBest();
+  bestEl.textContent = best;
+  resizeCanvas();
+  reset(90);
+})();
+</script>
+</body>
+</html>

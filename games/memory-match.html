@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Movie Memory Match — MINEXUS Games</title>
+<meta name="description" content="Play Movie Memory Match free — flip cards, match icons, beat the clock. Works fully offline.">
+<meta name="theme-color" content="#07080c">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Inter',sans-serif;background:#07080c;color:#f0f2f8;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;padding:16px 12px 40px;
+  touch-action:manipulation;user-select:none;
+}
+.top-bar{width:100%;max-width:460px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.back-btn{color:#9aa0b4;text-decoration:none;font-weight:700;font-size:13px}
+.stats{display:flex;gap:8px}
+.stat-box{background:#141724;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 14px;text-align:center;min-width:60px}
+.stat-label{font-size:9px;font-weight:700;text-transform:uppercase;color:#9aa0b4}
+.stat-val{font-size:16px;font-weight:900}
+.title-row{width:100%;max-width:460px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.title{font-size:22px;font-weight:900}
+.diff-select{display:flex;gap:6px}
+.diff-btn{background:#141724;border:1px solid rgba(255,255,255,.08);color:#9aa0b4;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:800;cursor:pointer}
+.diff-btn.active{background:#e50914;color:#fff;border-color:#e50914}
+.board{
+  display:grid;gap:8px;width:100%;max-width:460px;
+}
+.card{
+  aspect-ratio:3/4;border-radius:10px;position:relative;cursor:pointer;
+  transform-style:preserve-3d;transition:transform .35s;
+}
+.card.flipped, .card.matched{transform:rotateY(180deg)}
+.card-face{
+  position:absolute;inset:0;border-radius:10px;backface-visibility:hidden;
+  display:flex;align-items:center;justify-content:center;font-size:28px;
+}
+.card-back{background:linear-gradient(135deg,#1a1d29,#252938);border:1px solid rgba(255,255,255,.08)}
+.card-back::after{content:'M';font-weight:900;font-size:22px;color:#e50914;opacity:.5}
+.card-front{background:linear-gradient(135deg,#252938,#1a1d29);transform:rotateY(180deg);border:1px solid rgba(255,255,255,.15)}
+.card.matched .card-front{background:linear-gradient(135deg,#0a3d24,#0f5c36);border-color:#00e676}
+.overlay{
+  position:fixed;inset:0;background:rgba(7,8,12,.92);z-index:10;
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+}
+.overlay.show{display:flex}
+.overlay-text{font-size:26px;font-weight:900}
+.overlay-sub{font-size:13px;color:#9aa0b4}
+.overlay-btn{background:#e50914;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-weight:800;font-size:14px;cursor:pointer}
+.hint{margin-top:16px;font-size:12px;color:#9aa0b4;text-align:center;max-width:340px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="/?view=games" class="back-btn" onclick="window.close(); return true;">← Back</a>
+  <div class="stats">
+    <div class="stat-box"><div class="stat-label">Moves</div><div class="stat-val" id="moves">0</div></div>
+    <div class="stat-box"><div class="stat-label">Time</div><div class="stat-val" id="timer">0:00</div></div>
+    <div class="stat-box"><div class="stat-label">Best</div><div class="stat-val" id="best">--</div></div>
+  </div>
+</div>
+
+<div class="title-row">
+  <div class="title">🎬 Memory Match</div>
+  <div class="diff-select" id="diffSelect">
+    <button class="diff-btn" data-pairs="6">Easy</button>
+    <button class="diff-btn active" data-pairs="8">Normal</button>
+    <button class="diff-btn" data-pairs="12">Hard</button>
+  </div>
+</div>
+
+<div class="board" id="board"></div>
+
+<p class="hint">Flip two cards to find a match. Fewer moves and less time = a better score. Works fully offline once downloaded.</p>
+
+<div class="overlay" id="overlay">
+  <div class="overlay-text" id="overlayText">🎉 Solved!</div>
+  <div class="overlay-sub" id="overlaySub"></div>
+  <button class="overlay-btn" id="overlayBtn">Play Again</button>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  const ICONS = ['🎬','🍿','🎭','📺','🎥','🌟','🏆','🎞️','🎼','👾','🚀','🦁','🐉','🔥'];
+  const board = document.getElementById('board');
+  const movesEl = document.getElementById('moves');
+  const timerEl = document.getElementById('timer');
+  const bestEl = document.getElementById('best');
+  const overlay = document.getElementById('overlay');
+  const overlayText = document.getElementById('overlayText');
+  const overlaySub = document.getElementById('overlaySub');
+
+  let pairs = 8, cards = [], flipped = [], matchedCount = 0, moves = 0, timerHandle, seconds = 0, lockBoard = false;
+
+  function storageKey(p) { return `minexus_memory_best_${p}`; }
+  function loadBest(p) { try { return localStorage.getItem(storageKey(p)); } catch (e) { return null; } }
+  function saveBest(p, val) { try { localStorage.setItem(storageKey(p), val); } catch (e) {} }
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function gridColsFor(totalCards) {
+    if (totalCards <= 12) return 4;
+    if (totalCards <= 16) return 4;
+    return 6;
+  }
+
+  function updateBestDisplay() {
+    const stored = loadBest(pairs);
+    bestEl.textContent = stored ? stored.split('|')[0] + 'm' : '--';
+  }
+
+  function startTimer() {
+    clearInterval(timerHandle);
+    seconds = 0;
+    timerEl.textContent = '0:00';
+    timerHandle = setInterval(() => {
+      seconds++;
+      const m = Math.floor(seconds / 60), s = seconds % 60;
+      timerEl.textContent = `${m}:${String(s).padStart(2, '0')}`;
+    }, 1000);
+  }
+
+  function newGame() {
+    matchedCount = 0; moves = 0; flipped = []; lockBoard = false;
+    movesEl.textContent = '0';
+    overlay.classList.remove('show');
+    updateBestDisplay();
+
+    const icons = ICONS.slice(0, pairs);
+    cards = shuffle([...icons, ...icons].map((icon, i) => ({ icon, id: i, matched: false })));
+
+    const cols = gridColsFor(cards.length);
+    board.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    board.innerHTML = '';
+    cards.forEach((c, idx) => {
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.dataset.idx = idx;
+      el.innerHTML = `
+        <div class="card-face card-back"></div>
+        <div class="card-face card-front">${c.icon}</div>
+      `;
+      el.addEventListener('click', () => flipCard(idx, el));
+      board.appendChild(el);
+    });
+
+    startTimer();
+  }
+
+  function flipCard(idx, el) {
+    if (lockBoard || el.classList.contains('flipped') || el.classList.contains('matched')) return;
+    if (flipped.length === 2) return;
+
+    el.classList.add('flipped');
+    flipped.push({ idx, el });
+
+    if (flipped.length === 2) {
+      moves++;
+      movesEl.textContent = moves;
+      const [a, b] = flipped;
+      if (cards[a.idx].icon === cards[b.idx].icon) {
+        a.el.classList.add('matched');
+        b.el.classList.add('matched');
+        matchedCount++;
+        flipped = [];
+        if (matchedCount === pairs) finishGame();
+      } else {
+        lockBoard = true;
+        setTimeout(() => {
+          a.el.classList.remove('flipped');
+          b.el.classList.remove('flipped');
+          flipped = [];
+          lockBoard = false;
+        }, 700);
+      }
+    }
+  }
+
+  function finishGame() {
+    clearInterval(timerHandle);
+    const stored = loadBest(pairs);
+    const storedMoves = stored ? parseInt(stored.split('|')[0], 10) : Infinity;
+    let isNewBest = false;
+    if (moves < storedMoves) {
+      saveBest(pairs, `${moves}|${seconds}`);
+      isNewBest = true;
+    }
+    overlayText.textContent = isNewBest ? '🏆 New Best!' : '🎉 Solved!';
+    const m = Math.floor(seconds / 60), s = seconds % 60;
+    overlaySub.textContent = `${moves} moves · ${m}:${String(s).padStart(2, '0')}`;
+    overlay.classList.add('show');
+  }
+
+  document.querySelectorAll('.diff-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      pairs = parseInt(btn.dataset.pairs, 10);
+      newGame();
+    });
+  });
+
+  document.getElementById('overlayBtn').addEventListener('click', newGame);
+
+  newGame();
+})();
+</script>
+</body>
+</html>
