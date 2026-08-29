@@ -92,24 +92,49 @@
     /* Hides every element belonging to an ad type the moment it's toggled
        off, and re-fills everything from cached values the moment it's
        toggled back on — called both right after a toggle change and from
-       key parts of the normal render flow. */
+       key parts of the normal render flow.
+
+       REAL BUG FIXED HERE: turning a toggle off used to only set
+       `el.style.display = 'none'` on the container — which hides it
+       visually, but leaves the iframe/script that was already inside it
+       completely intact and still running. `display:none` only affects
+       rendering, not JavaScript execution: an ad network's script
+       (tracking pixels, popunder triggers, redirect timers) keeps firing
+       from inside that hidden iframe exactly as before, which is why ads
+       kept "loading" (running/tracking/serving) even after being switched
+       off in Admin. Fixed by actually clearing each container's content
+       (`innerHTML = ''`) before hiding it — this destroys the iframe/
+       script node entirely, which stops its JavaScript execution
+       immediately, not just its visibility. Also clears the
+       dataset.bannerKey / dataset.nativeLoaded markers so that turning
+       the toggle back ON is correctly treated as "this slot needs a fresh
+       load" instead of being skipped as "already filled with this key". */
     _reapplyAll() {
       if (!this._isOn('monetag')) this._hideAllMonetag();
       if (!this._isOn('adsterraBanners')) {
         ['adsterraSlot320x50', 'adsterraSlot468x60', 'adsterraSlot160x300'].forEach(id => {
           const el = document.getElementById(id);
-          if (el) el.style.display = 'none';
+          if (el) { el.innerHTML = ''; el.style.display = 'none'; }
         });
-        document.querySelectorAll('.ad-banner-slot').forEach(el => { el.style.display = 'none'; el.classList.remove('ad-banner-visible'); });
-        document.querySelectorAll('.ad-banner-slot-160x300').forEach(el => { el.style.display = 'none'; el.classList.remove('ad-banner-visible'); });
+        document.querySelectorAll('.ad-banner-slot').forEach(el => {
+          el.innerHTML = ''; el.style.display = 'none'; el.classList.remove('ad-banner-visible');
+          delete el.dataset.bannerKey;
+        });
+        document.querySelectorAll('.ad-banner-slot-160x300').forEach(el => {
+          el.innerHTML = ''; el.style.display = 'none'; el.classList.remove('ad-banner-visible');
+          delete el.dataset.bannerKey;
+        });
       } else if (this._lastBannerKey) {
         this._fillAllBannerSlots(this._lastBannerKey);
         if (this._last160x300Key) this._fillAll160x300Slots(this._last160x300Key);
       }
       if (!this._isOn('adsterraNative')) {
         const el = document.getElementById('adsterraSlotNative');
-        if (el) el.style.display = 'none';
-        document.querySelectorAll('.ad-banner-slot-native').forEach(el2 => { el2.style.display = 'none'; el2.classList.remove('ad-banner-visible'); });
+        if (el) { el.innerHTML = ''; el.style.display = 'none'; delete el.dataset.adsterraLoaded; }
+        document.querySelectorAll('.ad-banner-slot-native').forEach(el2 => {
+          el2.innerHTML = ''; el2.style.display = 'none'; el2.classList.remove('ad-banner-visible');
+          delete el2.dataset.nativeLoaded; delete el2.dataset.bannerKey;
+        });
       } else if (this._lastNativeScriptSrc || this._lastBannerKey) {
         this._fillAllNativeSlots(this._lastNativeScriptSrc, this._lastBannerKey);
       }
@@ -118,19 +143,29 @@
     },
 
     _hideAllMonetag() {
+      // Fully removes the injected script/wrapper nodes (not just hiding
+      // them) so any polling/tracking/popunder logic those scripts started
+      // actually stops running, not just stops being visible.
       document.querySelectorAll('[data-monetag-raw]').forEach(el => el.remove());
+      document.querySelectorAll('script[data-monetag-zone]').forEach(el => el.remove());
       this._loadedMonetagZones.clear();
     },
 
     _removeSocialBar() {
-      // The Social Bar script, once loaded, manages its own DOM outside
-      // our containers (it injects directly into document.body) — there's
-      // no single element we placed that we can just hide, so this can
-      // only prevent a NOT-yet-loaded bar from loading; a bar already
-      // injected before the toggle was switched off requires a page
-      // refresh to fully clear, which is called out in the Admin UI
-      // itself (see the toggle description in admin.html).
-      this._socialBarLoaded = true; // block loadSocialBar() from firing
+      // The Social Bar script, once loaded, may manage its own DOM outside
+      // any container we control (some networks inject directly into
+      // document.body with their own wrapper div/iframe). This removes
+      // the script tag we injected AND any Adsterra social-bar wrapper
+      // elements it created, so switching the toggle off actually stops
+      // it rather than just preventing a future load.
+      document.querySelectorAll('script[data-adsterra-social-bar]').forEach(el => el.remove());
+      // Adsterra's social bar script commonly wraps its output in a
+      // container with an id/class containing "social-bar" or injects a
+      // fixed-position iframe — remove anything matching that pattern as
+      // a best-effort cleanup, since the exact structure isn't controlled
+      // by us and can vary by account/campaign.
+      document.querySelectorAll('[id*="social-bar" i], [class*="social-bar" i]').forEach(el => el.remove());
+      this._socialBarLoaded = false; // allow it to load again if re-enabled
     },
 
     _hideCustomSlots() {
@@ -358,6 +393,7 @@
         script.async = true;
         script.src = scriptSrc;
         script.setAttribute('data-cfasync', 'false');
+        script.setAttribute('data-adsterra-social-bar', 'true');
         script.onerror = () => this._logError('adsterra-social-bar', 'script failed to load');
         document.body.appendChild(script);
       } catch (e) { this._logError('adsterra-social-bar', e); }
