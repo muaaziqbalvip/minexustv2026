@@ -566,6 +566,7 @@ input,select{font-family:inherit}
 .game-card-thumb-2048{background:linear-gradient(135deg,#f2b179,#edc22e)}
 .game-card-thumb-snake{background:linear-gradient(135deg,#0f5132,#1a8f5c)}
 .game-card-thumb-memory{background:linear-gradient(135deg,#4a1a6b,#8b3fc9)}
+.game-card-thumb-custom{background:linear-gradient(135deg,#2c3e50,#4a6280);font-size:44px;color:rgba(255,255,255,.85)}
 .game-2048-preview{display:grid;grid-template-columns:repeat(2,44px);grid-template-rows:repeat(2,44px);gap:6px}
 .game-2048-preview span{
   background:rgba(255,255,255,.9);border-radius:8px;display:flex;align-items:center;justify-content:center;
@@ -1112,11 +1113,11 @@ input,select{font-family:inherit}
 .channel-country{font-size:10px;color:var(--text3);font-weight:600}
 
 /* ===== CINEMA VIDEO PLAYER VIEW ===== */
-#viewPlayer, #viewLivePlayer{
+#viewPlayer, #viewLivePlayer, #viewGamePlayer{
   position:fixed;inset:0;z-index:350;
   background:var(--bg);padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
-#viewPlayer.active, #viewLivePlayer.active{display:flex;flex-direction:column}
+#viewPlayer.active, #viewLivePlayer.active, #viewGamePlayer.active{display:flex;flex-direction:column}
 .player-topbar{
   display:flex;align-items:center;gap:10px;padding:10px 14px;
   background:rgba(7,8,12,.96);backdrop-filter:blur(14px);
@@ -1157,6 +1158,22 @@ input,select{font-family:inherit}
 .player-frame-wrap:-webkit-full-screen #cinemaFrame{width:100%;height:100%}
 .player-frame-wrap::before{content:'';display:block;padding-top:56.25%}
 .player-frame-wrap iframe, .player-frame-wrap video{position:absolute;inset:0;width:100%;height:100%;border:none}
+
+/* ===== GAME PLAYER — reuses the movie player's chrome (top bar, back
+   button, fullscreen button) but needs a completely different frame
+   shape: games want to fill the remaining screen height edge-to-edge,
+   not sit inside a fixed 16:9 letterbox like video does. The `::before`
+   padding-top trick above is movie-specific and would badly crop or
+   letterbox a game, so this overrides it to a flex-fill layout instead. */
+.game-frame-wrap{
+  flex:1;max-height:none;display:flex;
+}
+.game-frame-wrap::before{content:none}
+.game-frame-wrap iframe{position:static;width:100%;height:100%;border:none;flex:1}
+.game-frame-wrap:fullscreen{max-height:100vh}
+.game-frame-wrap:fullscreen iframe{width:100%;height:100%}
+.game-frame-wrap:-webkit-full-screen{max-height:100vh}
+.game-frame-wrap:-webkit-full-screen iframe{width:100%;height:100%}
 .player-loader{
   position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
   background:#000;color:var(--text2);gap:10px;z-index:2;
@@ -2154,6 +2171,29 @@ input,select{font-family:inherit}
       <div class="ad-banner-slot"></div>
       <div class="ad-banner-slot-native"></div>
     </div>
+  </div>
+</div>
+
+<!-- ===== GAME PLAYER VIEW — plays a game inline in-app, fullscreen-capable ===== -->
+<div class="view" id="viewGamePlayer">
+  <div class="player-topbar">
+    <button class="player-back" id="gamePlayerBackBtn"><i class="fas fa-arrow-left"></i></button>
+    <div class="player-topbar-info">
+      <div class="player-topbar-title" id="gamePlayerTitle">—</div>
+      <div class="player-topbar-meta">MINEXUS GAMES</div>
+    </div>
+  </div>
+
+  <div class="player-frame-wrap game-frame-wrap" id="gamePlayerFrameWrap">
+    <div class="player-loader" id="gamePlayerLoader">
+      <div class="spinner"></div>
+      <span>Loading game...</span>
+    </div>
+    <iframe id="gameFrame" src="" title="MINEXUS Game" allowfullscreen
+      allow="autoplay; fullscreen; gamepad; accelerometer; gyroscope"></iframe>
+    <button class="player-fullscreen-btn" id="gamePlayerFullscreenBtn" title="Fullscreen">
+      <i class="fas fa-expand"></i>
+    </button>
   </div>
 </div>
 
@@ -3496,7 +3536,7 @@ function switchView(name) {
   S.prevView = S.view;
   S.view = name;
 
-  if (name === 'player' || name === 'livePlayer') {
+  if (name === 'player' || name === 'livePlayer' || name === 'gamePlayer') {
     document.body.classList.add('in-player');
     // Don't let background music clash with movie/live-TV audio.
     pauseMusic();
@@ -3511,6 +3551,20 @@ function switchView(name) {
       if (cf) cf.src = '';
       resetShareMeta();
       applyAutoRotate(false);
+      const exitFs = document.exitFullscreen || document.webkitExitFullscreen || document.webkitCancelFullScreen;
+      if ((document.fullscreenElement || document.webkitFullscreenElement) && exitFs) {
+        exitFs.call(document);
+      }
+    }
+    // Same cleanup for leaving the game player — stops the game's
+    // audio/animation loop immediately (clearing src, not just hiding the
+    // view) whenever navigation away happens through any path, not only
+    // the dedicated back button (which already does this itself too, so
+    // this is what covers e.g. tapping a bottom-nav tab directly while a
+    // game is running).
+    if (S.prevView === 'gamePlayer') {
+      const gf = document.getElementById('gameFrame');
+      if (gf) gf.src = '';
       const exitFs = document.exitFullscreen || document.webkitExitFullscreen || document.webkitCancelFullScreen;
       if ((document.fullscreenElement || document.webkitFullscreenElement) && exitFs) {
         exitFs.call(document);
@@ -3544,16 +3598,43 @@ function switchView(name) {
   }
 }
 
-/* ---- GAMES VIEW ---- */
-// Tracks which games are already downloaded for offline play, using
-// localStorage as a simple "is this cached" flag — the actual bytes live
-// in the Service Worker's Cache Storage (see the CACHE_GAME message
-// handler in sw.js), this is just so the UI can show the right
-// downloaded/not-downloaded state without needing to ask the SW every
-// single time the Games view renders.
 function _gameDownloadedKey(gameId) { return `minexus_game_dl_${gameId}`; }
 
+/* Opens a game inline in-app (viewGamePlayer), instead of a new browser
+   tab — this is what fixes "games should play inside the app with proper
+   fullscreen" instead of window.open()'ing away from MINEXUS TV
+   entirely. Reuses the exact same frame-wrap + dedicated-fullscreen-
+   button pattern already proven out for the movie player, just pointed
+   at a game URL instead of a streaming embed. */
+function openGamePlayer(url, title) {
+  const loader = document.getElementById('gamePlayerLoader');
+  const frame = document.getElementById('gameFrame');
+  document.getElementById('gamePlayerTitle').textContent = title || 'Game';
+  loader.style.display = 'flex';
+  frame.src = url;
+  switchView('gamePlayer');
+}
+
+document.getElementById('gamePlayerBackBtn').addEventListener('click', () => {
+  // Exit fullscreen first if active (matches the movie player's back-
+  // button behavior) so leaving the game never leaves a stray fullscreen
+  // state hanging around on the app shell underneath.
+  const exitFs = document.exitFullscreen || document.webkitExitFullscreen || document.webkitCancelFullScreen;
+  if ((document.fullscreenElement || document.webkitFullscreenElement) && exitFs) exitFs.call(document);
+  document.getElementById('gameFrame').src = ''; // stop the game's audio/loop immediately, don't just hide it
+  switchView(S.prevView === 'gamePlayer' ? 'games' : S.prevView);
+});
+
+document.getElementById('gameFrame').addEventListener('load', () => {
+  const loader = document.getElementById('gamePlayerLoader');
+  if (loader) loader.style.display = 'none';
+});
+
+/* ---- GAMES VIEW ---- */
+
 function initGamesView() {
+  renderCustomGames(); // Firebase-driven games added via Admin Panel (see below)
+
   if (S._gamesViewWired) {
     // Already wired once — just refresh the downloaded/not-downloaded
     // visual state in case a download finished while the person was on a
@@ -3563,21 +3644,24 @@ function initGamesView() {
   }
   S._gamesViewWired = true;
 
-  document.querySelectorAll('[data-game-launch]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const url = btn.dataset.gameLaunch;
+  // Event delegation on the whole grid (not per-button binding) — this is
+  // what lets Admin-added games (rendered into the SAME #gamesGrid after
+  // this initial wiring already ran) work correctly without needing their
+  // own separate click-binding pass. A per-button forEach binding here
+  // would only ever catch the cards that existed at this exact moment,
+  // silently leaving every later-added custom game's buttons dead.
+  const grid = document.getElementById('gamesGrid');
+  grid.addEventListener('click', e => {
+    const launchBtn = e.target.closest('[data-game-launch]');
+    if (launchBtn) {
+      const url = launchBtn.dataset.gameLaunch;
+      const title = launchBtn.closest('.game-card').querySelector('.game-card-title').textContent;
       logAnalyticsEvent('game_launch', { game: url });
-      // Games are self-contained standalone pages (own HTML/CSS/JS, no
-      // dependency on the app shell), so a plain new-tab open is simplest
-      // and correctly lets the browser's own back button return here —
-      // opening in an iframe would fight with fullscreen/orientation
-      // APIs some of these games use for a better play experience.
-      window.open(url, '_blank');
-    });
-  });
-
-  document.querySelectorAll('[data-game-download]').forEach(btn => {
-    btn.addEventListener('click', () => downloadGameOffline(btn));
+      openGamePlayer(url, title);
+      return;
+    }
+    const dlBtn = e.target.closest('[data-game-download]');
+    if (dlBtn) downloadGameOffline(dlBtn);
   });
 
   // If the Service Worker finishes a download after the button was
@@ -3597,6 +3681,51 @@ function initGamesView() {
   }
 
   _refreshGameDownloadStates();
+}
+
+/* Renders games added via Admin Panel → Games Manager (stored at
+   app_config/custom_games in Firebase) as additional cards appended after
+   the built-in games — kept as a SEPARATE Firebase-driven list rather
+   than trying to make the built-in 12 games editable too, since the
+   built-in games are actual files shipped with the app and don't need a
+   database round-trip to display; only genuinely new games Muaaz adds
+   through Admin need to come from Firebase. Uses .ad-banner-slot-style
+   generic thumbnail (a game controller icon) since custom games don't
+   ship with a matching hand-styled thumbnail class the way the built-in
+   ones do. */
+function renderCustomGames() {
+  if (!db) return;
+  db.ref('app_config/custom_games').on('value', snap => {
+    const games = snap.val() || {};
+    const grid = document.getElementById('gamesGrid');
+    // Remove previously-rendered custom cards before re-rendering, so a
+    // game removed in Admin disappears here too instead of lingering
+    // until the next full page reload.
+    grid.querySelectorAll('[data-custom-game]').forEach(el => el.remove());
+
+    Object.entries(games).forEach(([id, g]) => {
+      if (!g || !g.name || !g.url) return;
+      const card = document.createElement('div');
+      card.className = 'game-card';
+      card.dataset.customGame = id;
+      card.innerHTML = `
+        <div class="game-card-thumb game-card-thumb-custom">
+          <i class="fas fa-gamepad"></i>
+        </div>
+        <div class="game-card-info">
+          <div class="game-card-title">${esc(g.name)}</div>
+          <div class="game-card-desc">${esc(g.description || 'Play free, right in the app.')}</div>
+          <div class="game-card-actions">
+            <button class="game-play-btn" data-game-launch="${esc(g.url)}"><i class="fas fa-play"></i> Play Now</button>
+            <button class="game-dl-btn" data-game-download="custom_${esc(id)}" data-game-url="${esc(g.url)}" title="Download for offline"><i class="fas fa-download"></i></button>
+          </div>
+          <div class="game-dl-progress" style="display:none"><div class="game-dl-progress-bar"></div></div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+    _refreshGameDownloadStates();
+  });
 }
 
 function _refreshGameDownloadStates() {
@@ -4674,13 +4803,16 @@ window.addEventListener('message', (e) => {
 });
 
 /* ---- DEDICATED FULLSCREEN CONTROL ----
-   Fullscreens our own .player-frame-wrap container (not the iframe itself)
-   via the standard Fullscreen API, with vendor-prefixed fallbacks for older
+   Fullscreens our own frame wrapper container (not the iframe itself) via
+   the standard Fullscreen API, with vendor-prefixed fallbacks for older
    WebKit/Android WebViews. This works identically regardless of which
-   embed server is loaded, since it never depends on that server's own
-   in-iframe fullscreen button. */
-function toggleFullscreen() {
-  const el = document.getElementById('playerFrameWrap');
+   embed server (or, for games, which game) is loaded, since it never
+   depends on the iframe content's own in-frame fullscreen button.
+   Accepts an element id so the same function serves both the movie
+   player (#playerFrameWrap) and the game player (#gamePlayerFrameWrap)
+   instead of needing a near-duplicate copy for games. */
+function toggleFullscreen(wrapId) {
+  const el = document.getElementById(wrapId || 'playerFrameWrap');
   if (!el) return;
   const isFs = document.fullscreenElement || document.webkitFullscreenElement;
 
@@ -4698,10 +4830,12 @@ function toggleFullscreen() {
 }
 
 function syncFullscreenIcon() {
-  const btn = document.getElementById('playerFullscreenBtn');
-  if (!btn) return;
   const isFs = document.fullscreenElement || document.webkitFullscreenElement;
-  btn.innerHTML = isFs ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
+  const icon = isFs ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
+  ['playerFullscreenBtn', 'gamePlayerFullscreenBtn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.innerHTML = icon;
+  });
 }
 document.addEventListener('fullscreenchange', syncFullscreenIcon);
 document.addEventListener('webkitfullscreenchange', syncFullscreenIcon);
@@ -7143,7 +7277,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Dedicated fullscreen button in the player
   const fsBtn = document.getElementById('playerFullscreenBtn');
-  if (fsBtn) fsBtn.addEventListener('click', toggleFullscreen);
+  if (fsBtn) fsBtn.addEventListener('click', () => toggleFullscreen('playerFrameWrap'));
+
+  // Dedicated fullscreen button in the game player
+  const gameFsBtn = document.getElementById('gamePlayerFullscreenBtn');
+  if (gameFsBtn) gameFsBtn.addEventListener('click', () => toggleFullscreen('gamePlayerFrameWrap'));
 
   // Calendar New/Upcoming tab toggle
   document.querySelectorAll('.cal-tab').forEach(tab => {

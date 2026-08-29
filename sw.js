@@ -73,8 +73,15 @@ self.addEventListener('fetch', e => {
 
   const isHTML = req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html');
   const isAppShell = url.endsWith('/index.html') || url.endsWith('/') || url.includes('/admin');
+  // Games are standalone HTML pages loaded inside an <iframe> (see
+  // viewGamePlayer in index.html) — explicitly matched by path here rather
+  // than relying only on req.mode/Accept-header sniffing above, since an
+  // iframe navigation's exact request mode can vary subtly by browser and
+  // this is cheap to just check directly instead of hoping the sniffing
+  // catches it every time.
+  const isGamePage = /\/games\/[^/]+\.html$/.test(url);
 
-  if (isHTML || isAppShell) {
+  if (isHTML || isAppShell || isGamePage) {
     // NETWORK-FIRST: always try to fetch the latest deployed HTML.
     // Only fall back to cache if the network is truly unavailable (offline).
     e.respondWith(
@@ -84,7 +91,7 @@ self.addEventListener('fetch', e => {
           caches.open(STATIC_CACHE).then(cache => cache.put(req, clone));
           return res;
         })
-        .catch(() => caches.match(req).then(cached => cached || caches.match('/index.html')))
+        .catch(() => caches.match(req, { ignoreSearch: true }).then(cached => cached || (isGamePage ? undefined : caches.match('/index.html'))))
     );
     return;
   }
@@ -118,11 +125,27 @@ self.addEventListener('message', e => {
   // "downloaded" state instead of just assuming success.
   if (e.data && e.data.type === 'CACHE_GAME' && e.data.url) {
     e.waitUntil(
-      fetch(e.data.url, { cache: 'no-store' })
-        .then(res => {
-          if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
-          return caches.open(STATIC_CACHE).then(cache => cache.put(e.data.url, res.clone()));
-        })
+      // Resolve to an ABSOLUTE URL before caching — this is the actual
+      // bug fix: caches.put() was previously called with the relative
+      // string as-is ("/games/2048.html"), while the later offline
+      // lookup below matches against `req` (a full Request object,
+      // whose .url is always absolute, e.g.
+      // "https://minexustv.vercel.app/games/2048.html"). Cache Storage
+      // treats a differently-formed URL as a different cache key even
+      // when it points at the same resource, so a game "downloaded"
+      // under the relative-string key was frequently a cache MISS once
+      // looked up later via the request-based fetch handler below —
+      // which is exactly why downloaded games often failed to actually
+      // launch offline. Resolving both sides to the identical absolute
+      // URL form guarantees the write and the later read always agree.
+      (async () => {
+        const absoluteUrl = new URL(e.data.url, self.location.origin).href;
+        const res = await fetch(absoluteUrl, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
+        const cache = await caches.open(STATIC_CACHE);
+        await cache.put(absoluteUrl, res.clone());
+        return absoluteUrl;
+      })()
         .then(() => {
           if (e.source) e.source.postMessage({ type: 'GAME_CACHED', url: e.data.url, success: true });
         })

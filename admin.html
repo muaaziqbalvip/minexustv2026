@@ -348,6 +348,7 @@ tr:hover td{background:var(--bg-card-hover)}
     <button class="nav-item" data-tab="version"><i class="fas fa-code-branch"></i> App Version & Update</button>
     <button class="nav-item" data-tab="notifications"><i class="fas fa-bullhorn"></i> Push Notifications</button>
     <button class="nav-item" data-tab="monetization"><i class="fas fa-dollar-sign" style="color:var(--gold)"></i> Monetization / Ads</button>
+    <button class="nav-item" data-tab="games"><i class="fas fa-gamepad" style="color:var(--cyan)"></i> Games Manager</button>
     <button class="nav-item" data-tab="devpage"><i class="fas fa-id-card" style="color:var(--cyan)"></i> Developer Page</button>
     <button class="nav-item" data-tab="users"><i class="fas fa-users"></i> Registered Users</button>
   </nav>
@@ -1068,6 +1069,51 @@ tr:hover td{background:var(--bg-card-hover)}
             <span id="customAdSlotsStatus" style="font-size:11px;color:var(--text-muted);margin-left:10px"></span>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- GAMES MANAGER -->
+    <div class="tab-content" id="tab-games">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-gamepad" style="color:var(--cyan)"></i> Add a Game</h2>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.7">
+          Add any game by name and URL — it'll appear as an extra card at the end of the Games list in the app,
+          right alongside the 12 built-in games, with the same Play and offline-download buttons.
+          <br><br>
+          <b style="color:#ff6b6b">⚠️ Offline download note:</b> only games hosted on MINEXUS TV's own domain
+          (URLs starting with <code>/games/...</code>) can actually be downloaded for offline play — that's a browser
+          security limit, not something this app can work around. A game hosted on someone else's website will still
+          play fine here, but the download button on it won't do anything useful since there's nothing on our own
+          server to cache.
+        </p>
+        <form id="addGameForm" class="form-grid">
+          <div class="form-group">
+            <label>Game Name</label>
+            <input type="text" class="form-control" id="gameName" placeholder="e.g. Bubble Shooter" required>
+          </div>
+          <div class="form-group">
+            <label>Game URL</label>
+            <input type="text" class="form-control" id="gameUrl" placeholder="/games/your-game.html or a full https:// URL" required>
+          </div>
+          <div class="form-group" style="grid-column:1/-1">
+            <label>Short Description (optional)</label>
+            <input type="text" class="form-control" id="gameDesc" placeholder="One line shown under the game name">
+          </div>
+          <div style="grid-column:1/-1">
+            <button type="submit" id="addGameSubmitBtn" class="btn btn-primary"><i class="fas fa-plus"></i> Add Game</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-list" style="color:var(--gold)"></i> Games Added via Admin</h2>
+        </div>
+        <div id="customGamesList" style="display:flex;flex-direction:column;gap:10px">
+          <p style="font-size:12px;color:var(--text-muted)">No games added yet — use the form above.</p>
+        </div>
       </div>
     </div>
 
@@ -1858,6 +1904,69 @@ document.getElementById('customAdSlotsForm').onsubmit = async (e) => {
   AD_SLOT_IDS.forEach(id => { payload[id] = document.getElementById(id).value.trim(); });
   await db.ref('app_config/ad_slots').set(payload);
   toast('Custom Ad Slots Saved — live for all visitors now!');
+};
+
+// ---- Games Manager ----
+// Renders every game currently stored at app_config/custom_games as a row
+// with a Delete button — this is the admin-side counterpart to
+// renderCustomGames() in index.html, which reads the same path to append
+// extra game cards after the 12 built-in ones in the app's Games view.
+db.ref('app_config/custom_games').on('value', snap => {
+  const games = snap.val() || {};
+  const listEl = document.getElementById('customGamesList');
+  const entries = Object.entries(games);
+  if (!entries.length) {
+    listEl.innerHTML = '<p style="font-size:12px;color:var(--text-muted)">No games added yet — use the form above.</p>';
+    return;
+  }
+  listEl.innerHTML = entries.map(([id, g]) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#161924;border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="min-width:0">
+        <div style="font-weight:700;font-size:13px">${escapeHtml(g.name || 'Untitled')}</div>
+        <div style="font-size:11px;color:var(--text-muted);word-break:break-all">${escapeHtml(g.url || '')}</div>
+      </div>
+      <button type="button" class="btn btn-secondary" style="color:#ff6b6b;flex-shrink:0" data-delete-game="${id}"><i class="fas fa-trash"></i></button>
+    </div>
+  `).join('');
+
+  listEl.querySelectorAll('[data-delete-game]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Remove this game from the app for everyone?')) return;
+      await db.ref(`app_config/custom_games/${btn.dataset.deleteGame}`).remove();
+      toast('Game removed');
+    });
+  });
+});
+
+function escapeHtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+document.getElementById('addGameForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('gameName').value.trim();
+  const url = document.getElementById('gameUrl').value.trim();
+  const description = document.getElementById('gameDesc').value.trim();
+  if (!name || !url) return;
+
+  // Guards against a fast double-click creating two duplicate entries for
+  // one intended add — same double-submit protection pattern used for
+  // every other push()-based Admin form (channel add, notifications).
+  const submitBtn = document.getElementById('addGameSubmitBtn');
+  if (submitBtn.disabled) return;
+  submitBtn.disabled = true;
+  const originalLabel = submitBtn.innerHTML;
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+
+  try {
+    const newRef = db.ref('app_config/custom_games').push();
+    await newRef.set({ name, url, description, addedAt: firebase.database.ServerValue.TIMESTAMP });
+    document.getElementById('addGameForm').reset();
+    toast('Game added — live in the app now!');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalLabel;
+  }
 };
 
 // Developer Page
