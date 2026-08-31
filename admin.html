@@ -1879,7 +1879,20 @@ document.getElementById('adsterraForm').onsubmit = async (e) => {
   Object.entries(ADSTERRA_FIELDS).forEach(([elId, cfgKey]) => {
     payload[cfgKey] = document.getElementById(elId).value.trim();
   });
-  await db.ref('app_config/adsterra').set(payload);
+  // Uses update() instead of set() — set() replaces the ENTIRE
+  // app_config/adsterra node with only these 6 fields, which is normally
+  // fine since the form is always pre-filled with the current saved
+  // values before someone edits it. But if this form were ever submitted
+  // before its own db.ref(...).on('value', ...) listener above had
+  // finished its first read (a genuine race on a slow connection, or a
+  // browser autofill/reset quirk leaving a field blank), set() would
+  // SILENTLY WIPE OUT a working, previously-saved key for a size Muaaz
+  // never intended to touch — which looks exactly like "this one ad size
+  // just stopped loading" with no obvious cause. update() only touches
+  // the specific keys provided, so a moment like that can only ever clear
+  // the field that's actually blank, never accidentally erase a sibling
+  // key it never should have touched.
+  await db.ref('app_config/adsterra').update(payload);
   toast('Adsterra Units Saved — live for all visitors now!');
 };
 

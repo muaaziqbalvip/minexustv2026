@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta name="google-adsense-account" content="ca-pub-7970000335953988">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>MINEXUS TV — 4K Cinema, Pakistani & Indian Series & Live TV</title>
@@ -283,6 +282,11 @@ input,select{font-family:inherit}
 .sdrop-info{flex:1;min-width:0}
 .sdrop-title{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sdrop-meta{font-size:10px;color:var(--text3);margin-top:2px}
+.sdrop-see-all{
+  width:100%;padding:11px;background:var(--bg3);border:none;color:var(--accent);
+  font-size:12px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.sdrop-see-all:hover{background:var(--bg4)}
 
 /* ===== BOTTOM NAVIGATION BAR (MOBILE) ===== */
 .bottom-bar{
@@ -550,6 +554,25 @@ input,select{font-family:inherit}
 .leaderboard-wrap{padding:16px;max-width:1400px;margin:0 auto}
 
 /* ===== GAMES VIEW ===== */
+/* ===== DEDICATED SEARCH PAGE ===== */
+.search-page-wrap{padding:12px 14px 24px;max-width:900px;margin:0 auto}
+.search-page-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.search-page-back{
+  background:var(--bg3);border:1px solid var(--border);color:var(--text);
+  width:40px;height:40px;border-radius:12px;flex-shrink:0;font-size:16px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.search-page-filters{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none}
+.search-page-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.search-page-results.list-mode{display:flex;flex-direction:column;gap:2px}
+.search-result-row{
+  display:flex;gap:12px;align-items:center;padding:10px;border-radius:12px;cursor:pointer;
+}
+.search-result-row:hover, .search-result-row:active{background:var(--bg3)}
+.search-result-row img{width:50px;height:74px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--bg4)}
+.search-result-row-title{font-size:13.5px;font-weight:700}
+.search-result-row-meta{font-size:11.5px;color:var(--text3);margin-top:2px}
+
 .games-wrap{padding:16px;max-width:1100px;margin:0 auto}
 .games-hero{text-align:center;padding:20px 10px 24px}
 .games-hero-title{font-size:22px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px}
@@ -1897,7 +1920,7 @@ input,select{font-family:inherit}
 
   <!-- AD SLOT: Between Home Rows (natural scroll-break placement) -->
   <div class="ad-slot" id="adSlotHomeMid" style="display:none"></div>
-  <div class="ad-slot-adsterra" id="adsterraSlot160x300" style="display:none"></div>
+  <div class="ad-slot-adsterra" id="adsterraSlot160x300" style="display:none;min-height:300px"></div>
   <div class="ad-slot-adsterra" id="adsterraSlotNative" style="display:none;margin:16px 14px"></div>
 
   <!-- BOLLYWOOD & DESI CINEMA -->
@@ -2100,6 +2123,36 @@ input,select{font-family:inherit}
     <div class="ad-pair">
       <div class="ad-banner-slot"></div>
       <div class="ad-banner-slot-native"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SEARCH RESULTS VIEW — dedicated full page (not just a small
+     dropdown), opened via Enter/submit on the search box or "See all
+     results". Reuses the exact same API.search() the dropdown already
+     calls, so results are always consistent between the two. ===== -->
+<div class="view" id="viewSearch">
+  <div class="search-page-wrap">
+    <div class="search-page-bar">
+      <button class="search-page-back" id="searchPageBackBtn"><i class="fas fa-arrow-left"></i></button>
+      <div class="search-box-container" style="flex:1">
+        <i class="fas fa-search search-box-icon"></i>
+        <input type="text" class="search-box-input" id="searchPageInput" placeholder="Search movies, series, live TV..." autocomplete="off">
+        <button class="search-box-clear" id="searchPageClear"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+
+    <div class="search-page-filters" id="searchPageFilters">
+      <button class="filter-pill active" data-filter="all">All</button>
+      <button class="filter-pill" data-filter="movie">Movies</button>
+      <button class="filter-pill" data-filter="series">Series</button>
+    </div>
+
+    <div class="search-page-results" id="searchPageResults">
+      <div style="text-align:center;padding:40px 20px;color:var(--text3)">
+        <i class="fas fa-magnifying-glass" style="font-size:32px;opacity:.3;margin-bottom:10px;display:block"></i>
+        Start typing to search MINEXUS TV's full catalog.
+      </div>
     </div>
   </div>
 </div>
@@ -2323,7 +2376,7 @@ input,select{font-family:inherit}
 
   <!-- AD SLOT: Player (below server picker, never covers the video — highest natural engagement zone) -->
   <div class="ad-slot" id="adSlotPlayer" style="display:none"></div>
-  <div class="ad-slot-adsterra" id="adsterraSlot468x60" style="display:none"></div>
+  <div class="ad-slot-adsterra" id="adsterraSlot468x60" style="display:none;min-height:60px"></div>
 
   <!-- Series Episode Bar -->
   <div class="episodes-section" id="episodesSection" style="display:none">
@@ -3362,14 +3415,27 @@ const API = {
     // Western/mainstream coverage, Cinemeta often has better coverage of
     // older/regional titles. Merging both gives a noticeably fuller result
     // set than relying on just one source.
+    //
+    // REAL BUG FIXED HERE — this used to slice to 12 candidates per type
+    // (24 total) before resolving each one's IMDb id via a SEPARATE
+    // external_ids API call per title. Since the dropdown only ever shows
+    // 6 movies + 6 series (see handleLiveSearch's `.slice(0, 6)`), that was
+    // firing up to twice as many network requests as could ever be used —
+    // and because browsers cap concurrent connections per host at ~6,
+    // those 24 parallel requests actually queued in batches instead of all
+    // truly running at once, adding real, noticeable delay on every single
+    // keystroke. Cut to 8 candidates per type (still comfortable headroom
+    // over the 6 actually displayed, for when a few candidates fail to
+    // resolve or get deduped against Cinemeta) — this alone roughly halves
+    // the number of in-flight requests a search fires.
     const tmdbSearch = tmdbEnabled()
       ? Promise.all([
           _fetch(`${TMDB_BASE}/search/movie?api_key=${TMDB_API_KEY}&query=${enc}&include_adult=false`, 1, 30000).catch(() => ({ results: [] })),
           _fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_API_KEY}&query=${enc}&include_adult=false`, 1, 30000).catch(() => ({ results: [] }))
         ]).then(async ([mr, sr]) => {
           const [mIds, sIds] = await Promise.all([
-            tmdbResolveImdbIds((mr.results || []).slice(0, 12), 'movie'),
-            tmdbResolveImdbIds((sr.results || []).slice(0, 12), 'tv')
+            tmdbResolveImdbIds((mr.results || []).slice(0, 8), 'movie'),
+            tmdbResolveImdbIds((sr.results || []).slice(0, 8), 'tv')
           ]);
           return { movies: mIds.map(m => mapTmdb(m, 'movie')), series: sIds.map(m => mapTmdb(m, 'series')) };
         })
@@ -4069,7 +4135,27 @@ async function loadHomeLiveAndMusicPreviews() {
    append titles that aren't already on screen (per your request: "phle se
    mojood na ho, live API se aare cheze show ho"). Both also retry cleanly on
    network failure instead of silently going blank. */
+/* Guards against Load More being clicked twice in a row before the first
+   request finishes. REAL BUG FIXED HERE: with no guard, a fast
+   double-click fired loadMoviesGrid(true)/loadSeriesGrid(true) twice in
+   parallel — both reads of S.moviesSkip/S.seriesSkip saw the SAME value
+   (neither had incremented it yet), so both fetched the identical batch
+   of items, both appended it to the grid (visible duplicate cards), and
+   the skip counter then advanced by 40 instead of 20 for one intended
+   "page" of loading — silently skipping the next real batch of items.
+   This is exactly the kind of glitch that reads as "Load More is broken". */
+let _moviesLoadingMore = false;
+let _seriesLoadingMore = false;
+
 async function loadMoviesGrid(append = false) {
+  if (append && _moviesLoadingMore) return;
+  _moviesLoadingMore = true;
+  const loadMoreBtn = document.getElementById('moviesLoadMoreBtn');
+  const originalBtnLabel = loadMoreBtn ? loadMoreBtn.innerHTML : '';
+  if (append && loadMoreBtn) {
+    loadMoreBtn.disabled = true;
+    loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+  }
   if (!append) { S.moviesSkip = 0; S.moviesSeenIds = new Set(); }
   const grid = document.getElementById('moviesGrid');
   if (!append) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px"><div class="spinner" style="margin:0 auto 10px"></div><span>Loading movies...</span></div>`;
@@ -4099,10 +4185,21 @@ async function loadMoviesGrid(append = false) {
     } else {
       toast('❌ Failed to load more movies', 'error');
     }
+  } finally {
+    _moviesLoadingMore = false;
+    if (loadMoreBtn) { loadMoreBtn.disabled = false; loadMoreBtn.innerHTML = originalBtnLabel; }
   }
 }
 
 async function loadSeriesGrid(append = false) {
+  if (append && _seriesLoadingMore) return;
+  _seriesLoadingMore = true;
+  const loadMoreBtn = document.getElementById('seriesLoadMoreBtn');
+  const originalBtnLabel = loadMoreBtn ? loadMoreBtn.innerHTML : '';
+  if (append && loadMoreBtn) {
+    loadMoreBtn.disabled = true;
+    loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+  }
   if (!append) { S.seriesSkip = 0; S.seriesSeenIds = new Set(); }
   const grid = document.getElementById('seriesGrid');
   if (!append) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px"><div class="spinner" style="margin:0 auto 10px"></div><span>Loading series...</span></div>`;
@@ -4125,6 +4222,9 @@ async function loadSeriesGrid(append = false) {
     } else {
       toast('❌ Failed to load more series', 'error');
     }
+  } finally {
+    _seriesLoadingMore = false;
+    if (loadMoreBtn) { loadMoreBtn.disabled = false; loadMoreBtn.innerHTML = originalBtnLabel; }
   }
 }
 
@@ -5670,6 +5770,7 @@ function attachDiscoverPaneHandlers(pane) {
   });
 }
 
+let _musicSearchSeq = 0; // guards against a slower, older keystroke's response overwriting a newer one — same fix as handleLiveSearch
 function handleMusicSearch(q) {
   clearTimeout(musicSearchTimer);
   if (!q.trim()) { renderMusicSubtab('trending'); document.querySelectorAll('.music-subtab-btn').forEach(b => b.classList.toggle('active', b.dataset.mtab === 'trending')); return; }
@@ -5687,9 +5788,11 @@ function handleMusicSearch(q) {
     </div>
   `;
   list.innerHTML = `<div style="text-align:center;padding:24px"><div class="spinner" style="margin:0 auto"></div></div>`;
+  const mySeq = ++_musicSearchSeq;
   musicSearchTimer = setTimeout(async () => {
     try {
       const data = await musicApiGet(`/search/songs?query=${encodeURIComponent(q.trim())}&limit=30`);
+      if (mySeq !== _musicSearchSeq) return; // a newer keystroke's search already superseded this one
       const results = data?.data?.results || data?.results || [];
       musicState.queue = results.map(normalizeSong).filter(s => s.audioUrl);
       recordMusicSearchHistory(q.trim());
@@ -5700,6 +5803,7 @@ function handleMusicSearch(q) {
       document.getElementById('musicGroupByRow').style.display = 'flex';
       renderMusicList(musicState.queue);
     } catch (e) {
+      if (mySeq !== _musicSearchSeq) return;
       list.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text3);font-size:12px">Search failed — the music service may be temporarily down.</div>`;
     }
   }, 400);
@@ -6151,17 +6255,130 @@ function directPlay(rawId) {
   });
 }
 
-/* ---- SMART SEARCH & DICTIONARY ENGINE ---- */
+/* ---- DEDICATED SEARCH PAGE ----
+   Opened via Enter on the search box, or tapping "See all results" — a
+   real full page (unlimited results, type filters) instead of the small
+   6+6 dropdown preview, using the exact same API.search() so results are
+   always consistent between the quick dropdown and this full page. */
+let _searchPageSeq = 0;
+let _searchPageFilter = 'all';
+let _searchPageResultsCache = { movies: [], series: [] };
+
+function initSearchPage() {
+  const input = document.getElementById('searchPageInput');
+  const clr = document.getElementById('searchPageClear');
+  const backBtn = document.getElementById('searchPageBackBtn');
+  const filtersEl = document.getElementById('searchPageFilters');
+
+  let debounceTimer;
+  input.addEventListener('input', () => {
+    clr.style.display = input.value ? 'block' : 'none';
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => runSearchPageQuery(input.value.trim()), 250);
+  });
+  clr.addEventListener('click', () => {
+    input.value = '';
+    clr.style.display = 'none';
+    input.focus();
+    renderSearchPageResults();
+  });
+  backBtn.addEventListener('click', () => switchView(S.prevView === 'search' ? 'home' : S.prevView));
+
+  filtersEl.addEventListener('click', e => {
+    const pill = e.target.closest('.filter-pill');
+    if (!pill) return;
+    filtersEl.querySelectorAll('.filter-pill').forEach(p => p.classList.toggle('active', p === pill));
+    _searchPageFilter = pill.dataset.filter;
+    renderSearchPageResults();
+  });
+
+  document.getElementById('searchPageResults').addEventListener('click', e => {
+    const row = e.target.closest('[data-key]');
+    if (!row) return;
+    const item = getRegisteredItem(row.dataset.key);
+    if (item) openPlayer(item);
+  });
+}
+
+/* Called whenever the Search page is opened (from Enter on the home
+   search box, or directly via switchView('search')) — pre-fills the
+   query and immediately runs it, so someone who already typed something
+   in the home dropdown doesn't have to retype it on the full page. */
+function openSearchPage(query) {
+  switchView('search');
+  const input = document.getElementById('searchPageInput');
+  input.value = query || '';
+  document.getElementById('searchPageClear').style.display = input.value ? 'block' : 'none';
+  if (input.value) runSearchPageQuery(input.value);
+}
+
+async function runSearchPageQuery(q) {
+  const resultsEl = document.getElementById('searchPageResults');
+  const mySeq = ++_searchPageSeq;
+
+  if (!q) {
+    _searchPageResultsCache = { movies: [], series: [] };
+    resultsEl.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--text3)">
+      <i class="fas fa-magnifying-glass" style="font-size:32px;opacity:.3;margin-bottom:10px;display:block"></i>
+      Start typing to search MINEXUS TV's full catalog.
+    </div>`;
+    return;
+  }
+
+  resultsEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text3)"><div class="spinner" style="width:24px;height:24px;margin:0 auto"></div></div>`;
+
+  try {
+    const { movies, series } = await API.search(q);
+    if (mySeq !== _searchPageSeq) return; // a newer query already superseded this one — see handleLiveSearch's identical guard for why this matters
+    _searchPageResultsCache = { movies, series };
+    renderSearchPageResults();
+    if (q.length > 2) logAnalyticsEvent('search_page', { query: q.slice(0, 80) });
+  } catch (e) {
+    if (mySeq !== _searchPageSeq) return;
+    resultsEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text3)">Search failed — check your connection.</div>`;
+  }
+}
+
+function renderSearchPageResults() {
+  const resultsEl = document.getElementById('searchPageResults');
+  const { movies, series } = _searchPageResultsCache;
+  let list = _searchPageFilter === 'movie' ? movies : _searchPageFilter === 'series' ? series : [...series, ...movies];
+  list = withValidIds(list);
+
+  if (!list.length) {
+    resultsEl.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text3)">No titles found.</div>`;
+    return;
+  }
+
+  resultsEl.classList.remove('list-mode');
+  resultsEl.innerHTML = list.map(i => buildCard(i, 'standard')).join('');
+}
+
+
 let searchTimer;
+let _searchRequestSeq = 0; // guards against a slower, older keystroke's response overwriting a newer one — see below
 function handleLiveSearch(q, dropdownEl) {
   clearTimeout(searchTimer);
   if (!q.trim()) { dropdownEl.classList.remove('show'); return; }
   dropdownEl.innerHTML = `<div style="padding:10px;text-align:center;color:var(--text3)"><div class="spinner" style="width:18px;height:18px;margin:0 auto"></div></div>`;
   dropdownEl.classList.add('show');
 
+  const mySeq = ++_searchRequestSeq;
   searchTimer = setTimeout(async () => {
     try {
       const { movies, series } = await API.search(q);
+      // REAL BUG FIXED HERE: clearTimeout() above only cancels a PENDING
+      // debounce timer that hasn't fired its setTimeout callback yet — it
+      // can't cancel an already-in-flight API.search() call. Typing
+      // quickly (e.g. "Fas" then "Fast") used to let the OLDER, slower
+      // "Fas" search resolve AFTER the newer "Fast" one and silently
+      // overwrite it with stale/wrong results — no error, the dropdown
+      // just occasionally flashed to an outdated result set, which reads
+      // as "search is slow/glitchy" even though the newer search itself
+      // was already fast. This sequence-number check discards any
+      // response that isn't from the MOST RECENT keystroke's search,
+      // regardless of the order responses actually arrive in.
+      if (mySeq !== _searchRequestSeq) return;
       const list = withValidIds([...series.slice(0, 6), ...movies.slice(0, 6)]);
       if (!list.length) {
         dropdownEl.innerHTML = `<div style="padding:14px;text-align:center;font-size:11px;color:var(--text3)">No titles found for "${esc(q)}"</div>`;
@@ -6178,7 +6395,7 @@ function handleLiveSearch(q, dropdownEl) {
           </div>
         </div>
       `;
-      }).join('');
+      }).join('') + `<button class="sdrop-see-all" data-see-all-query="${esc(q)}">See all results for "${esc(q)}" <i class="fas fa-arrow-right"></i></button>`;
 
       if (S.user && q.length > 2) {
         db.ref(`users/${S.user.uid}/searches`).push({ query: q, time: firebase.database.ServerValue.TIMESTAMP });
@@ -6187,6 +6404,7 @@ function handleLiveSearch(q, dropdownEl) {
         logAnalyticsEvent('search', { query: q.slice(0, 80), resultCount: list.length });
       }
     } catch (e) {
+      if (mySeq !== _searchRequestSeq) return; // stale error — a newer search already superseded this one
       dropdownEl.innerHTML = `<div style="padding:14px;text-align:center;font-size:11px;color:var(--text3)">Search failed — check your connection</div>`;
     }
   }, 250);
@@ -7423,6 +7641,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (item) openPlayer(item);
       return;
     }
+    const seeAllBtn = e.target.closest('[data-see-all-query]');
+    if (seeAllBtn) {
+      document.querySelectorAll('.search-dropdown').forEach(d => d.classList.remove('show'));
+      openSearchPage(seeAllBtn.dataset.seeAllQuery);
+      return;
+    }
   });
 
   // ---- Home Search ----
@@ -7441,6 +7665,18 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', e => {
     if (!e.target.closest('.search-box-container')) homeDd.classList.remove('show');
   });
+  // Pressing Enter opens the dedicated full Search page (see
+  // openSearchPage below) instead of only ever showing the small
+  // dropdown — this is what makes search feel like a real, first-class
+  // page rather than a cramped 6-result preview.
+  homeIn.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && homeIn.value.trim()) {
+      e.preventDefault();
+      openSearchPage(homeIn.value.trim());
+    }
+  });
+
+  initSearchPage();
 
   // ---- Live TV Country Tabs ----
   document.getElementById('countryTabs').addEventListener('click', e => {
@@ -7626,7 +7862,8 @@ document.addEventListener('DOMContentLoaded', () => {
     '/music': 'music',
     '/calendar': 'calendar',
     '/account': 'account',
-    '/games': 'games'
+    '/games': 'games',
+    '/search': 'search'
   };
   const directView = pathViewMap[window.location.pathname];
   if (directView) switchView(directView);
