@@ -9,47 +9,16 @@
         { "key": "Access-Control-Allow-Origin", "value": "*" },
         { "key": "Access-Control-Allow-Methods", "value": "GET, OPTIONS" },
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "interest-cohort=()" }
-      ]
-    },
-    {
-      "source": "/admin",
-      "headers": [
-        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }
-      ]
-    },
-    {
-      "source": "/admin-recover.html",
-      "headers": [
-        { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
       ]
     }
   ],
   "rewrites": [
     { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/admin-recover.html", "destination": "/admin-recover.html" },
-    { "source": "/privacy-policy.html", "destination": "/privacy-policy.html" },
-    { "source": "/privacy", "destination": "/privacy-policy.html" },
-    { "source": "/terms-of-service.html", "destination": "/terms-of-service.html" },
-    { "source": "/terms", "destination": "/terms-of-service.html" },
     { "source": "/sw.js", "destination": "/sw.js" },
     { "source": "/manifest.json", "destination": "/manifest.json" },
-    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
+    { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
     { "source": "/robots.txt", "destination": "/robots.txt" },
-    { "source": "/google1f4b4bc6b89cbb98.html", "destination": "/google1f4b4bc6b89cbb98.html" },
-    { "source": "/icons/:file", "destination": "/icons/:file" },
-    { "source": "/games/:file", "destination": "/games/:file" },
-    { "source": "/watch/:id", "destination": "/api/watch" },
-    { "source": "/movie/:id(tt[0-9]+.*)", "destination": "/api/title-page" },
-    { "source": "/series/:id(tt[0-9]+.*)", "destination": "/api/title-page" },
-    { "source": "/api/music", "destination": "/api/music" },
-    { "source": "/api/stream", "destination": "/api/stream" },
-    { "source": "/blog", "destination": "/blog/index.html" },
-    { "source": "/blog/best-pakistani-movies-2026", "destination": "/blog/best-pakistani-movies-2026.html" },
-    { "source": "/blog/how-to-watch-live-tv-free", "destination": "/blog/how-to-watch-live-tv-free.html" },
-    { "source": "/blog/best-web-series-2026", "destination": "/blog/best-web-series-2026.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
