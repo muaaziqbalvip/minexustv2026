@@ -171,7 +171,7 @@
     _hideCustomSlots() {
       ['adSlotHomeTop', 'adSlotHomeMid', 'adSlotPlayer', 'adSlotPolicyPage'].forEach(slotId => {
         const el = document.getElementById(slotId);
-        if (el) { el.innerHTML = ''; el.style.display = 'none'; }
+        if (el) { el.innerHTML = ''; el.style.display = 'none'; delete el.dataset.customSlotHtml; }
       });
     },
 
@@ -414,9 +414,30 @@
         try {
           const cfg = snap.val() || {};
           if (this._isOn('adsterraBanners')) {
-            this.renderBanner(document.getElementById('adsterraSlot320x50'), cfg.key320x50, 320, 50);
-            this.renderBanner(document.getElementById('adsterraSlot468x60'), cfg.key468x60, 468, 60);
-            this.renderBanner(document.getElementById('adsterraSlot160x300'), cfg.key160x300, 160, 300);
+            // REAL BUG FIXED HERE — this is the actual cause of the
+            // browser/tab becoming unresponsive ("Page Unresponsive").
+            // Firebase's .on('value', ...) listener fires again on every
+            // reconnect (network blip, tab regaining focus, even just a
+            // periodic keep-alive) — NOT only when the data actually
+            // changes. Every one of those fires used to unconditionally
+            // call renderBanner() on all 3 fixed slots, which tears down
+            // and recreates each iframe from scratch. Recreating an
+            // iframe is itself a DOM mutation, which re-triggers this
+            // ads engine's OWN MutationObserver (see
+            // _observeNewBannerSlots below) that scans the whole page for
+            // .ad-banner-slot elements to fill — which, on a slow
+            // connection with frequent reconnects, could cascade into a
+            // tight cycle of iframe-teardown → mutation → observer-fires
+            // → more work, repeatedly, fast enough to make the tab
+            // genuinely lock up. The .ad-banner-slot class-based fills
+            // elsewhere already guarded against this via
+            // dataset.bannerKey; these three fixed-ID elements never had
+            // that same guard. Adding it here means a Firebase re-fire
+            // with the SAME key is now a no-op — iframes only ever get
+            // torn down and rebuilt when a key has genuinely changed.
+            this._renderBannerIfChanged(document.getElementById('adsterraSlot320x50'), cfg.key320x50, 320, 50);
+            this._renderBannerIfChanged(document.getElementById('adsterraSlot468x60'), cfg.key468x60, 468, 60);
+            this._renderBannerIfChanged(document.getElementById('adsterraSlot160x300'), cfg.key160x300, 160, 300);
           }
           if (this._isOn('adsterraNative')) {
             this.renderDirectScript(document.getElementById('adsterraSlotNative'), cfg.nativeScriptSrc, 'adsterra-native');
@@ -436,6 +457,19 @@
           // fresh Firebase read every time.
         } catch (e) { this._logError('adsterra-config-listener', e); }
       }, err => this._logError('adsterra-firebase-read', err));
+    },
+
+    /* Only calls renderBanner (which unconditionally tears down and
+       rebuilds the iframe) when the key has actually changed since the
+       last time this exact container was filled — see the long comment
+       above for why this guard is what actually stops the runaway
+       teardown/rebuild cycle that was freezing the page. */
+    _renderBannerIfChanged(container, key, width, height) {
+      if (!container) return;
+      const cacheAttr = `bannerKey${width}x${height}`;
+      if (container.dataset[cacheAttr] === (key || '')) return;
+      container.dataset[cacheAttr] = key || '';
+      this.renderBanner(container, key, width, height);
     },
 
     /* Fills every .ad-banner-slot element currently in the DOM. Re-run on
@@ -503,14 +537,48 @@
        CONFIG changes in Firebase, not when new markup appears locally. */
     _observeNewBannerSlots() {
       let debounceTimer = null;
-      const obs = new MutationObserver(() => {
-        // Debounced: a single grid re-render can trigger dozens of
-        // individual childList mutations in one tick (each card being
-        // inserted), so this waits for the DOM churn to settle before
-        // scanning once, instead of re-scanning the whole document on
-        // every individual node insertion.
+      let pendingScan = false;
+      const obs = new MutationObserver(mutationList => {
+        // REAL BUG FIXED HERE — this is the second half of what was
+        // causing the browser tab to freeze/become unresponsive. The old
+        // version reacted to ANY DOM change ANYWHERE on the page
+        // (childList + subtree on document.body catches literally
+        // everything — video player progress updates, live channel list
+        // refreshes, the music player's now-playing bar, chat/comment
+        // updates, quite literally every single innerHTML write the rest
+        // of the app ever does), then did a full querySelectorAll scan of
+        // the ENTIRE document three separate times (once each for
+        // .ad-banner-slot, .ad-banner-slot-native, .ad-banner-slot-
+        // 160x300) after every batch. On a content-heavy, highly dynamic
+        // page like this one, that adds up to a very large number of
+        // full-document scans doing essentially nothing useful the vast
+        // majority of the time — and since rendering an ad banner is
+        // ITSELF a DOM mutation (see renderBanner's innerHTML rebuild),
+        // it could retrigger this same observer, compounding into a
+        // cycle that can genuinely lock up a slower device.
+        // Fixed by first checking whether any mutation record in this
+        // batch actually added a node that IS or CONTAINS one of the ad
+        // slot classes — only then is a scan scheduled at all. This
+        // turns "scan on literally everything" into "scan only when a
+        // new ad slot placeholder could plausibly exist," which is the
+        // only case this observer ever needed to handle in the first
+        // place (grids adding new cards on Load More/infinite scroll/tab
+        // switch).
+        if (pendingScan) return; // a scan is already queued from an earlier mutation in this same debounce window
+        const relevant = mutationList.some(m =>
+          Array.from(m.addedNodes).some(node =>
+            node.nodeType === 1 && (
+              node.matches?.('.ad-banner-slot, .ad-banner-slot-native, .ad-banner-slot-160x300') ||
+              node.querySelector?.('.ad-banner-slot, .ad-banner-slot-native, .ad-banner-slot-160x300')
+            )
+          )
+        );
+        if (!relevant) return;
+
+        pendingScan = true;
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
+          pendingScan = false;
           if (this._lastBannerKey) this._fillAllBannerSlots(this._lastBannerKey);
           this._fillAllNativeSlots(this._lastNativeScriptSrc, this._lastBannerKey);
           if (this._last160x300Key) this._fillAll160x300Slots(this._last160x300Key);
@@ -547,6 +615,13 @@
             const el = document.getElementById(slotId);
             if (!el) return;
             const html = slots[slotId] || '';
+            // Same fix as _watchAdsterra above — skip the rebuild
+            // entirely when the HTML hasn't actually changed since last
+            // time, so a Firebase reconnect that resends identical data
+            // is a no-op instead of tearing down and reinjecting
+            // (potentially ad-network) scripts on every reconnect.
+            if (el.dataset.customSlotHtml === html) return;
+            el.dataset.customSlotHtml = html;
             if (html.trim()) {
               el.innerHTML = html;
               el.style.display = 'flex';

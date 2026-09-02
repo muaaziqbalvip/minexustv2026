@@ -1,5 +1,10 @@
 User-agent: *
 Allow: /
+Allow: /movie/
+Allow: /series/
+Allow: /blog/
+Allow: /games/
 Disallow: /admin
+Disallow: /admin-recover.html
 
 Sitemap: https://minexustv.vercel.app/sitemap.xml

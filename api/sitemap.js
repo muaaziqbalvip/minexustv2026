@@ -46,6 +46,7 @@ export default async function handler() {
 
   const staticUrls = [
     urlEntry(`${SITE}/`, '1.0', 'daily', today),
+    urlEntry(`${SITE}/about`, '0.8', 'monthly', today),
     urlEntry(`${SITE}/movies`, '0.9', 'daily', today),
     urlEntry(`${SITE}/series`, '0.9', 'daily', today),
     urlEntry(`${SITE}/live`, '0.9', 'daily', today),
