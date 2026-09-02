@@ -80,10 +80,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-<!-- Hls.js for Live TV Streams -->
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<!-- Hls.js for Live TV Streams — only ever used once a person actually opens
+     a Live TV channel (see playLiveChannel()), never during initial load,
+     so `defer` lets the browser finish parsing/painting the page first
+     instead of blocking on this download for a feature most visits never
+     touch on that first paint. -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest" defer></script>
 
-<!-- Firebase SDK -->
+<!-- Firebase SDK — kept synchronous (no defer) because auth/session state
+     is needed as early as possible for correct first render (e.g. showing
+     the right sign-in state, watchlist, etc.), and these three are small
+     enough that deferring them would just delay that instead of truly
+     speeding up first paint. -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -1383,7 +1391,7 @@ input,select{font-family:inherit}
 .ep-chip.active{background:var(--accent);color:#fff;border-color:transparent}
 
 /* Player Meta */
-.player-meta{padding:14px;flex:1;min-height:0}
+.player-meta{padding:14px;flex-shrink:0}
 .player-meta-grid{display:flex;gap:14px;margin-bottom:16px}
 .player-poster{width:85px;height:125px;border-radius:8px;object-fit:cover;background:var(--bg4);flex-shrink:0}
 .player-details{flex:1;min-width:0}
@@ -3958,7 +3966,7 @@ function buildCard(item, size = 'standard') {
 
   return `
     <div class="card ${size}" data-key="${key}">
-      <img class="card-poster" src="${esc(primaryPoster)}" alt="${esc(item.title)}" loading="lazy"
+      <img class="card-poster" src="${esc(primaryPoster)}" alt="${esc(item.title)}" loading="lazy" decoding="async"
         data-fallback-stage="0"
         onerror="posterFallback(this, '${esc(altPoster)}')">
       <div class="card-overlay"><div class="card-play-icon"><i class="fas fa-play"></i></div></div>
@@ -4083,7 +4091,7 @@ async function loadHomeLiveAndMusicPreviews() {
         return `
         <div class="channel-card" data-key="${key}" style="flex-shrink:0;width:150px;scroll-snap-align:start" data-home-live-key="${key}">
           <div class="channel-logo-wrap">
-            ${ch.logo ? `<img class="channel-logo" src="${esc(ch.logo)}" alt="${esc(ch.name)}" onerror="this.style.display='none'">` : ''}
+            ${ch.logo ? `<img class="channel-logo" src="${esc(ch.logo)}" alt="${esc(ch.name)}" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
             <div class="channel-logo-fallback">${esc((ch.name || '?').slice(0, 3).toUpperCase())}</div>
             <div class="channel-live-badge">LIVE</div>
           </div>
@@ -4118,7 +4126,7 @@ async function loadHomeLiveAndMusicPreviews() {
         const pieces = songs.map((s, i) => `
           <div class="music-card" data-home-music-idx="${i}" style="scroll-snap-align:start">
             <div class="music-card-art-wrap">
-              <img src="${esc(s.image)}" alt="" onerror="this.style.opacity=0">
+              <img src="${esc(s.image)}" alt="" loading="lazy" decoding="async" onerror="this.style.opacity=0">
               <div class="music-card-playbtn"><i class="fas fa-play"></i></div>
             </div>
             <div class="music-card-title">${esc(s.title)}</div>
@@ -4273,7 +4281,7 @@ async function loadLiveTV() {
       return `
       <div class="channel-card" data-key="${key}">
         <div class="channel-logo-wrap">
-          ${ch.logo ? `<img class="channel-logo" src="${esc(ch.logo)}" alt="${esc(ch.name)}" onerror="this.style.display='none'">` : ''}
+          ${ch.logo ? `<img class="channel-logo" src="${esc(ch.logo)}" alt="${esc(ch.name)}" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
           <div class="channel-logo-fallback">${esc(ch.name.slice(0, 3).toUpperCase())}</div>
           <div class="channel-live-badge">LIVE</div>
         </div>
@@ -5677,13 +5685,30 @@ async function loadTrendingSongs() {
     const featured = validGenres[0].songs.slice(0, 6);
     const featuredStart = 0;
 
+    // Popular Artists row — built entirely from artist names already present
+    // in the songs we just fetched, so this costs zero extra network calls.
+    // Previously the .artist-chip/.artist-chip-row CSS existed in the
+    // stylesheet but nothing in the app ever rendered it, so "Artists" only
+    // ever showed up buried inside a search results' group-by filter and
+    // never had a real presence on the Music home page. Tapping a chip runs
+    // a real search for that artist (via handleMusicSearch), landing on
+    // their full song list — same live-data path as any other search.
+    const artistMap = new Map();
+    masterQueue.forEach(s => {
+      const name = (s.artist || '').split(',')[0].trim();
+      if (name && name !== 'Unknown Artist' && !artistMap.has(name)) {
+        artistMap.set(name, s.image);
+      }
+    });
+    const topArtists = [...artistMap.entries()].slice(0, 12);
+
     let html = `
       <div class="music-genre-section">
         <div class="music-genre-header"><div class="music-genre-title">✨ Featured For You</div></div>
         <div class="music-banner-row">
           ${featured.map((s, i) => `
             <div class="music-banner-card" data-play-idx="${featuredStart + i}">
-              <img src="${esc(s.image)}" alt="" onerror="this.style.opacity=0">
+              <img src="${esc(s.image)}" alt="" loading="lazy" decoding="async" onerror="this.style.opacity=0">
               <div class="music-banner-card-overlay">
                 <div class="music-banner-card-title">${esc(s.title)}</div>
                 <div class="music-banner-card-artist">${esc(s.artist)}</div>
@@ -5693,6 +5718,19 @@ async function loadTrendingSongs() {
           `).join('')}
         </div>
       </div>
+      ${topArtists.length ? `
+      <div class="music-genre-section">
+        <div class="music-genre-header"><div class="music-genre-title">🎤 Popular Artists</div></div>
+        <div class="artist-chip-row">
+          ${topArtists.map(([name, image]) => `
+            <div class="artist-chip" data-artist-chip="${esc(name)}">
+              <img class="artist-chip-art" src="${esc(image)}" alt="${esc(name)}" loading="lazy" decoding="async" onerror="this.style.opacity=0">
+              <div class="artist-chip-name">${esc(name)}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      ` : ''}
     `;
     queueOffset += validGenres[0].songs.length;
 
@@ -5710,7 +5748,7 @@ async function loadTrendingSongs() {
               return `
               <div class="music-card" data-play-idx="${startIdx + i}">
                 <div class="music-card-art-wrap">
-                  <img src="${esc(s.image)}" alt="" onerror="this.style.opacity=0">
+                  <img src="${esc(s.image)}" alt="" loading="lazy" decoding="async" onerror="this.style.opacity=0">
                   <div class="music-card-playbtn"><i class="fas fa-play"></i></div>
                 </div>
                 <div class="music-card-title">${esc(s.title)}</div>
@@ -5748,6 +5786,14 @@ function attachDiscoverPaneHandlers(pane) {
       const seed = seeAll.dataset.genreSeeall;
       document.getElementById('musicSearchInput').value = seed;
       handleMusicSearch(seed);
+      return;
+    }
+
+    const artistChip = e.target.closest('[data-artist-chip]');
+    if (artistChip) {
+      const name = artistChip.dataset.artistChip;
+      document.getElementById('musicSearchInput').value = name;
+      handleMusicSearch(name);
       return;
     }
 
@@ -5842,7 +5888,7 @@ function renderMusicGroupBy(mode) {
   const groupList = Object.values(groups).sort((a, b) => b.songs.length - a.songs.length);
   list.innerHTML = groupList.map(g => `
     <div class="music-item" data-group-play="${g.songs[0]}">
-      <img class="music-item-art" src="${esc(g.image)}" alt="" onerror="this.style.opacity=0" style="border-radius:${mode === 'artist' ? '50%' : '9px'}">
+      <img class="music-item-art" src="${esc(g.image)}" alt="" loading="lazy" decoding="async" onerror="this.style.opacity=0" style="border-radius:${mode === 'artist' ? '50%' : '9px'}">
       <div class="music-item-info">
         <div class="music-item-title">${esc(g.name)}</div>
         <div class="music-item-artist">${g.songs.length} song${g.songs.length > 1 ? 's' : ''}</div>
@@ -5862,7 +5908,7 @@ function renderSongRow(s, i) {
   const downloading = !!_activeDownloads[s.id];
   return `
     <div class="music-item${musicState.index === i && musicState.playing ? ' playing' : ''}" data-idx="${i}" data-song-id="${esc(s.id)}" style="position:relative;overflow:hidden">
-      <img class="music-item-art" src="${esc(s.image)}" alt="" onerror="this.style.opacity=0">
+      <img class="music-item-art" src="${esc(s.image)}" alt="" loading="lazy" decoding="async" onerror="this.style.opacity=0">
       <div class="music-item-info">
         <div class="music-item-title">${esc(s.title)} ${s.isPreviewOnly ? '<span style="font-size:9px;font-weight:800;color:#000;background:var(--gold);border-radius:5px;padding:1px 5px;margin-left:4px;vertical-align:middle">30s PREVIEW</span>' : ''} ${offline ? '<span class="music-item-badge-offline"><i class="fas fa-download"></i> Offline</span>' : ''}</div>
         <div class="music-item-artist">${esc(s.artist)}${downloading ? ' <span style="color:var(--cyan)">• Downloading...</span>' : ''}</div>
@@ -6399,7 +6445,7 @@ function handleLiveSearch(q, dropdownEl) {
         const key = registerItem(i);
         return `
         <div class="sdrop-item" data-key="${key}" data-close-dropdown="1">
-          <img class="sdrop-poster" src="${esc(i.poster)}" alt="" onerror="this.style.display='none'">
+          <img class="sdrop-poster" src="${esc(i.poster)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'">
           <div class="sdrop-info">
             <div class="sdrop-title">${esc(i.title)} ${i.aiSuggested ? '<span style="font-size:9px;font-weight:800;color:#000;background:linear-gradient(135deg,var(--gold),#ffe27a);border-radius:5px;padding:1px 5px;margin-left:4px;vertical-align:middle">AI</span>' : ''}</div>
             <div class="sdrop-meta">${esc(i.year)} • ${i.type === 'series' ? 'TV' : 'Movie'}</div>

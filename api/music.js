@@ -127,29 +127,43 @@ export default async function handler(request) {
   for (const m of FALLBACK_MIRRORS) if (!chain.includes(m)) chain.push(m);
 
   const debugLog = [];
-  for (const base of chain) {
-    // 8s per mirror — generous enough for a slow cold-start response from
-    // a free-tier Vercel deployment, but still leaves room to try the next
-    // mirror comfortably inside the platform's overall function timeout.
-    const data = await tryMirror(base, query, limit, 8000, debugLog);
-    if (data) {
-      return new Response(JSON.stringify(data), {
-        status: 200,
-        headers: {
-          'content-type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'cache-control': 'public, max-age=120, s-maxage=600',
-          'x-music-source': base
-        }
-      });
-    }
-  }
 
-  // All mirrors failed — return the per-mirror failure reasons so this is
-  // diagnosable from the browser Network tab or Admin Panel instead of a
-  // silent "temporarily down" with no way to tell which mirror broke or why.
-  return new Response(JSON.stringify({ success: false, error: 'all mirrors unreachable', details: debugLog }), {
-    status: 502,
-    headers: { 'content-type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-  });
+  // REAL BUG FIXED HERE (speed): mirrors used to be tried strictly one
+  // after another, each with its own 8s timeout — if the admin's
+  // configured base happened to be slow or down, a visitor could wait up
+  // to 8s x number-of-mirrors (24s+) before ever seeing music results or
+  // even an error. Racing every mirror in parallel with Promise.any and a
+  // single shared timeout per mirror means the response comes back as
+  // fast as the FASTEST mirror answers, not the slowest one in a queue —
+  // typically well under a second when at least one mirror is healthy,
+  // and no worse than the single slowest mirror's timeout when all of
+  // them are down. Order still matters for which source "wins" on a tie
+  // via Promise.any's left-to-right resolution preference isn't
+  // guaranteed, but the admin's configured base is still tried, just
+  // concurrently instead of gating everything else behind it.
+  const attempts = chain.map(base => tryMirror(base, query, limit, 8000, debugLog).then(data => {
+    if (!data) throw new Error(`${base}: no usable result`);
+    return { data, base };
+  }));
+
+  try {
+    const { data, base } = await Promise.any(attempts);
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'cache-control': 'public, max-age=120, s-maxage=600',
+        'x-music-source': base
+      }
+    });
+  } catch (e) {
+    // Promise.any rejects with an AggregateError once EVERY mirror failed —
+    // debugLog (populated by each tryMirror call above) still carries the
+    // individual per-mirror failure reasons for diagnosis.
+    return new Response(JSON.stringify({ success: false, error: 'all mirrors unreachable', details: debugLog }), {
+      status: 502,
+      headers: { 'content-type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+    });
+  }
 }
