@@ -3,7 +3,7 @@
    version instead of a stale cached build. Static assets (icons/manifest) still
    cache for speed & offline fallback. */
 
-const CACHE_VERSION = 'minexus-v6-' + '20261019';
+const CACHE_VERSION = 'minexus-v7-' + '20261019b';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 
 const PRECACHE_ASSETS = [
@@ -56,7 +56,7 @@ self.addEventListener('fetch', e => {
   // range support or bloat the cache with megabytes of song data per track
   // played. Same-origin fetch() already bypasses HTTP caching correctly on
   // its own without any help from this service worker.
-  if (url.includes('/api/stream')) return;
+  if (url.includes('/api/')) return; // dynamic endpoints (music, sitemap, stream) must never be cache-first
 
   // CRITICAL: only ever intercept same-origin requests. `req.mode ===
   // 'navigate'` is true for ANY top-level navigation, including clicking an
@@ -82,17 +82,15 @@ self.addEventListener('fetch', e => {
   const isGamePage = /\/games\/[^/]+\.html$/.test(url);
 
   if (isHTML || isAppShell || isGamePage) {
-    // NETWORK-FIRST: always try to fetch the latest deployed HTML.
-    // Only fall back to cache if the network is truly unavailable (offline).
-    e.respondWith(
-      fetch(req, { cache: 'no-store' })
-        .then(res => {
-          const clone = res.clone();
-          caches.open(STATIC_CACHE).then(cache => cache.put(req, clone));
-          return res;
-        })
-        .catch(() => caches.match(req, { ignoreSearch: true }).then(cached => cached || (isGamePage ? undefined : caches.match('/index.html'))))
-    );
+    // Network-first, but if the network takes >2.5s serve the cached shell so the
+    // app opens instantly on slow connections; the fresh copy is saved for next time.
+    e.respondWith((async () => {
+      const cache = await caches.open(STATIC_CACHE);
+      const net = fetch(req).then(res => { cache.put(req, res.clone()); return res; });
+      const cached = await caches.match(req, { ignoreSearch: true }) || await caches.match('/index.html');
+      if (!cached) return net;
+      return Promise.race([net, new Promise(r => setTimeout(() => r(cached), 2500))]).catch(() => cached);
+    })());
     return;
   }
 
