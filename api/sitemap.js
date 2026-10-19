@@ -54,7 +54,11 @@ export default async function handler() {
     urlEntry(`${SITE}/blog`, '0.8', 'weekly', today),
     urlEntry(`${SITE}/blog/best-pakistani-movies-2026`, '0.7', 'weekly', today),
     urlEntry(`${SITE}/blog/best-web-series-2026`, '0.7', 'weekly', today),
-    urlEntry(`${SITE}/blog/how-to-watch-live-tv-free`, '0.7', 'weekly', today)
+    urlEntry(`${SITE}/blog/how-to-watch-live-tv-free`, '0.7', 'weekly', today),
+    urlEntry(`${SITE}/blog/muaaz-iqbal`, '0.7', 'monthly', today),
+    urlEntry(`${SITE}/blog/daily-quran-ayat`, '0.7', 'weekly', today),
+    urlEntry(`${SITE}/islamic`, '0.8', 'daily', today),
+    urlEntry(`${SITE}/music`, '0.7', 'daily', today)
   ];
 
   const [movies, series] = await Promise.all([
@@ -77,7 +81,7 @@ export default async function handler() {
       'content-type': 'application/xml; charset=utf-8',
       // Cached at the edge for an hour — this is a discovery mechanism for
       // crawlers, not something that needs to be byte-fresh in real time.
-      'cache-control': 'public, max-age=3600, s-maxage=3600'
+      'cache-control': 'public, max-age=0, s-maxage=600, stale-while-revalidate=3600'
     }
   });
 }

@@ -3,12 +3,12 @@
 <head>
 <meta name="google-adsense-account" content="ca-pub-7970000335953988">
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>MINEXUS TV — 4K Cinema, Pakistani & Indian Series & Live TV</title>
-<meta name="description" content="Watch thousands of Pakistani movies, Indian & Hollywood blockbusters, Hindi web series, and Live TV channels in 4K Ultra HD on MINEXUS TV.">
-<meta name="keywords" content="MINEXUS TV, Pakistani Movies, Hindi Web Series, Aladdin Naam Toh Suna Hoga, Mere Paas Tum Ho, Maula Jatt, Live TV Streaming, 4K Cinema">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MINEXUS TV — Watch Movies, Web Series &amp; Live TV Free in HD | Pakistani, Indian, Hollywood</title>
+<meta name="description" content="Watch Pakistani dramas, Bollywood, Hollywood movies, Hindi &amp; Urdu web series and 1000+ Live TV channels free in HD on MINEXUS TV. Plus daily Quran ayat, music and release calendar.">
+<meta name="keywords" content="MINEXUS TV, watch movies online free, Pakistani movies, Urdu drama, Hindi web series, Bollywood, Hollywood HD movies, live TV online, PTV live, Geo news live, IPL live, daily Quran ayat, Muaaz Iqbal, MiTV Network">
 <meta name="author" content="Muaaz Iqbal">
-<meta name="theme-color" content="#07080c">
+<meta name="theme-color" content="#060b14">
 <meta name="monetag" content="0aa473044893e73cfc081326d0e30aad">
 <!-- Canonical tag — tells Google the "real" URL for the home page shell,
      preventing any query-string variant (e.g. ?watch=, ?ref=) of the home
@@ -18,6 +18,11 @@
 <link rel="canonical" href="https://minexustv.vercel.app/">
 <!-- PWA Manifest & Icons -->
 <link rel="manifest" href="/manifest.json">
+<link rel="alternate" type="application/rss+xml" title="MINEXUS TV Feed" href="/feed.xml">
+<link rel="preconnect" href="https://image.tmdb.org" crossorigin>
+<link rel="preconnect" href="https://images.metahub.space" crossorigin>
+<link rel="preconnect" href="https://v3-cinemeta.strem.io" crossorigin>
+<link rel="dns-prefetch" href="https://api.alquran.cloud">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -225,18 +230,6 @@ input,select{font-family:inherit}
   padding:5px 10px;border-radius:20px;
   background:rgba(245,197,24,0.12);border:1px solid rgba(245,197,24,0.3);
   color:var(--gold);font-size:11px;font-weight:800;
-}
-.nav-games-btn{
-  background:rgba(0,210,255,0.12);border:1px solid rgba(0,210,255,0.3);
-  color:var(--cyan);
-}
-@media(max-width:480px){
-  /* Keeps the header from feeling crowded on small phones — the Rank
-     badge keeps its text, Games shrinks to icon-only since the label is
-     less essential once Rank + Games + Account avatar are all competing
-     for the same header row. */
-  .nav-games-btn span{display:none}
-  .nav-games-btn{padding:5px 8px}
 }
 .nav-desktop-acc-btn{
   display:none;align-items:center;gap:8px;
@@ -562,7 +555,6 @@ input,select{font-family:inherit}
 /* ===== COMMUNITY LEADERBOARD DASHBOARD ===== */
 .leaderboard-wrap{padding:16px;max-width:1400px;margin:0 auto}
 
-/* ===== GAMES VIEW ===== */
 /* ===== DEDICATED SEARCH PAGE ===== */
 .search-page-wrap{padding:12px 14px 24px;max-width:900px;margin:0 auto}
 .search-page-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
@@ -582,48 +574,6 @@ input,select{font-family:inherit}
 .search-result-row-title{font-size:13.5px;font-weight:700}
 .search-result-row-meta{font-size:11.5px;color:var(--text3);margin-top:2px}
 
-.games-wrap{padding:16px;max-width:1100px;margin:0 auto}
-.games-hero{text-align:center;padding:20px 10px 24px}
-.games-hero-title{font-size:22px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px}
-.games-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
-.game-card{
-  background:linear-gradient(180deg, var(--bg3), var(--bg2));
-  border:1px solid var(--border);border-radius:16px;overflow:hidden;
-  display:flex;flex-direction:column;
-}
-.game-card-thumb{
-  height:140px;display:flex;align-items:center;justify-content:center;
-  position:relative;overflow:hidden;
-}
-.game-card-thumb-2048{background:linear-gradient(135deg,#f2b179,#edc22e)}
-.game-card-thumb-snake{background:linear-gradient(135deg,#0f5132,#1a8f5c)}
-.game-card-thumb-memory{background:linear-gradient(135deg,#4a1a6b,#8b3fc9)}
-.game-card-thumb-custom{background:linear-gradient(135deg,#2c3e50,#4a6280);font-size:44px;color:rgba(255,255,255,.85)}
-.game-2048-preview{display:grid;grid-template-columns:repeat(2,44px);grid-template-rows:repeat(2,44px);gap:6px}
-.game-2048-preview span{
-  background:rgba(255,255,255,.9);border-radius:8px;display:flex;align-items:center;justify-content:center;
-  font-weight:900;font-size:16px;color:#5d4a1f;box-shadow:0 2px 6px rgba(0,0,0,.2);
-}
-.game-snake-preview i, .game-memory-preview i{font-size:52px;color:rgba(255,255,255,.9)}
-.game-card-info{padding:14px;display:flex;flex-direction:column;gap:8px;flex:1}
-.game-card-title{font-size:15px;font-weight:800}
-.game-card-desc{font-size:12px;color:var(--text3);line-height:1.5;flex:1}
-.game-card-actions{display:flex;gap:8px;margin-top:4px}
-.game-play-btn{
-  flex:1;background:var(--accent);color:#fff;border:none;border-radius:10px;
-  padding:10px;font-weight:700;font-size:13px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:6px;
-}
-.game-play-btn:active{transform:scale(.97)}
-.game-dl-btn{
-  background:var(--bg4);border:1px solid var(--border);color:var(--text2);
-  border-radius:10px;width:42px;flex-shrink:0;cursor:pointer;font-size:14px;
-  display:flex;align-items:center;justify-content:center;
-}
-.game-dl-btn.downloaded{color:var(--green);border-color:var(--green)}
-.game-dl-btn:active{transform:scale(.94)}
-.game-dl-progress{height:4px;background:var(--bg4);border-radius:4px;overflow:hidden;margin-top:2px}
-.game-dl-progress-bar{height:100%;width:0%;background:var(--cyan);transition:width .2s}
 
 /* ===== RELEASE CALENDAR ===== */
 .calendar-wrap{padding:16px;max-width:1200px;margin:0 auto}
@@ -1145,11 +1095,11 @@ input,select{font-family:inherit}
 .channel-country{font-size:10px;color:var(--text3);font-weight:600}
 
 /* ===== CINEMA VIDEO PLAYER VIEW ===== */
-#viewPlayer, #viewLivePlayer, #viewGamePlayer{
+#viewPlayer, #viewLivePlayer{
   position:fixed;inset:0;z-index:350;
   background:var(--bg);padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
-#viewPlayer.active, #viewLivePlayer.active, #viewGamePlayer.active{display:flex;flex-direction:column}
+#viewPlayer.active, #viewLivePlayer.active.active{display:flex;flex-direction:column}
 .player-topbar{
   display:flex;align-items:center;gap:10px;padding:10px 14px;
   background:rgba(7,8,12,.96);backdrop-filter:blur(14px);
@@ -1191,21 +1141,6 @@ input,select{font-family:inherit}
 .player-frame-wrap::before{content:'';display:block;padding-top:56.25%}
 .player-frame-wrap iframe, .player-frame-wrap video{position:absolute;inset:0;width:100%;height:100%;border:none}
 
-/* ===== GAME PLAYER — reuses the movie player's chrome (top bar, back
-   button, fullscreen button) but needs a completely different frame
-   shape: games want to fill the remaining screen height edge-to-edge,
-   not sit inside a fixed 16:9 letterbox like video does. The `::before`
-   padding-top trick above is movie-specific and would badly crop or
-   letterbox a game, so this overrides it to a flex-fill layout instead. */
-.game-frame-wrap{
-  flex:1;max-height:none;display:flex;
-}
-.game-frame-wrap::before{content:none}
-.game-frame-wrap iframe{position:static;width:100%;height:100%;border:none;flex:1}
-.game-frame-wrap:fullscreen{max-height:100vh}
-.game-frame-wrap:fullscreen iframe{width:100%;height:100%}
-.game-frame-wrap:-webkit-full-screen{max-height:100vh}
-.game-frame-wrap:-webkit-full-screen iframe{width:100%;height:100%}
 .player-loader{
   position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
   background:#000;color:var(--text2);gap:10px;z-index:2;
@@ -1623,6 +1558,40 @@ input,select{font-family:inherit}
   } catch (e) {}
 })();
 </script>
+
+<style id="winter-2026">
+/* ===== WINTER THEME 2026 (icy midnight) ===== */
+:root{--bg:#050a14;--bg2:#0a1322;--bg3:#0f1c33;--bg4:#16284a;--border:rgba(170,215,255,.11);--border-active:rgba(255,48,64,.45);--cyan:#8fdcff;--text:#eef6ff;--text2:#a5b8d4;--text3:#6a7f9f}
+html.light-theme{--bg:#eaf3fb;--bg2:#fff;--bg3:#e1edf8;--bg4:#d3e3f2;--text:#0c1b2e;--text2:#40566f;--text3:#7b8ea6}
+body{background:radial-gradient(1200px 500px at 50% -120px,rgba(110,190,255,.14),transparent 70%),var(--bg)}
+#snowCv{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+/* ===== LIVE TV = RED ===== */
+.nav-tab[data-view="live"]{background:linear-gradient(135deg,#ff1f2d,#b0000f)!important;color:#fff!important;border-radius:10px;font-weight:800;box-shadow:0 0 16px rgba(255,35,50,.55)}
+.nav-tab[data-view="live"] i{color:#fff!important;animation:liveBlink 1.3s ease-in-out infinite}
+.tab-btn[data-view="live"],.tab-btn[data-view="live"] i{color:#ff3040!important}
+.tab-btn[data-view="live"] i{filter:drop-shadow(0 0 6px rgba(255,48,64,.8))}
+#viewLive .section-title,#viewLive h2{color:#ff4050}
+@keyframes liveBlink{50%{opacity:.35}}
+/* ===== SPEED / SMOOTH SCROLL ===== */
+html{scroll-behavior:auto!important}
+body{overscroll-behavior-y:none}
+.card{contain:layout paint style;transform:translateZ(0)}
+.card-poster{content-visibility:auto;background:var(--bg3)}
+[class*="row"],[class*="scroll"]{overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.view:not(.active){content-visibility:hidden}
+@media(max-width:768px){.card-overlay,.nav-badge-btn{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}}
+@media(prefers-reduced-motion:reduce){#snowCv{display:none}*{animation-duration:.01ms!important}}
+/* ===== ISLAMIC VIEW ===== */
+.isl-wrap{padding:16px;max-width:760px;margin:0 auto}
+.isl-hero{padding:22px 16px;border-radius:18px;margin-bottom:16px;text-align:center;background:linear-gradient(160deg,#0d3b2e,#0a1d3a);border:1px solid var(--border)}
+.isl-hero small{color:#9fe8c8;font-weight:700}
+.isl-ar{font-family:'Amiri','Scheherazade New','Noto Naskh Arabic',serif;font-size:26px;line-height:2.1;direction:rtl;margin:10px 0}
+.isl-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
+.isl-ur{font-size:15px;line-height:1.9;direction:rtl;color:var(--text);margin-top:6px}
+.isl-en{font-size:13px;line-height:1.6;color:var(--text2);margin-top:8px}
+.isl-ref{font-size:11px;color:var(--cyan);font-weight:800;margin-top:8px;display:flex;justify-content:space-between;align-items:center}
+.isl-btn{display:block;margin:14px auto;padding:10px 22px;border-radius:24px;background:var(--cyan);color:#06121f;font-weight:800}
+</style>
 </head>
 <body>
 
@@ -1792,22 +1761,14 @@ input,select{font-family:inherit}
         <button class="nav-tab" data-view="live"><i class="fas fa-circle" style="color:#ff3d3d;font-size:8px"></i>Live TV</button>
         <button class="nav-tab" data-view="music"><i class="fas fa-music" style="color:var(--cyan)"></i>Music</button>
         <button class="nav-tab" data-view="calendar"><i class="fas fa-calendar-days" style="color:var(--gold)"></i>Calendar &amp; News</button>
+        <button class="nav-tab" data-view="islamic"><i class="fas fa-moon" style="color:#7ee8b5"></i>Islamic</button>
         <button class="nav-tab" data-view="leaderboard"><i class="fas fa-trophy" style="color:var(--gold)"></i>Leaderboard</button>
-        <button class="nav-tab" data-view="games"><i class="fas fa-gamepad" style="color:var(--cyan)"></i>Games</button>
       </nav>
     </div>
 
     <div class="nav-right">
       <button class="nav-badge-btn" onclick="switchView('leaderboard')">
         <i class="fas fa-crown"></i> <span id="navRankPill">#1 Rank</span>
-      </button>
-
-      <!-- Games — placed right next to the Rank badge in the header so it
-           shows on mobile too, not just the desktop nav-tabs row (which
-           is hidden on narrow screens). Mobile's bottom bar is already
-           full with 7 tabs, so this is the one-tap path to Games there. -->
-      <button class="nav-badge-btn nav-games-btn" onclick="switchView('games')">
-        <i class="fas fa-gamepad"></i> <span>Games</span>
       </button>
 
       <!-- Desktop Account Profile Button -->
@@ -2176,96 +2137,12 @@ input,select{font-family:inherit}
   </div>
 </div>
 
-<!-- ===== GAMES VIEW ===== -->
-<div class="view" id="viewGames">
-  <div class="games-wrap">
-    <div class="games-hero">
-      <div class="games-hero-title"><i class="fas fa-gamepad" style="color:var(--cyan)"></i> MINEXUS Games</div>
-      <p style="font-size:12px;color:var(--text2)">Free to play — works online or fully offline once downloaded</p>
-    </div>
-
-    <div class="games-grid" id="gamesGrid">
-      <div class="game-card" data-game="2048" data-url="/games/2048.html">
-        <div class="game-card-thumb game-card-thumb-2048">
-          <div class="game-2048-preview">
-            <span>2</span><span>4</span><span>8</span><span>16</span>
-          </div>
-        </div>
-        <div class="game-card-info">
-          <div class="game-card-title">2048 Ultimate</div>
-          <div class="game-card-desc">Merge tiles to reach 2048 and beyond. Smooth swipe controls, best-score tracking.</div>
-          <div class="game-card-actions">
-            <button class="game-play-btn" data-game-launch="/games/2048.html"><i class="fas fa-play"></i> Play Now</button>
-            <button class="game-dl-btn" data-game-download="2048" data-game-url="/games/2048.html" title="Download for offline"><i class="fas fa-download"></i></button>
-          </div>
-          <div class="game-dl-progress" style="display:none"><div class="game-dl-progress-bar"></div></div>
-        </div>
-      </div>
-
-      <div class="game-card" data-game="snake" data-url="/games/snake.html">
-        <div class="game-card-thumb game-card-thumb-snake">
-          <div class="game-snake-preview"><i class="fas fa-worm"></i></div>
-        </div>
-        <div class="game-card-info">
-          <div class="game-card-title">Snake Battle Royale</div>
-          <div class="game-card-desc">Classic snake, reborn — speed levels, obstacles, and a real high-score chase.</div>
-          <div class="game-card-actions">
-            <button class="game-play-btn" data-game-launch="/games/snake.html"><i class="fas fa-play"></i> Play Now</button>
-            <button class="game-dl-btn" data-game-download="snake" data-game-url="/games/snake.html" title="Download for offline"><i class="fas fa-download"></i></button>
-          </div>
-          <div class="game-dl-progress" style="display:none"><div class="game-dl-progress-bar"></div></div>
-        </div>
-      </div>
-
-      <div class="game-card" data-game="memory" data-url="/games/memory-match.html">
-        <div class="game-card-thumb game-card-thumb-memory">
-          <div class="game-memory-preview"><i class="fas fa-clapperboard"></i></div>
-        </div>
-        <div class="game-card-info">
-          <div class="game-card-title">Movie Memory Match</div>
-          <div class="game-card-desc">Flip cards, match movie posters, beat the clock. Multiple difficulty levels.</div>
-          <div class="game-card-actions">
-            <button class="game-play-btn" data-game-launch="/games/memory-match.html"><i class="fas fa-play"></i> Play Now</button>
-            <button class="game-dl-btn" data-game-download="memory" data-game-url="/games/memory-match.html" title="Download for offline"><i class="fas fa-download"></i></button>
-          </div>
-          <div class="game-dl-progress" style="display:none"><div class="game-dl-progress-bar"></div></div>
-        </div>
-      </div>
-    </div>
-
-    <p style="font-size:11px;color:var(--text3);text-align:center;margin-top:16px;line-height:1.6">
-      Tap <i class="fas fa-download"></i> to save a game for offline play — it'll keep working even with no internet,
-      right from this same list.
-    </p>
-
-    <!-- AD: below Games grid -->
-    <div class="ad-pair">
-      <div class="ad-banner-slot"></div>
-      <div class="ad-banner-slot-native"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== GAME PLAYER VIEW — plays a game inline in-app, fullscreen-capable ===== -->
-<div class="view" id="viewGamePlayer">
-  <div class="player-topbar">
-    <button class="player-back" id="gamePlayerBackBtn"><i class="fas fa-arrow-left"></i></button>
-    <div class="player-topbar-info">
-      <div class="player-topbar-title" id="gamePlayerTitle">—</div>
-      <div class="player-topbar-meta">MINEXUS GAMES</div>
-    </div>
-  </div>
-
-  <div class="player-frame-wrap game-frame-wrap" id="gamePlayerFrameWrap">
-    <div class="player-loader" id="gamePlayerLoader">
-      <div class="spinner"></div>
-      <span>Loading game...</span>
-    </div>
-    <iframe id="gameFrame" src="" title="MINEXUS Game" allowfullscreen
-      allow="autoplay; fullscreen; gamepad; accelerometer; gyroscope"></iframe>
-    <button class="player-fullscreen-btn" id="gamePlayerFullscreenBtn" title="Fullscreen">
-      <i class="fas fa-expand"></i>
-    </button>
+<!-- ===== ISLAMIC AYAT FEED ===== -->
+<div class="view" id="viewIslamic">
+  <div class="isl-wrap">
+    <div class="isl-hero"><small><i class="fas fa-moon"></i> Ayat of the Day</small><div id="islDaily"><div class="spinner" style="margin:20px auto"></div></div></div>
+    <div id="islFeed"></div>
+    <button class="isl-btn" onclick="loadIslamicFeed(6)"><i class="fas fa-book-quran"></i> More Ayat</button>
   </div>
 </div>
 
@@ -2381,7 +2258,7 @@ input,select{font-family:inherit}
     </div>
     <iframe id="cinemaFrame" src="" title="MINEXUS Cinema Player" allowfullscreen
       allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write; screen-wake-lock; display-capture"
-      referrerpolicy="no-referrer"></iframe>
+      referrerpolicy="origin"></iframe>
     <button class="player-fullscreen-btn" id="playerFullscreenBtn" title="Fullscreen">
       <i class="fas fa-expand"></i>
     </button>
@@ -3621,7 +3498,7 @@ function switchView(name) {
   S.prevView = S.view;
   S.view = name;
 
-  if (name === 'player' || name === 'livePlayer' || name === 'gamePlayer') {
+  if (name === 'player' || name === 'livePlayer') {
     document.body.classList.add('in-player');
     // Don't let background music clash with movie/live-TV audio.
     pauseMusic();
@@ -3636,20 +3513,6 @@ function switchView(name) {
       if (cf) cf.src = '';
       resetShareMeta();
       applyAutoRotate(false);
-      const exitFs = document.exitFullscreen || document.webkitExitFullscreen || document.webkitCancelFullScreen;
-      if ((document.fullscreenElement || document.webkitFullscreenElement) && exitFs) {
-        exitFs.call(document);
-      }
-    }
-    // Same cleanup for leaving the game player — stops the game's
-    // audio/animation loop immediately (clearing src, not just hiding the
-    // view) whenever navigation away happens through any path, not only
-    // the dedicated back button (which already does this itself too, so
-    // this is what covers e.g. tapping a bottom-nav tab directly while a
-    // game is running).
-    if (S.prevView === 'gamePlayer') {
-      const gf = document.getElementById('gameFrame');
-      if (gf) gf.src = '';
       const exitFs = document.exitFullscreen || document.webkitExitFullscreen || document.webkitCancelFullScreen;
       if ((document.fullscreenElement || document.webkitFullscreenElement) && exitFs) {
         exitFs.call(document);
@@ -3673,7 +3536,7 @@ function switchView(name) {
   if (name === 'account') renderAccountView();
   if (name === 'developer') renderDeveloperPage();
   if (name === 'calendar') renderCalendarView();
-  if (name === 'games') initGamesView();
+  if (name === 'islamic') initIslamicView();
 
   // Track which section people actually open — powers the "most visited
   // tab" breakdown in Admin → Analytics. Excludes player/livePlayer since
@@ -3682,200 +3545,6 @@ function switchView(name) {
     logAnalyticsEvent('tab_click', { tab: name });
   }
 }
-
-function _gameDownloadedKey(gameId) { return `minexus_game_dl_${gameId}`; }
-
-/* Opens a game inline in-app (viewGamePlayer), instead of a new browser
-   tab — this is what fixes "games should play inside the app with proper
-   fullscreen" instead of window.open()'ing away from MINEXUS TV
-   entirely. Reuses the exact same frame-wrap + dedicated-fullscreen-
-   button pattern already proven out for the movie player, just pointed
-   at a game URL instead of a streaming embed. */
-function openGamePlayer(url, title) {
-  const loader = document.getElementById('gamePlayerLoader');
-  const frame = document.getElementById('gameFrame');
-  document.getElementById('gamePlayerTitle').textContent = title || 'Game';
-  loader.style.display = 'flex';
-  frame.src = url;
-  switchView('gamePlayer');
-}
-
-document.getElementById('gamePlayerBackBtn').addEventListener('click', () => {
-  // Exit fullscreen first if active (matches the movie player's back-
-  // button behavior) so leaving the game never leaves a stray fullscreen
-  // state hanging around on the app shell underneath.
-  const exitFs = document.exitFullscreen || document.webkitExitFullscreen || document.webkitCancelFullScreen;
-  if ((document.fullscreenElement || document.webkitFullscreenElement) && exitFs) exitFs.call(document);
-  document.getElementById('gameFrame').src = ''; // stop the game's audio/loop immediately, don't just hide it
-  switchView(S.prevView === 'gamePlayer' ? 'games' : S.prevView);
-});
-
-document.getElementById('gameFrame').addEventListener('load', () => {
-  const loader = document.getElementById('gamePlayerLoader');
-  if (loader) loader.style.display = 'none';
-});
-
-/* ---- GAMES VIEW ---- */
-
-function initGamesView() {
-  renderCustomGames(); // Firebase-driven games added via Admin Panel (see below)
-
-  if (S._gamesViewWired) {
-    // Already wired once — just refresh the downloaded/not-downloaded
-    // visual state in case a download finished while the person was on a
-    // different tab (initGamesView can be called again on revisit).
-    _refreshGameDownloadStates();
-    return;
-  }
-  S._gamesViewWired = true;
-
-  // Event delegation on the whole grid (not per-button binding) — this is
-  // what lets Admin-added games (rendered into the SAME #gamesGrid after
-  // this initial wiring already ran) work correctly without needing their
-  // own separate click-binding pass. A per-button forEach binding here
-  // would only ever catch the cards that existed at this exact moment,
-  // silently leaving every later-added custom game's buttons dead.
-  const grid = document.getElementById('gamesGrid');
-  grid.addEventListener('click', e => {
-    const launchBtn = e.target.closest('[data-game-launch]');
-    if (launchBtn) {
-      const url = launchBtn.dataset.gameLaunch;
-      const title = launchBtn.closest('.game-card').querySelector('.game-card-title').textContent;
-      logAnalyticsEvent('game_launch', { game: url });
-      openGamePlayer(url, title);
-      return;
-    }
-    const dlBtn = e.target.closest('[data-game-download]');
-    if (dlBtn) downloadGameOffline(dlBtn);
-  });
-
-  // If the Service Worker finishes a download after the button was
-  // clicked, it posts back here — updates the specific button that
-  // requested it rather than re-scanning everything.
-  if (navigator.serviceWorker) {
-    navigator.serviceWorker.addEventListener('message', e => {
-      if (e.data && e.data.type === 'GAME_CACHED') {
-        const btn = document.querySelector(`[data-game-url="${e.data.url}"]`);
-        if (btn) _setGameDownloadUI(btn, e.data.success ? 'done' : 'error');
-        if (e.data.success) {
-          const gameId = btn && btn.dataset.gameDownload;
-          if (gameId) localStorage.setItem(_gameDownloadedKey(gameId), '1');
-        }
-      }
-    });
-  }
-
-  _refreshGameDownloadStates();
-}
-
-/* Renders games added via Admin Panel → Games Manager (stored at
-   app_config/custom_games in Firebase) as additional cards appended after
-   the built-in games — kept as a SEPARATE Firebase-driven list rather
-   than trying to make the built-in 12 games editable too, since the
-   built-in games are actual files shipped with the app and don't need a
-   database round-trip to display; only genuinely new games Muaaz adds
-   through Admin need to come from Firebase. Uses .ad-banner-slot-style
-   generic thumbnail (a game controller icon) since custom games don't
-   ship with a matching hand-styled thumbnail class the way the built-in
-   ones do. */
-function renderCustomGames() {
-  if (!db) return;
-  db.ref('app_config/custom_games').on('value', snap => {
-    const games = snap.val() || {};
-    const grid = document.getElementById('gamesGrid');
-    // Remove previously-rendered custom cards before re-rendering, so a
-    // game removed in Admin disappears here too instead of lingering
-    // until the next full page reload.
-    grid.querySelectorAll('[data-custom-game]').forEach(el => el.remove());
-
-    Object.entries(games).forEach(([id, g]) => {
-      if (!g || !g.name || !g.url) return;
-      const card = document.createElement('div');
-      card.className = 'game-card';
-      card.dataset.customGame = id;
-      card.innerHTML = `
-        <div class="game-card-thumb game-card-thumb-custom">
-          <i class="fas fa-gamepad"></i>
-        </div>
-        <div class="game-card-info">
-          <div class="game-card-title">${esc(g.name)}</div>
-          <div class="game-card-desc">${esc(g.description || 'Play free, right in the app.')}</div>
-          <div class="game-card-actions">
-            <button class="game-play-btn" data-game-launch="${esc(g.url)}"><i class="fas fa-play"></i> Play Now</button>
-            <button class="game-dl-btn" data-game-download="custom_${esc(id)}" data-game-url="${esc(g.url)}" title="Download for offline"><i class="fas fa-download"></i></button>
-          </div>
-          <div class="game-dl-progress" style="display:none"><div class="game-dl-progress-bar"></div></div>
-        </div>
-      `;
-      grid.appendChild(card);
-    });
-    _refreshGameDownloadStates();
-  });
-}
-
-function _refreshGameDownloadStates() {
-  document.querySelectorAll('[data-game-download]').forEach(btn => {
-    const gameId = btn.dataset.gameDownload;
-    if (localStorage.getItem(_gameDownloadedKey(gameId)) === '1') {
-      _setGameDownloadUI(btn, 'done');
-    }
-  });
-}
-
-function _setGameDownloadUI(btn, state) {
-  const card = btn.closest('.game-card');
-  const progressWrap = card && card.querySelector('.game-dl-progress');
-  const progressBar = card && card.querySelector('.game-dl-progress-bar');
-  if (state === 'downloading') {
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    if (progressWrap) progressWrap.style.display = 'block';
-    if (progressBar) progressBar.style.width = '40%'; // indeterminate-ish feedback; game files are small/single-request
-  } else if (state === 'done') {
-    btn.disabled = false;
-    btn.classList.add('downloaded');
-    btn.innerHTML = '<i class="fas fa-circle-check"></i>';
-    btn.title = 'Downloaded — available offline';
-    if (progressBar) progressBar.style.width = '100%';
-    setTimeout(() => { if (progressWrap) progressWrap.style.display = 'none'; }, 600);
-  } else if (state === 'error') {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-rotate-right"></i>';
-    btn.title = 'Download failed — tap to retry';
-    if (progressWrap) progressWrap.style.display = 'none';
-    toast('Could not download game — check your connection and try again', 'error');
-  }
-}
-
-async function downloadGameOffline(btn) {
-  if (btn.disabled) return;
-  const url = btn.dataset.gameUrl;
-  const gameId = btn.dataset.gameDownload;
-  if (!url) return;
-
-  if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
-    // No active Service Worker (e.g. first visit before it's finished
-    // installing) — fall back to just letting the browser's own HTTP
-    // cache hold it from a normal fetch, which still helps somewhat but
-    // can't guarantee offline access the way the SW's Cache Storage can.
-    toast('Offline download needs a moment — try again in a few seconds', 'error');
-    return;
-  }
-
-  _setGameDownloadUI(btn, 'downloading');
-  logAnalyticsEvent('game_download', { game: gameId });
-  navigator.serviceWorker.controller.postMessage({ type: 'CACHE_GAME', url });
-
-  // Safety timeout — if the SW never responds for some reason (shouldn't
-  // happen, but message-passing has no built-in timeout), don't leave the
-  // button stuck in a spinner forever.
-  setTimeout(() => {
-    if (btn.disabled) _setGameDownloadUI(btn, 'error');
-  }, 15000);
-}
-
-
-const _fallbackPosterSvg = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="450"><rect width="300" height="450" fill="%23151822"/><text x="150" y="225" font-family="sans-serif" font-size="16" fill="%235d637a" text-anchor="middle">No Poster</text></svg>')}`;
 
 /* Builds a grid's full HTML by interleaving a native ad card after every
    N real cards (Muaaz asked for one ad card every 4 items in Movies/
@@ -4799,7 +4468,7 @@ function initServerButtons() {
      recorded (see recordServerSuccess) so the NEXT viewer of that same
      title starts on a server already known to be working right now,
      rather than everyone re-discovering the same dead server one at a time. */
-const AUTO_FAILOVER_TIMEOUT_MS = 6000;
+const AUTO_FAILOVER_TIMEOUT_MS = 10000; // 6s was killing slow-but-working embeds
 
 /* Reads which server most recently worked for this exact title (if any
    viewer has successfully loaded it before) so a fresh viewer's very first
@@ -5078,7 +4747,7 @@ function autoAdvanceServer(item, reason) {
   // Analytics a real success-rate ranking per server, not just raw counts.
   db.ref(`serverHealth/_globalStats/${S.activeServer}/failCount`).transaction(c => (c || 0) + 1).catch(() => {});
 
-  const keys = Object.keys(SERVERS);
+  const keys = [...SERVER_FALLBACK_ORDER.filter(k => SERVERS[k]), ...Object.keys(SERVERS).filter(k => !SERVER_FALLBACK_ORDER.includes(k))];
   const untried = keys.find(k => !S._triedServers.has(k));
 
   if (!untried) {
@@ -7919,7 +7588,8 @@ document.addEventListener('DOMContentLoaded', () => {
     '/music': 'music',
     '/calendar': 'calendar',
     '/account': 'account',
-    '/games': 'games',
+    '/islamic': 'islamic',
+    '/quran': 'islamic',
     '/search': 'search'
   };
   const directView = pathViewMap[window.location.pathname];
@@ -7950,6 +7620,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+/* ===== WINTER SNOW (lightweight canvas; off for reduced-motion / low-end / data saver) ===== */
+(function(){try{
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches||(navigator.hardwareConcurrency||4)<=2||(S.settings&&S.settings.dataSaver))return;
+  const c=document.createElement('canvas');c.id='snowCv';document.body.appendChild(c);const x=c.getContext('2d');
+  let w,h,f=[];const N=(innerWidth<700)?28:55;
+  const rs=()=>{w=c.width=innerWidth;h=c.height=innerHeight};rs();addEventListener('resize',rs);
+  for(let i=0;i<N;i++)f.push({x:Math.random()*w,y:Math.random()*h,r:Math.random()*2+.6,v:Math.random()*.7+.3,d:Math.random()*6});
+  let run=true;document.addEventListener('visibilitychange',()=>{run=!document.hidden;if(run)t()});
+  function t(){if(!run)return;x.clearRect(0,0,w,h);x.fillStyle='rgba(255,255,255,.75)';x.beginPath();
+    for(const p of f){p.y+=p.v;p.d+=.01;p.x+=Math.sin(p.d)*.4;if(p.y>h){p.y=-5;p.x=Math.random()*w}x.moveTo(p.x,p.y);x.arc(p.x,p.y,p.r,0,6.283)}
+    x.fill();requestAnimationFrame(t)}
+  t();}catch(e){}})();
+
+/* ===== ISLAMIC AYAT FEED (text comes live from the Al-Quran Cloud API — nothing typed by hand) ===== */
+const ISL_REFS=['2:255','94:5','94:6','65:3','13:28','2:286','3:139','39:53','2:152','2:153','2:186','20:25','20:26','93:3','93:5','59:22','112:1','103:1','103:2','103:3','55:13','24:35','33:56','40:60','17:80','25:63','3:159','8:46','9:51','14:7','16:97','49:13','2:216','12:87','29:69'];
+let _islIdx=0;
+async function _islFetch(ref){
+  const r=await fetch(`https://api.alquran.cloud/v1/ayah/${ref}/editions/quran-uthmani,ur.jalandhry,en.sahih`);
+  if(!r.ok)throw 0;const j=await r.json();return j.data;
+}
+function _islCard(d,big){
+  const [a,u,e]=d;
+  return `<div class="${big?'':'isl-card'}"><div class="isl-ar">${esc(a.text)}</div><div class="isl-ur">${esc(u.text)}</div><div class="isl-en">${esc(e.text)}</div>
+  <div class="isl-ref"><span>${esc(a.surah.englishName)} (${esc(a.surah.name)}) · ${a.surah.number}:${a.numberInSurah}</span>
+  <button onclick="navigator.share?navigator.share({title:'Quran ${a.surah.number}:${a.numberInSurah}',text:'${a.surah.englishName} ${a.surah.number}:${a.numberInSurah} — MINEXUS TV',url:location.origin+'/islamic'}):copyToClipboard(location.origin+'/islamic')"><i class="fas fa-share-nodes"></i></button></div></div>`;
+}
+async function initIslamicView(){
+  const d=document.getElementById('islDaily');if(!d||d.dataset.ok)return;
+  try{const day=Math.floor(Date.now()/864e5);d.innerHTML=_islCard(await _islFetch(ISL_REFS[day%ISL_REFS.length]),true);d.dataset.ok=1;
+    document.getElementById('islFeed').innerHTML='';_islIdx=0;loadIslamicFeed(6);
+  }catch(e){d.innerHTML='<div style="padding:16px;color:var(--text2)">Could not load ayat. Check internet and reopen this tab.</div>'}
+}
+async function loadIslamicFeed(n){
+  const box=document.getElementById('islFeed');
+  for(let k=0;k<n;k++){const ref=ISL_REFS[(_islIdx++)%ISL_REFS.length];
+    try{box.insertAdjacentHTML('beforeend',_islCard(await _islFetch(ref)))}catch(e){}}
+}
+
+/* ===== SAFETY NET: a failing section retries once and shows a friendly message instead of a blank/broken view ===== */
+['renderCalendarView','renderLeaderboard','renderAccountView','loadLiveTV','loadMoviesGrid','loadSeriesGrid','loadRows'].forEach(n=>{
+  const f=window[n];if(typeof f!=='function')return;
+  window[n]=async function(...a){try{return await f.apply(this,a)}catch(e){console.warn(n,e);setTimeout(()=>{try{Promise.resolve(f.apply(this,a)).catch(()=>toast('Loading failed — check connection','error'))}catch(_){}},1500)}};
+});
+window.addEventListener('unhandledrejection',e=>{console.warn('Unhandled',e.reason);e.preventDefault()});
 </script>
 </body>
 </html>

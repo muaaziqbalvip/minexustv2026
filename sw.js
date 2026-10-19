@@ -3,7 +3,7 @@
    version instead of a stale cached build. Static assets (icons/manifest) still
    cache for speed & offline fallback. */
 
-const CACHE_VERSION = 'minexus-v5-' + '20260819';
+const CACHE_VERSION = 'minexus-v6-' + '20261019';
 const STATIC_CACHE = CACHE_VERSION + '-static';
 
 const PRECACHE_ASSETS = [
@@ -17,7 +17,7 @@ const BYPASS_PATTERNS = [
   'cinemeta', 'strem.io',
   'themoviedb', 'image.tmdb',
   'iptv-org', 'jsdelivr', 'raw.githubusercontent', '.m3u', '.m3u8', '.ts',
-  'metahub.space'
+  'metahub.space', 'alquran.cloud'
 ];
 
 function shouldBypass(url) {
